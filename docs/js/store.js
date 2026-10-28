@@ -33,6 +33,7 @@ export function onSettings(fn) {
 export function syncCloudSettings() {
   return new Promise((resolve) => {
     if (!tg?.CloudStorage || !tg.isVersionAtLeast?.('6.9')) return resolve(false);
+    setTimeout(() => resolve(false), 1200); // never let a silent client block startup
     tg.CloudStorage.getItem(KEY, (err, value) => {
       if (err || !value) return resolve(false);
       try {

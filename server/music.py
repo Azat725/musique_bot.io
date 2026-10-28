@@ -33,6 +33,8 @@ _locks: dict[str, asyncio.Lock] = {}
 _yt_blocked_until = 0.0
 
 AUDIO_EXTS = {".m4a", ".mp3", ".webm", ".opus", ".ogg"}
+LITE_DIR = config.CACHE_DIR / "lite"
+LITE_DIR.mkdir(exist_ok=True)
 
 GENRES = {
     "pop": "Pop",
@@ -360,7 +362,7 @@ def _sc_download(vid: str, meta: dict) -> Path:
 
 
 def _prune_cache() -> None:
-    files = sorted((p for p in config.CACHE_DIR.iterdir() if p.is_file()), key=lambda p: p.stat().st_atime)
+    files = sorted((p for p in config.CACHE_DIR.rglob("*") if p.is_file()), key=lambda p: p.stat().st_atime)
     total = sum(p.stat().st_size for p in files)
     while files and total > config.CACHE_LIMIT_BYTES:
         p = files.pop(0)
@@ -420,12 +422,37 @@ async def resolve(vid: str, fresh: bool = False) -> Source:
     return Source("file", mime_for(path.suffix.lstrip(".")), path=path)
 
 
+def _encode_lite(src: Path, dest: Path) -> None:
+    tmp = dest.with_suffix(".part")
+    subprocess.run([config.FFMPEG, "-y", "-loglevel", "error", "-i", str(src), "-vn", "-c:a", "aac",
+                    "-b:a", config.STREAM_BITRATE, "-movflags", "+faststart", "-f", "mp4", str(tmp)], check=True,
+                   creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    tmp.replace(dest)
+
+
+def lite_enabled() -> bool:
+    return bool(config.FFMPEG) and config.STREAM_BITRATE not in ("", "0")
+
+
+async def stream_file(vid: str) -> Path:
+    """Cached file re-encoded to a low bitrate, so playback keeps up over a slow tunnel."""
+    dest = LITE_DIR / f"{vid}.m4a"
+    if dest.exists():
+        return dest
+    src = await ensure_file(vid)
+    async with _lock("lite:" + vid):
+        if not dest.exists():
+            await asyncio.to_thread(_encode_lite, src, dest)
+    return dest
+
+
 async def prefetch(vid: str) -> None:
-    """Warm the cache for an upcoming track when only the slow fallback source works."""
-    if _cached_file(vid) or time.time() > _yt_blocked_until:
-        return
+    """Warm the cache for an upcoming track when playback depends on a local file."""
     try:
-        await ensure_file(vid)
+        if lite_enabled():
+            await stream_file(vid)
+        elif not _cached_file(vid) and time.time() < _yt_blocked_until:
+            await ensure_file(vid)
     except Exception as e:
         log.info("prefetch failed for %s: %s", vid, str(e)[:120])
 

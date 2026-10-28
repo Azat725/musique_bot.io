@@ -14,6 +14,10 @@ WEBAPP_URL = os.getenv("WEBAPP_URL", "https://azat725.github.io/musique_bot.io/d
 PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "").rstrip("/")
 PORT = int(os.getenv("PORT", "8000"))
 DEBUG = os.getenv("DEBUG", "0") == "1"
+# "ssh" — open a localhost.run tunnel from the server itself (start.ps1 sets it); "none" — PUBLIC_API_URL is given
+TUNNEL = os.getenv("TUNNEL", "none")
+# Bitrate the Mini App stream is re-encoded to (free tunnels are slow); "0" streams the original file
+STREAM_BITRATE = os.getenv("STREAM_BITRATE", "64k")
 
 DB_PATH = ROOT / "musique.db"
 CACHE_DIR = ROOT / "cache"

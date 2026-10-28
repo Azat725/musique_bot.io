@@ -139,10 +139,16 @@ async def send_track(chat_id: int, track_id: str, lang: str | None) -> None:
         await _bot.send_message(chat_id, _t(lang, "failed"))
 
 
+async def update_menu_button() -> None:
+    """Point the bot's menu button at the Mini App with the current public API address."""
+    await _bot.set_chat_menu_button(menu_button=MenuButtonWebApp(text="Musique", web_app=WebAppInfo(url=config.webapp_url())))
+    log.info("Mini App URL: %s", config.webapp_url())
+
+
 async def setup(bot: Bot) -> None:
     global _bot
     _bot = bot
-    await bot.set_chat_menu_button(menu_button=MenuButtonWebApp(text="Musique", web_app=WebAppInfo(url=config.webapp_url())))
+    await update_menu_button()
     for code in ("ru", "en"):
         lang = None if code == "en" else code
         try:
@@ -157,4 +163,3 @@ async def setup(bot: Bot) -> None:
             await bot.set_my_name("Musique")
     except Exception as e:
         log.warning("set_my_name skipped: %s", e)
-    log.info("Mini App URL: %s", config.webapp_url())

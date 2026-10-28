@@ -194,6 +194,8 @@ async def stream(vid: str, request: Request, t: str = ""):
     if not auth.check_stream_token(t):
         raise HTTPException(403)
     try:
+        if music.lite_enabled():
+            return FileResponse(await music.stream_file(vid), media_type="audio/mp4")
         for attempt in range(2):
             src = await music.resolve(vid, fresh=attempt > 0)
             if src.kind == "file":
