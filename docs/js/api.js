@@ -24,6 +24,7 @@ async function request(method, path, body) {
     method,
     headers: {
       'X-Init-Data': tg?.initData || '',
+      'ngrok-skip-browser-warning': '1', // ngrok's free tier otherwise answers browsers with an interstitial page
       ...(body ? { 'Content-Type': 'application/json' } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
