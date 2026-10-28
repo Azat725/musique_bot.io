@@ -37,8 +37,19 @@ const get = (p) => request('GET', p);
 const post = (p, b) => request('POST', p, b);
 const del = (p) => request('DELETE', p);
 
+// <audio> can't send the header that skips ngrok's interstitial page, so there the audio is fetched explicitly
+const usesBlob = /\.ngrok[\w-]*\.(dev|app|io)$/.test(new URL(base || 'http://x').hostname);
+
 export const api = {
   hasServer: () => !!base,
+  usesBlob,
+  async audioBlob(id) {
+    const res = await fetch(`${base}/api/stream/${id}?t=${encodeURIComponent(streamToken)}`, {
+      headers: { 'ngrok-skip-browser-warning': '1' },
+    });
+    if (!res.ok) throw new Error(`http-${res.status}`);
+    return URL.createObjectURL(await res.blob());
+  },
   async me() {
     const data = await get('/api/me');
     streamToken = data.token;

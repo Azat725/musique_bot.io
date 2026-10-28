@@ -14,6 +14,8 @@ class Player extends EventTarget {
     this.loading = false;
     this.errors = 0;
     this._logged = null;
+    this._seq = 0;
+    this._blobs = new Map(); // track id -> Promise<object URL>
 
     const a = this.audio;
     a.addEventListener('playing', () => {
@@ -25,7 +27,10 @@ class Player extends EventTarget {
         this._logged = tr.id;
         api.addHistory(tr).catch(() => {});
         const upcoming = this.queue[this.index + 1];
-        if (upcoming) api.prefetch(upcoming).catch(() => {});
+        if (upcoming) {
+          if (api.usesBlob) this._audioUrl(upcoming.id).catch(() => {});
+          else api.prefetch(upcoming).catch(() => {});
+        }
       }
     });
     a.addEventListener('pause', () => this._emit('state'));
@@ -133,11 +138,35 @@ class Player extends EventTarget {
     const tr = this.current;
     if (!tr) return;
     this.loading = true;
-    this.audio.src = api.streamUrl(tr.id);
-    this.audio.play().catch(() => {});
+    const seq = ++this._seq;
+    if (api.usesBlob) this.audio.pause(); // the previous track must not keep playing while the next downloads
+    this._audioUrl(tr.id).then((url) => {
+      if (seq !== this._seq) return; // the user already moved on
+      this.audio.src = url;
+      this.audio.play().catch(() => {});
+    }).catch(() => {
+      if (seq === this._seq) this.audio.dispatchEvent(new Event('error'));
+    });
     this._emit('track', { track: tr, dir });
     this._emit('state');
     this._updateMediaSession(tr);
+  }
+
+  /** Playable URL for a track. Behind ngrok the audio is fetched with a header and played from memory. */
+  _audioUrl(id) {
+    if (!api.usesBlob) return Promise.resolve(api.streamUrl(id));
+    if (!this._blobs.has(id)) {
+      const p = api.audioBlob(id);
+      p.catch(() => this._blobs.delete(id));
+      this._blobs.set(id, p);
+      while (this._blobs.size > 3) {
+        const old = [...this._blobs.keys()].find((k) => k !== this.current?.id && k !== id);
+        if (!old) break;
+        this._blobs.get(old).then((u) => URL.revokeObjectURL(u), () => {});
+        this._blobs.delete(old);
+      }
+    }
+    return this._blobs.get(id);
   }
 
   _mediaSession() {
