@@ -1,0 +1,25 @@
+# Musique on a VPS: bot + API and a static ngrok domain in front of it.
+#   1. cp server/.env.example server/.env  and fill BOT_TOKEN, NGROK_AUTHTOKEN, NGROK_DOMAIN
+#   2. docker compose --env-file server/.env up -d --build   (the flag lets compose read NGROK_DOMAIN)
+services:
+  musique:
+    build: .
+    restart: unless-stopped
+    env_file: server/.env
+    environment:
+      PUBLIC_API_URL: https://${NGROK_DOMAIN}
+    volumes:
+      - musique-data:/data
+      # optional YouTube cookies (see README): uncomment after creating server/cookies.txt
+      # - ./server/cookies.txt:/app/server/cookies.txt:ro
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    restart: unless-stopped
+    depends_on: [musique]
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    command: ["http", "--url=${NGROK_DOMAIN}", "musique:8000"]
+
+volumes:
+  musique-data:

@@ -15,7 +15,7 @@ async def main() -> None:
         logging.warning("ffmpeg not found — SoundCloud fallback may fail for HLS tracks")
 
     await db.init()
-    server = uvicorn.Server(uvicorn.Config(api.app, host="127.0.0.1", port=config.PORT, log_level="warning"))
+    server = uvicorn.Server(uvicorn.Config(api.app, host=config.HOST, port=config.PORT, log_level="warning"))
     web = asyncio.create_task(server.serve())
     tasks = {web}
 

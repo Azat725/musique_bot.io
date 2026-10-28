@@ -13,14 +13,17 @@ BOT_TOKEN = os.environ["BOT_TOKEN"]
 WEBAPP_URL = os.getenv("WEBAPP_URL", "https://azat725.github.io/musique_bot.io/docs/")
 PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "").rstrip("/")
 PORT = int(os.getenv("PORT", "8000"))
+HOST = os.getenv("HOST", "127.0.0.1")  # 0.0.0.0 inside Docker
 DEBUG = os.getenv("DEBUG", "0") == "1"
 # "ssh" — open a localhost.run tunnel from the server itself (start.ps1 sets it); "none" — PUBLIC_API_URL is given
 TUNNEL = os.getenv("TUNNEL", "none")
 # Bitrate the Mini App stream is re-encoded to (free tunnels are slow); "0" streams the original file
 STREAM_BITRATE = os.getenv("STREAM_BITRATE", "64k")
 
-DB_PATH = ROOT / "musique.db"
-CACHE_DIR = ROOT / "cache"
+DATA_DIR = Path(os.getenv("DATA_DIR", ROOT))
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+DB_PATH = DATA_DIR / "musique.db"
+CACHE_DIR = DATA_DIR / "cache"
 CACHE_LIMIT_BYTES = int(os.getenv("CACHE_LIMIT_MB", "1500")) * 1024 * 1024
 # Netscape cookies.txt from a YouTube account — optional, makes YouTube far more reliable
 COOKIES_FILE = ROOT / "cookies.txt"

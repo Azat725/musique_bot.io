@@ -1,0 +1,9 @@
+.venv
+.git
+docs
+server/.env
+server/cache
+server/*.db
+server/cookies.txt
+tunnel.log
+.claude
