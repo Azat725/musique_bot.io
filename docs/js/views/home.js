@@ -1,7 +1,7 @@
 import { api } from '../api.js';
 import { t } from '../i18n.js';
 import { player } from '../player.js';
-import { cover, esc, h, haptic, icon, trackList } from '../ui.js';
+import { brandMark, cover, esc, h, haptic, icon, trackList } from '../ui.js';
 
 function greeting() {
   const hr = new Date().getHours();
@@ -44,7 +44,7 @@ function skeleton() {
 export async function render(_, nav) {
   const root = h(`<div class="view">
     <header class="hero">
-      <div class="brand"><span class="flag"><i></i><i></i><i></i></span><span class="brand__name">Musique</span></div>
+      <div class="brand">${brandMark()}<span class="brand__name">Musique</span></div>
       <h1 class="hero__title">${esc(greeting())}</h1>
     </header>
     <div class="home__body"></div>

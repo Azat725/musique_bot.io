@@ -39,6 +39,15 @@ export function icon(name, cls = '') {
   return `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
 }
 
+/** Brand mark: a small vinyl record with a bordeaux label. */
+export function brandMark() {
+  return `<svg class="brand__mark" viewBox="0 0 24 24" aria-hidden="true">
+    <circle class="disc" cx="12" cy="12" r="11.2"/>
+    <circle class="groove" cx="12" cy="12" r="9"/><circle class="groove" cx="12" cy="12" r="7"/>
+    <circle class="label" cx="12" cy="12" r="4.4"/><circle class="hole" cx="12" cy="12" r="1.1"/>
+  </svg>`;
+}
+
 export function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 }

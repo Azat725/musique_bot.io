@@ -8,3 +8,4 @@ bin/
 tunnel.log
 cache/
 .claude/
+cookies.txt

@@ -33,12 +33,12 @@ body.has-mini #main { padding-bottom: calc(var(--nav-h) + var(--mini-h) + var(--
 /* ---------- brand ---------- */
 
 .brand { display: flex; align-items: center; gap: 10px; }
-.flag { display: inline-flex; height: 14px; border-radius: 2px; overflow: hidden; box-shadow: 0 0 0 1px var(--line); }
-.flag i { width: 7px; height: 100%; }
-.flag i:nth-child(1) { background: var(--navy); }
-.flag i:nth-child(2) { background: var(--white); }
-.flag i:nth-child(3) { background: var(--bordeaux); }
-:root[data-theme="dark"] .flag i:nth-child(1) { background: #2B3F6B; }
+.brand__mark { width: 24px; height: 24px; flex: none; }
+.brand__mark .disc { fill: var(--vinyl); }
+.brand__mark .groove { fill: none; stroke: rgba(255, 255, 255, .16); stroke-width: .7; }
+.brand__mark .label { fill: var(--accent); }
+.brand__mark .hole { fill: var(--bg); }
+:root[data-theme="dark"] .brand__mark .disc { stroke: rgba(255, 255, 255, .18); stroke-width: .8; }
 .brand__name { font: 600 18px/1 var(--font-serif); letter-spacing: .02em; }
 
 .hero { padding: 12px 0 4px; }

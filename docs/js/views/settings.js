@@ -1,7 +1,7 @@
 import { api } from '../api.js';
 import { t } from '../i18n.js';
 import { settings, updateSettings } from '../store.js';
-import { esc, h, haptic, toast } from '../ui.js';
+import { brandMark, esc, h, haptic, toast } from '../ui.js';
 
 function segmented(name, options, value) {
   return `<div class="segmented" role="radiogroup" data-name="${name}">
@@ -37,7 +37,7 @@ export async function render() {
     <section class="group">
       <div class="group__label">${esc(t('settings_about'))}</div>
       <div class="group__item group__item--text">
-        <div class="about__brand"><span class="flag"><i></i><i></i><i></i></span><span class="brand__name">Musique</span></div>
+        <div class="about__brand">${brandMark()}<span class="brand__name">Musique</span></div>
         <p>${esc(t('about_text'))}</p>
       </div>
     </section>
