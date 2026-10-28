@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT / ".env")
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
-WEBAPP_URL = os.getenv("WEBAPP_URL", "https://azat725.github.io/musique_bot.io/")
+WEBAPP_URL = os.getenv("WEBAPP_URL", "https://azat725.github.io/musique_bot.io/docs/")
 PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "").rstrip("/")
 PORT = int(os.getenv("PORT", "8000"))
 DEBUG = os.getenv("DEBUG", "0") == "1"

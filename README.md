@@ -3,7 +3,7 @@
 Telegram-бот с Mini App для прослушивания музыки. Поиск по YouTube Music, воспроизведение с YouTube
 (с автоматическим фолбэком на SoundCloud), избранное, плейлисты, история и полноэкранный плеер-винил.
 
-- **Mini App** — `docs/`, статический сайт на GitHub Pages: https://azat725.github.io/musique_bot.io/
+- **Mini App** — `docs/`, статический сайт на GitHub Pages: https://azat725.github.io/musique_bot.io/docs/
 - **Сервер** — `server/`: бот (aiogram) + API (FastAPI) в одном процессе, запускается на вашем ПК
   и публикуется наружу через бесплатный Cloudflare Tunnel.
 
