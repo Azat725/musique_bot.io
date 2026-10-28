@@ -373,7 +373,9 @@ def _prune_cache() -> None:
 def _mark_if_blocked(e: Exception) -> None:
     global _yt_blocked_until
     msg = str(e).lower()
-    if "not a bot" in msg or "429" in msg or "sign in" in msg:
+    # 403 on the media itself: the URL is bound to another IP (e.g. a VPN routing youtube.com and
+    # googlevideo.com differently) — skip YouTube for a while instead of paying for it on every track
+    if "not a bot" in msg or "429" in msg or "sign in" in msg or "403" in msg:
         _yt_blocked_until = time.time() + (600 if config.COOKIES_FILE.exists() else 1800)
 
 
