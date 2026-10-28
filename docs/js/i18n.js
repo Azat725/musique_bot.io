@@ -1,0 +1,86 @@
+const DICT = {
+  ru: {
+    nav_home: 'Главная', nav_search: 'Поиск', nav_library: 'Медиатека', nav_settings: 'Настройки',
+    greet_morning: 'Доброе утро', greet_day: 'Добрый день', greet_evening: 'Добрый вечер', greet_night: 'Доброй ночи',
+    home_recent: 'Недавно слушали', home_trending: 'В тренде', home_top_ru: 'Топ дня', home_top_global: 'Мировой топ',
+    home_genres: 'Жанры', see_all: 'Все',
+    genre_pop: 'Поп', genre_hiphop: 'Хип-хоп', genre_rock: 'Рок', genre_dance: 'Электроника', genre_latin: 'Латино', genre_jazz: 'Джаз',
+    search_placeholder: 'Трек, исполнитель, альбом', search_hint: 'Найдите любую музыку', search_hint_sub: 'Поиск по YouTube Music и открытым источникам',
+    search_nothing: 'Ничего не найдено', search_recent: 'Вы искали', search_clear: 'Очистить',
+    lib_likes: 'Избранное', lib_history: 'История', lib_playlists: 'Плейлисты', lib_new_playlist: 'Новый плейлист',
+    lib_empty_playlists: 'Создайте первый плейлист — добавляйте треки через меню «⋯».',
+    tracks_one: 'трек', tracks_few: 'трека', tracks_many: 'треков',
+    play: 'Слушать', shuffle: 'Вперемешку', rename: 'Переименовать', delete: 'Удалить',
+    playlist_delete_confirm: 'Удалить плейлист «{name}»?', playlist_name: 'Название плейлиста',
+    playlist_empty: 'Здесь пока пусто', likes_empty: 'Отмечайте треки сердцем — они появятся здесь',
+    history_empty: 'Вы ещё ничего не слушали', clear_history: 'Очистить историю',
+    menu_like: 'В избранное', menu_unlike: 'Убрать из избранного', menu_add_playlist: 'Добавить в плейлист',
+    menu_send: 'Отправить в чат', menu_play_next: 'Играть следующим', menu_remove: 'Убрать из плейлиста',
+    cancel: 'Отмена', save: 'Сохранить', create: 'Создать',
+    toast_sending: 'Отправляем трек в чат с ботом…', toast_added: 'Добавлено в «{name}»', toast_liked: 'Добавлено в избранное',
+    toast_unliked: 'Удалено из избранного', toast_next: 'Сыграет следующим', toast_unavailable: 'Трек недоступен, переключаю',
+    toast_error: 'Что-то пошло не так', toast_removed: 'Удалено',
+    pill_playlist: 'В плейлист', pill_send: 'В чат',
+    player_now: 'Сейчас играет', player_loading: 'Загрузка…', player_nothing: 'Ничего не играет',
+    settings_appearance: 'Оформление', settings_theme: 'Тема', theme_system: 'Авто', theme_light: 'Светлая', theme_dark: 'Тёмная',
+    settings_language: 'Язык', settings_sounds: 'Звук пластинки', settings_sounds_hint: 'Щелчок иглы при смене трека',
+    settings_data: 'Данные', settings_about: 'О приложении',
+    about_text: 'Musique ищет музыку в YouTube Music и открытых источниках. Откройте трек на весь экран — он заиграет на виниловой пластинке.',
+    settings_cleared: 'История очищена',
+    no_server_title: 'Сервер недоступен', no_server_text: 'Похоже, сервер был перезапущен. Откройте Musique через кнопку меню в боте или отправьте /start.', retry: 'Повторить',
+  },
+  en: {
+    nav_home: 'Home', nav_search: 'Search', nav_library: 'Library', nav_settings: 'Settings',
+    greet_morning: 'Good morning', greet_day: 'Good afternoon', greet_evening: 'Good evening', greet_night: 'Good night',
+    home_recent: 'Recently played', home_trending: 'Trending', home_top_ru: 'Top today', home_top_global: 'Global top',
+    home_genres: 'Genres', see_all: 'All',
+    genre_pop: 'Pop', genre_hiphop: 'Hip-hop', genre_rock: 'Rock', genre_dance: 'Electronic', genre_latin: 'Latin', genre_jazz: 'Jazz',
+    search_placeholder: 'Track, artist, album', search_hint: 'Find any music', search_hint_sub: 'Search across YouTube Music and open sources',
+    search_nothing: 'Nothing found', search_recent: 'Recent searches', search_clear: 'Clear',
+    lib_likes: 'Favourites', lib_history: 'History', lib_playlists: 'Playlists', lib_new_playlist: 'New playlist',
+    lib_empty_playlists: 'Create your first playlist — add tracks via the “⋯” menu.',
+    tracks_one: 'track', tracks_few: 'tracks', tracks_many: 'tracks',
+    play: 'Play', shuffle: 'Shuffle', rename: 'Rename', delete: 'Delete',
+    playlist_delete_confirm: 'Delete playlist “{name}”?', playlist_name: 'Playlist name',
+    playlist_empty: 'Nothing here yet', likes_empty: 'Tap the heart on a track to save it here',
+    history_empty: 'You haven’t listened to anything yet', clear_history: 'Clear history',
+    menu_like: 'Add to favourites', menu_unlike: 'Remove from favourites', menu_add_playlist: 'Add to playlist',
+    menu_send: 'Send to chat', menu_play_next: 'Play next', menu_remove: 'Remove from playlist',
+    cancel: 'Cancel', save: 'Save', create: 'Create',
+    toast_sending: 'Sending the track to your chat…', toast_added: 'Added to “{name}”', toast_liked: 'Added to favourites',
+    toast_unliked: 'Removed from favourites', toast_next: 'Will play next', toast_unavailable: 'Track unavailable, skipping',
+    toast_error: 'Something went wrong', toast_removed: 'Removed',
+    pill_playlist: 'To playlist', pill_send: 'To chat',
+    player_now: 'Now playing', player_loading: 'Loading…', player_nothing: 'Nothing playing',
+    settings_appearance: 'Appearance', settings_theme: 'Theme', theme_system: 'Auto', theme_light: 'Light', theme_dark: 'Dark',
+    settings_language: 'Language', settings_sounds: 'Vinyl sound', settings_sounds_hint: 'Needle click when the track changes',
+    settings_data: 'Data', settings_about: 'About',
+    about_text: 'Musique finds music on YouTube Music and open sources. Open a track full screen and it plays on a vinyl record.',
+    settings_cleared: 'History cleared',
+    no_server_title: 'Server unavailable', no_server_text: 'The server may have restarted. Open Musique from the bot’s menu button or send /start.', retry: 'Retry',
+  },
+};
+
+let lang = 'ru';
+
+export function setLang(value) {
+  lang = DICT[value] ? value : 'en';
+  document.documentElement.lang = lang;
+}
+
+export function getLang() {
+  return lang;
+}
+
+export function t(key, vars = {}) {
+  const s = DICT[lang][key] ?? DICT.en[key] ?? key;
+  return s.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
+}
+
+export function plural(n) {
+  if (lang !== 'ru') return `${n} ${t(n === 1 ? 'tracks_one' : 'tracks_many')}`;
+  const m10 = n % 10, m100 = n % 100;
+  const key = m10 === 1 && m100 !== 11 ? 'tracks_one'
+    : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? 'tracks_few' : 'tracks_many';
+  return `${n} ${t(key)}`;
+}
