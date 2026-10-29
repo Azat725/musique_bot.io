@@ -240,6 +240,21 @@ export function markPlaying(root = document) {
   });
 }
 
+// ---------- artists ----------
+
+/** A row for an artist (search results, favourite artists); tapping it opens the artist card. */
+export function artistRow(a) {
+  const row = h(`<button class="artist-row" data-id="${esc(a.id)}">${cover(a.cover, 'artist-row__photo', 168)}
+    <span class="artist-row__meta"><span class="artist-row__name">${esc(a.name)}</span>
+      ${a.subscribers ? `<span class="artist-row__sub">${esc(t('artist_subscribers', { n: a.subscribers }))}</span>` : ''}</span>
+    ${icon('right', 'artist-row__chev')}</button>`);
+  row.addEventListener('click', () => {
+    haptic('light');
+    document.dispatchEvent(new CustomEvent('open-artist', { detail: { id: a.id, name: a.name } }));
+  });
+  return row;
+}
+
 // ---------- track actions ----------
 
 /** Open the artist card for a track; with several artists ("A, B feat. C") the user picks one first. */

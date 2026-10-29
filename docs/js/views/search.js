@@ -1,21 +1,30 @@
 import { api } from '../api.js';
 import { t } from '../i18n.js';
-import { clearRecentSearches, pushRecentSearch, recentSearches } from '../store.js';
-import { esc, h, icon, loader, trackList } from '../ui.js';
+import { clearRecentSearches, pushRecentSearch, recentSearches, settings, updateSettings } from '../store.js';
+import { artistRow, esc, h, haptic, icon, loader, trackList } from '../ui.js';
 
-let lastQuery = '';
-let lastTracks = null;
-let lastMore = [];
+const MODES = ['all', 'tracks', 'artists'];
+let last = null; // { q, mode, tracks, more, artists }
 
-/** YouTube Music results, then a block with what the other sources found. */
-function results(tracks, more) {
+const mode = () => (MODES.includes(settings.searchMode) ? settings.searchMode : 'all');
+const isEmpty = (r) => !r.tracks.length && !r.more.length && !r.artists.length;
+
+function section(title, content) {
+  const s = h(`<section class="section"><div class="section__head"><h2 class="section__title">${esc(title)}</h2></div></section>`);
+  s.append(content);
+  return s;
+}
+
+/** Artists (in 'all' a few at the top), YouTube Music tracks, then what the other sources found. */
+function results(r) {
   const frag = document.createDocumentFragment();
-  if (tracks.length) frag.append(trackList(tracks));
-  if (more.length) {
-    const s = h(`<section class="section"><div class="section__head"><h2 class="section__title">${esc(t('search_more'))}</h2></div></section>`);
-    s.append(trackList(more));
-    frag.append(s);
+  if (r.artists.length) {
+    const list = h('<div class="artists"></div>');
+    r.artists.forEach((a) => list.append(artistRow(a)));
+    frag.append(r.mode === 'artists' ? list : section(t('search_artists'), list));
   }
+  if (r.tracks.length) frag.append(r.artists.length ? section(t('search_tracks'), trackList(r.tracks)) : trackList(r.tracks));
+  if (r.more.length) frag.append(section(t('search_more'), trackList(r.more)));
   return frag;
 }
 
@@ -27,12 +36,29 @@ export async function render() {
       <input type="search" enterkeyhint="search" autocomplete="off" placeholder="${esc(t('search_placeholder'))}">
       <button class="icon-btn searchbar__clear" aria-label="clear" hidden>${icon('close')}</button>
     </div>
+    <div class="segmented search__modes" role="tablist">
+      ${MODES.map((m) => `<button role="tab" data-mode="${m}">${esc(t('search_mode_' + m))}</button>`).join('')}
+    </div>
     <div class="search__body"></div>
   </div>`);
   const input = root.querySelector('input');
   const clear = root.querySelector('.searchbar__clear');
   const body = root.querySelector('.search__body');
+  const modes = root.querySelector('.search__modes');
   let timer, seq = 0, inflight = null;
+  const syncModes = () => modes.querySelectorAll('button').forEach((b) => {
+    b.classList.toggle('is-on', b.dataset.mode === mode());
+    b.setAttribute('aria-selected', b.dataset.mode === mode());
+  });
+  syncModes();
+  modes.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-mode]');
+    if (!b || b.dataset.mode === mode()) return;
+    haptic('select');
+    updateSettings({ searchMode: b.dataset.mode });
+    syncModes();
+    if (input.value.trim()) run(input.value);
+  });
 
   function showIdle() {
     const recent = recentSearches();
@@ -58,21 +84,18 @@ export async function render() {
   async function run(q, remember = false) {
     q = q.trim();
     clear.hidden = !q;
-    if (!q) { lastQuery = ''; lastTracks = null; lastMore = []; showIdle(); return; }
-    const my = ++seq;
+    if (!q) { last = null; showIdle(); return; }
+    const my = ++seq, m = mode();
     inflight?.abort(); // a superseded query must not keep the server busy
     inflight = new AbortController();
     body.innerHTML = loader();
     try {
-      const { tracks, more = [] } = await api.search(q, inflight.signal);
+      const { tracks = [], more = [], artists = [] } = await api.search(q, inflight.signal, m);
       if (my !== seq) return;
-      lastQuery = q;
-      lastTracks = tracks;
-      lastMore = more;
+      last = { q, mode: m, tracks, more, artists };
       if (remember) pushRecentSearch(q);
       body.innerHTML = '';
-      body.append(tracks.length || more.length ? results(tracks, more)
-        : h(`<div class="empty"><div class="empty__title">${esc(t('search_nothing'))}</div></div>`));
+      body.append(isEmpty(last) ? h(`<div class="empty"><div class="empty__title">${esc(t('search_nothing'))}</div></div>`) : results(last));
     } catch {
       if (my === seq) body.innerHTML = `<div class="empty"><div class="empty__title">${esc(t('toast_error'))}</div></div>`;
     }
@@ -85,13 +108,16 @@ export async function render() {
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { clearTimeout(timer); run(input.value, true); input.blur(); }
   });
-  input.addEventListener('blur', () => { if (input.value.trim() && (lastTracks?.length || lastMore.length)) pushRecentSearch(input.value.trim()); });
+  input.addEventListener('blur', () => { if (input.value.trim() && last && !isEmpty(last)) pushRecentSearch(input.value.trim()); });
   clear.addEventListener('click', () => { input.value = ''; run(''); input.focus(); });
 
-  if (lastQuery && lastTracks) {
-    input.value = lastQuery;
+  if (last && last.mode === mode()) {
+    input.value = last.q;
     clear.hidden = false;
-    body.append(results(lastTracks, lastMore));
+    body.append(isEmpty(last) ? h(`<div class="empty"><div class="empty__title">${esc(t('search_nothing'))}</div></div>`) : results(last));
+  } else if (last) {
+    input.value = last.q;
+    run(last.q);
   } else {
     showIdle();
   }
