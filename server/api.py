@@ -29,7 +29,7 @@ send_track = None  # set by __main__: async (chat_id, track_id, lang) -> None
 
 
 class TrackIn(BaseModel):
-    id: str = Field(pattern=r"^[A-Za-z0-9_-]{11}$")
+    id: str = Field(pattern=r"^(?:[A-Za-z0-9_-]{11}|[a-z]{2}\.[A-Za-z0-9_-]{1,40})$")  # music.ID_RE
     title: str = Field(max_length=300)
     artist: str = Field(max_length=300)
     duration: int = Field(ge=0, le=36000)
@@ -73,7 +73,8 @@ async def home(user=User):
 
 @app.get("/api/search")
 async def search(q: str = "", user=User):
-    return {"tracks": await music.search(q)}
+    tracks, more = await asyncio.gather(music.search(q), music.search_more(q))
+    return {"tracks": tracks, "more": more}
 
 
 @app.get("/api/collection/{playlist_id}")

@@ -1,4 +1,4 @@
-"""Search (YouTube Music) and audio resolution (YouTube, falling back to SoundCloud)."""
+"""Search (YouTube Music + other sources) and audio resolution (YouTube, then SoundCloud, then other sources)."""
 import asyncio
 import logging
 import re
@@ -14,11 +14,13 @@ import httpx
 import yt_dlp
 from ytmusicapi import YTMusic
 
-from . import config, db
+from . import config, db, sources
 
 log = logging.getLogger("musique.music")
 
-ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
+YT_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
+# any playable track: a YouTube video id or "<source>.<key>" from server/sources
+ID_RE = re.compile(r"^(?:[A-Za-z0-9_-]{11}|[a-z]{2}\.[A-Za-z0-9_-]{1,40})$")
 _NOISE_RE = re.compile(
     r"\s*[\(\[][^\)\]]*(official|video|audio|lyric|lyrics|visualizer|clip|клип|премьера|mv|hd|4k)[^\)\]]*[\)\]]",
     re.IGNORECASE,
@@ -106,7 +108,7 @@ def _clean(title: str, artist: str) -> tuple[str, str]:
 
 def normalize(r: dict) -> dict | None:
     vid = r.get("videoId")
-    if not vid or not ID_RE.match(vid):
+    if not vid or not YT_ID_RE.match(vid):
         return None
     artists = [a for a in (r.get("artists") or []) if a.get("name")]
     artist = ", ".join(a["name"] for a in artists)
@@ -143,6 +145,8 @@ async def track_meta(vid: str) -> dict | None:
     if stored:
         _meta[vid] = stored
         return stored
+    if sources.is_external(vid):
+        return None
     try:
         data = await asyncio.to_thread(_yt.get_watch_playlist, vid, limit=1)
         if data.get("tracks"):
@@ -178,6 +182,23 @@ async def search(query: str, limit: int = 30) -> list[dict]:
             if t and t["id"] not in seen:
                 seen.add(t["id"])
                 out.append(t)
+    _search_cache[key] = (time.time(), out)
+    _trim(_search_cache, 500)
+    return out
+
+
+async def search_more(query: str) -> list[dict]:
+    """Results from the other sources (Zaycev, Bandcamp, Jamendo, Internet Archive, Rutube)."""
+    query = query.strip()[:200]
+    if not query:
+        return []
+    key = "more:" + query.lower()
+    cached = _search_cache.get(key)
+    if cached and time.time() - cached[0] < 600:
+        return cached[1]
+    out = await sources.search(query)
+    for t in out:
+        _meta[t["id"]] = t
     _search_cache[key] = (time.time(), out)
     _trim(_search_cache, 500)
     return out
@@ -521,6 +542,10 @@ async def ensure_file(vid: str) -> Path:
         if path:
             return path
         async with _download_slots:
+            if sources.is_external(vid):
+                path = await sources.download(vid, config.CACHE_DIR)
+                await asyncio.to_thread(_prune_cache)
+                return path
             if time.time() > _yt_blocked_until:
                 try:
                     path = await asyncio.to_thread(_yt_download, vid)
@@ -531,7 +556,11 @@ async def ensure_file(vid: str) -> Path:
                 meta = await track_meta(vid)
                 if not meta:
                     raise LookupError("unknown track")
-                path = await asyncio.to_thread(_sc_download, vid, meta)
+                try:
+                    path = await asyncio.to_thread(_sc_download, vid, meta)
+                except Exception as e:
+                    log.warning("SoundCloud failed for %s: %s", vid, str(e)[:160])
+                    path = await sources.find_audio(meta, config.CACHE_DIR, vid)
         await asyncio.to_thread(_prune_cache)
         return path
 
@@ -544,7 +573,7 @@ async def resolve(vid: str, fresh: bool = False) -> Source:
     cached = _url_cache.get(vid)
     if cached and not fresh and time.time() - cached[0] < 4 * 3600:
         return cached[1]
-    if time.time() > _yt_blocked_until:
+    if time.time() > _yt_blocked_until and not sources.is_external(vid):
         try:
             src = await asyncio.to_thread(_yt_direct, vid)
             _url_cache[vid] = (time.time(), src)
@@ -587,7 +616,7 @@ async def prefetch(vid: str) -> None:
     try:
         if lite_enabled():
             await stream_file(vid)
-        elif not _cached_file(vid) and time.time() < _yt_blocked_until:
+        elif not _cached_file(vid) and (time.time() < _yt_blocked_until or sources.is_external(vid)):
             await ensure_file(vid)
     except Exception as e:
         log.info("prefetch failed for %s: %s", vid, str(e)[:120])
