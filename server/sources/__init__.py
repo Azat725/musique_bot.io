@@ -69,6 +69,23 @@ async def search(query: str) -> list[dict]:
     return out
 
 
+async def popular() -> list[dict]:
+    """What is popular on Zaycev.net: the home page's fallback when YouTube Music is unreachable."""
+    if zaycev not in active():
+        return []
+    try:
+        async with httpx.AsyncClient(headers=HEADERS, timeout=SEARCH_TIMEOUT, follow_redirects=True) as client:
+            found = await zaycev.popular(client)
+    except Exception as e:
+        log.info("zaycev popular failed: %s", str(e)[:120])
+        return []
+    for track, ref in found:
+        _refs[track["id"]] = ref
+    if found:
+        await db.save_sources([(t["id"], ref) for t, ref in found])
+    return [t for t, _ in found]
+
+
 async def download(track_id: str, cache_dir: Path) -> Path:
     provider = PROVIDERS[track_id.split(".", 1)[0]]
     ref = _refs.get(track_id) or await db.source_ref(track_id)
