@@ -21,7 +21,7 @@ let streamToken = '';
 async function request(method, path, body) {
   if (!base) throw new Error('no-server');
   const ctrl = new AbortController(); // never hang on a blocked or sleeping server (AbortSignal.timeout is missing in older WebViews)
-  const timer = setTimeout(() => ctrl.abort(), path === '/api/me' ? 10000 : 45000);
+  const timer = setTimeout(() => ctrl.abort(), path === '/api/me' ? 15000 : 45000);
   try {
     const res = await fetch(base + path, {
       signal: ctrl.signal,

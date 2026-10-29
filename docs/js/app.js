@@ -200,7 +200,8 @@ async function boot() {
 
   if (!api.hasServer()) return noServer();
   try {
-    await api.me();
+    // a slow VPN or a cold tunnel can miss the first attempt
+    await api.me().catch(() => api.me());
     loadLikes().catch(() => {});
   } catch {
     return noServer();
