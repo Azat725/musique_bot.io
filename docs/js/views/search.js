@@ -40,7 +40,7 @@ export async function render() {
     if (!recent.length) {
       body.append(h(`<div class="empty">${icon('vinyl', 'empty__icon')}
         <div class="empty__title">${esc(t('search_hint'))}</div>
-        <div class="empty__text">${esc(t('search_hint_sub'))}</div></div>`));
+</div>`));
       return;
     }
     const head = h(`<div class="section__head"><h2 class="section__title">${esc(t('search_recent'))}</h2>
