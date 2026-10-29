@@ -23,6 +23,9 @@ DEBUG = os.getenv("DEBUG", "0") == "1"
 TUNNEL = os.getenv("TUNNEL", "none")
 # Bitrate the Mini App stream is re-encoded to (free tunnels are slow); "0" streams the original file
 STREAM_BITRATE = os.getenv("STREAM_BITRATE", "64k")
+# music beyond YouTube Music, searched in parallel (server/sources); remove a name to switch it off
+SOURCES = os.getenv("SOURCES", "zaycev,bandcamp,jamendo,archive,rutube").lower()
+JAMENDO_CLIENT_ID = os.getenv("JAMENDO_CLIENT_ID", "")  # free key from devportal.jamendo.com; empty = Jamendo off
 
 DATA_DIR = Path(os.getenv("DATA_DIR", ROOT))
 DATA_DIR.mkdir(parents=True, exist_ok=True)

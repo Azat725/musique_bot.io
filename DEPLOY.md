@@ -37,6 +37,16 @@
   Обновить раз в несколько месяцев: `curl -o docs/vendor/telegram-web-app.js https://telegram.org/js/telegram-web-app.js`,
   затем повысить `?v=` у этого скрипта в `docs/index.html`.
 
+## Другие источники музыки
+Кроме YouTube Music поиск параллельно идёт по Zaycev.net, Bandcamp, Rutube и Internet Archive (код в `server/sources/`).
+Их результаты показываются в поиске отдельным блоком «Другие источники». Если YouTube и SoundCloud не отдали трек,
+сервер ищет ту же песню на Zaycev и Rutube.
+- Выключить источник: в `server/.env` перечислите нужные в `SOURCES=zaycev,bandcamp,jamendo,archive,rutube`.
+- Jamendo (свободная музыка по лицензии CC) включится, если положить бесплатный ключ в `JAMENDO_CLIENT_ID`
+  (devportal.jamendo.com → My Apps → Client ID).
+- У Zaycev.net нет официального API: если сайт поменяется, этот источник просто перестанет находить треки,
+  остальной поиск продолжит работать.
+
 ## YouTube на сервере
 IP дата-центров YouTube часто блокирует («подтвердите, что вы не бот»). Тогда звук идёт с SoundCloud,
 как сейчас. Чтобы попробовать YouTube с cookies: положите `server/cookies.txt` и раскомментируйте

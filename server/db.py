@@ -24,6 +24,9 @@ CREATE TABLE IF NOT EXISTS history (
 CREATE TABLE IF NOT EXISTS tg_files (
     track_id TEXT PRIMARY KEY, file_id TEXT
 );
+CREATE TABLE IF NOT EXISTS sources (
+    id TEXT PRIMARY KEY, ref TEXT
+);
 CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id);
 """
 
@@ -67,6 +70,18 @@ async def get_track(track_id: str) -> dict | None:
     async with _db.execute("SELECT * FROM tracks WHERE id = ?", (track_id,)) as cur:
         row = await cur.fetchone()
     return _track(row) if row else None
+
+
+async def save_sources(rows: list[tuple[str, str]]) -> None:
+    """Where tracks from other sources live (a URL or an item path), keyed by their track id."""
+    await _db.executemany("INSERT INTO sources (id, ref) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET ref = excluded.ref", rows)
+    await _db.commit()
+
+
+async def source_ref(track_id: str) -> str | None:
+    async with _db.execute("SELECT ref FROM sources WHERE id = ?", (track_id,)) as cur:
+        row = await cur.fetchone()
+    return row["ref"] if row else None
 
 
 # ---------- likes ----------
