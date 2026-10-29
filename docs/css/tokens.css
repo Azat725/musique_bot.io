@@ -1,7 +1,6 @@
 /* Musique design tokens — French flag palette: white, bordeaux, navy. Flat colours only. */
 :root {
   --navy: #14213D;
-  --navy-deep: #0B1426;
   --bordeaux: #7B1E2B;
   --white: #FFFFFF;
 

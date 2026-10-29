@@ -21,7 +21,7 @@ const DICT = {
     toast_unliked: 'Удалено из избранного', toast_next: 'Сыграет следующим', toast_unavailable: 'Трек недоступен, переключаю',
     toast_error: 'Что-то пошло не так', toast_removed: 'Удалено',
     pill_playlist: 'В плейлист', pill_send: 'В чат',
-    player_now: 'Сейчас играет', player_loading: 'Загрузка…', player_nothing: 'Ничего не играет',
+    player_now: 'Сейчас играет', player_nothing: 'Ничего не играет',
     settings_appearance: 'Оформление', settings_theme: 'Тема', theme_system: 'Авто', theme_light: 'Светлая', theme_dark: 'Тёмная',
     settings_language: 'Язык', settings_sounds: 'Звук пластинки', settings_sounds_hint: 'Щелчок иглы при смене трека',
     settings_data: 'Данные', settings_about: 'О приложении',
@@ -51,7 +51,7 @@ const DICT = {
     toast_unliked: 'Removed from favourites', toast_next: 'Will play next', toast_unavailable: 'Track unavailable, skipping',
     toast_error: 'Something went wrong', toast_removed: 'Removed',
     pill_playlist: 'To playlist', pill_send: 'To chat',
-    player_now: 'Now playing', player_loading: 'Loading…', player_nothing: 'Nothing playing',
+    player_now: 'Now playing', player_nothing: 'Nothing playing',
     settings_appearance: 'Appearance', settings_theme: 'Theme', theme_system: 'Auto', theme_light: 'Light', theme_dark: 'Dark',
     settings_language: 'Language', settings_sounds: 'Vinyl sound', settings_sounds_hint: 'Needle click when the track changes',
     settings_data: 'Data', settings_about: 'About',
@@ -66,10 +66,6 @@ let lang = 'ru';
 export function setLang(value) {
   lang = DICT[value] ? value : 'en';
   document.documentElement.lang = lang;
-}
-
-export function getLang() {
-  return lang;
 }
 
 export function t(key, vars = {}) {
