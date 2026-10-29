@@ -38,8 +38,8 @@
         b.style.cssText = 'padding:24px;color:#14213D;font:14px/1.5 sans-serif;white-space:pre-wrap;word-break:break-word';
         b.textContent = info.join('\n');
       }, 8000);
-      // ?dbg=1: overlay with load timings, for debugging inside Telegram clients where devtools are unavailable
-      if (/[?&]dbg=1/.test(location.search)) setTimeout(function () {
+      // ?musique_debug=1: overlay with load timings, for debugging inside Telegram clients where devtools are unavailable
+      if (/[?&]musique_debug=1/.test(location.search)) setTimeout(function () {
         var lines = performance.getEntriesByType('resource').map(function (e) {
           return Math.round(e.startTime) + '+' + Math.round(e.duration) + ' ' + (e.responseStatus || '') + ' ' + e.name.replace(/^https:\/\/[^/]+/, '').split('?')[0].slice(-40);
         });
