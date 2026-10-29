@@ -185,6 +185,7 @@ onSettings(() => {
 });
 
 async function boot() {
+  window.__musiqueStarted = true; // read by the load diagnostics in index.html
   try {
     tg?.ready();
     tg?.expand();

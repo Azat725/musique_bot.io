@@ -32,13 +32,14 @@
       setTimeout(function () {
         var b = document.querySelector('.boot');
         if (!b || !b.isConnected) return;
-        var info = ['Загрузка не завершилась', 'Telegram SDK: ' + (window.Telegram && window.Telegram.WebApp ? 'ok' : 'нет')]
+        if (window.__musiqueStarted && !errs.length) { b.textContent = 'Подключение к серверу…'; return; }
+        var info = ['Загрузка не завершилась', 'app.js: ' + (window.__musiqueStarted ? 'запущен' : 'не запустился'), 'Telegram SDK: ' + (window.Telegram && window.Telegram.WebApp ? 'ok' : 'нет')]
           .concat(errs.length ? errs : ['ошибок не поймано — скрипт, вероятно, не загрузился']);
         b.style.cssText = 'padding:24px;color:#14213D;font:14px/1.5 sans-serif;white-space:pre-wrap;word-break:break-word';
         b.textContent = info.join('\n');
       }, 8000);
     })();
   </script>
-  <script type="module" src="js/app.js?v=9" onerror="window.__musiqueNote('не удалось загрузить js/app.js')"></script>
+  <script type="module" src="js/app.js?v=10" onerror="window.__musiqueNote('не удалось загрузить js/app.js')"></script>
 </body>
 </html>
