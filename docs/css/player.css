@@ -101,6 +101,20 @@
 .pill .ic { width: 18px; height: 18px; }
 .pill:active { background: var(--surface); }
 
+/* ---------- idle: interface fades away, the record drifts to the centre ---------- */
+
+.fp__top, .fp__info, .progress, .controls, .fp__extra { transition: opacity .45s var(--ease-io), transform .5s var(--ease-io); }
+.fp__stage { transition: transform .6s var(--ease-io); }
+.fp.is-idle .fp__top, .fp.is-idle .fp__info, .fp.is-idle .progress, .fp.is-idle .controls, .fp.is-idle .fp__extra {
+  opacity: 0; pointer-events: none; transition: opacity .8s var(--ease-io), transform 1s var(--ease-io); }
+.fp.is-idle .fp__top { transform: translateY(-16px); }
+.fp.is-idle .fp__info { transform: translateY(14px); transition-delay: .06s; }
+.fp.is-idle .progress { transform: translateY(20px); transition-delay: .12s; }
+.fp.is-idle .controls { transform: translateY(26px); transition-delay: .18s; }
+.fp.is-idle .fp__extra { transform: translateY(32px); transition-delay: .24s; }
+.fp.is-idle .fp__stage { transform: translateY(var(--idle-dy, 0)) scale(var(--idle-scale, 1.12)); transition: transform 1.2s var(--ease-io) .15s; }
+.fp.is-idle { cursor: none; }
+
 @media (max-height: 640px) {
   .fp { --size: min(76vw, 40vh); }
   .fp__title { font-size: 20px; }
@@ -115,4 +129,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .fp, .fp.is-open { transform: none; transition: opacity .3s, visibility 0s linear .3s; }
+  .fp.is-idle .fp__stage { transform: none; }
+  .fp.is-idle :is(.fp__top, .fp__info, .progress, .controls, .fp__extra) { transform: none; }
 }
