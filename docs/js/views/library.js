@@ -1,6 +1,6 @@
 import { api } from '../api.js';
 import { plural, t } from '../i18n.js';
-import { getPlaylists, invalidatePlaylists, likes, settings, updateSettings } from '../store.js';
+import { favArtists, getPlaylists, invalidatePlaylists, likes, loadFavArtists, settings, updateSettings } from '../store.js';
 import { EASE_IO, esc, h, haptic, icon, loader, promptName, reducedMotion, sheet, thumb } from '../ui.js';
 
 // playlist ids grow with creation time, so the id stands in for the date added
@@ -24,6 +24,7 @@ export async function render(_, nav) {
     <div class="tiles">
       <button class="tile tile--accent" data-go="likes">${icon('shelf')}<span class="tile__title">${esc(t('lib_likes'))}</span><span class="tile__sub">${esc(plural(likes.size))}</span></button>
       <button class="tile tile--navy" data-go="history">${icon('clock')}<span class="tile__title">${esc(t('lib_history'))}</span><span class="tile__sub">&nbsp;</span></button>
+      <button class="tile tile--wide" data-go="artists">${icon('micFav')}<span class="tile__text"><span class="tile__title">${esc(t('lib_artists'))}</span><span class="tile__sub"></span></span></button>
     </div>
     <section class="section">
       <div class="section__head"><h2 class="section__title">${esc(t('lib_playlists'))}</h2>
@@ -37,6 +38,11 @@ export async function render(_, nav) {
 
   root.querySelector('[data-go="likes"]').addEventListener('click', () => nav.push('playlist', { kind: 'likes', title: t('lib_likes') }));
   root.querySelector('[data-go="history"]').addEventListener('click', () => nav.push('playlist', { kind: 'history', title: t('lib_history') }));
+  root.querySelector('[data-go="artists"]').addEventListener('click', () => nav.push('artists'));
+  const artistsSub = root.querySelector('[data-go="artists"] .tile__sub');
+  const syncArtists = () => { artistsSub.textContent = t('artists_count', { n: favArtists.size }); };
+  loadFavArtists().then(syncArtists, () => {});
+  document.addEventListener('fav-artists-changed', syncArtists);
 
   const list = root.querySelector('.playlists');
   const sortBtn = root.querySelector('[data-sort]');

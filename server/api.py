@@ -41,6 +41,16 @@ class TrackBody(BaseModel):
     track: TrackIn
 
 
+class ArtistIn(BaseModel):
+    id: str = Field(pattern=r"^[A-Za-z0-9_-]{10,64}$")  # music.ARTIST_ID_RE
+    name: str = Field(max_length=200)
+    cover: str = Field(default="", max_length=1000)
+
+
+class ArtistBody(BaseModel):
+    artist: ArtistIn
+
+
 class NameBody(BaseModel):
     name: str = Field(min_length=1, max_length=64)
 
@@ -91,6 +101,23 @@ async def search(q: str = "", type: str = "all", user=User):
 @app.get("/api/collection/{playlist_id}")
 async def collection(playlist_id: str, user=User):
     return {"tracks": await music.collection(playlist_id)}
+
+
+@app.get("/api/artists")
+async def fav_artists(user=User):
+    return {"artists": await db.fav_artists(user["id"])}
+
+
+@app.post("/api/artists")
+async def add_fav_artist(body: ArtistBody, user=User):
+    await db.add_fav_artist(user["id"], body.artist.model_dump())
+    return {"ok": True}
+
+
+@app.delete("/api/artists/{artist_id}")
+async def remove_fav_artist(artist_id: str, user=User):
+    await db.remove_fav_artist(user["id"], artist_id)
+    return {"ok": True}
 
 
 @app.get("/api/artist")
