@@ -186,12 +186,14 @@ onSettings(() => {
 
 async function boot() {
   window.__musiqueStarted = true; // read by the load diagnostics in index.html
+  const marks = window.__musiqueMarks = { start: Math.round(performance.now()) };
   try {
     tg?.ready();
     tg?.expand();
     if (tg?.isVersionAtLeast?.('7.7')) tg.disableVerticalSwipes();
   } catch {}
   await syncCloudSettings();
+  marks.cloud = Math.round(performance.now());
   setLang(settings.lang);
   applyTheme();
   tg?.onEvent?.('themeChanged', applyTheme);
@@ -202,12 +204,14 @@ async function boot() {
   if (!api.hasServer()) return noServer();
   try {
     // a slow VPN or a cold tunnel can miss the first attempt
-    await api.me().catch(() => api.me());
+    await api.me().catch((e) => { marks.meErr = e.name + ':' + e.message; return api.me(); });
+    marks.me = Math.round(performance.now());
     loadLikes().catch(() => {});
   } catch {
     return noServer();
   }
   show();
+  marks.shown = Math.round(performance.now());
 }
 
 boot();
