@@ -1,6 +1,7 @@
 """Search (YouTube Music + other sources) and audio resolution (YouTube, then SoundCloud, then other sources)."""
 import asyncio
 import logging
+import random
 import re
 import subprocess
 import time
@@ -129,8 +130,11 @@ def normalize(r: dict) -> dict | None:
 
 def _trim(cache: dict, limit: int) -> None:
     """Drop the oldest entries (dicts keep insertion order) so long-running caches stay bounded."""
-    while len(cache) > limit:
-        cache.pop(next(iter(cache)))
+    try:
+        while len(cache) > limit:
+            cache.pop(next(iter(cache)))
+    except (KeyError, RuntimeError, StopIteration):  # another chart thread trimmed it at the same moment
+        pass
 
 
 def remember(track: dict) -> None:
@@ -158,22 +162,23 @@ async def track_meta(vid: str) -> dict | None:
 
 # ---------- search & home ----------
 
-async def search(query: str, limit: int = 30) -> list[dict]:
+async def search(query: str, limit: int = 30, videos: bool = True) -> list[dict]:
+    """Songs from YouTube Music, plus music videos unless `videos` is off (the 'Tracks' search mode)."""
     query = query.strip()[:200]
     if not query:
         return []
-    key = query.lower()
+    key = ("" if videos else "songs:") + query.lower()
     cached = _search_cache.get(key)
     if cached and time.time() - cached[0] < 600:
         return cached[1]
 
-    songs, videos = await asyncio.gather(
+    songs, clips = await asyncio.gather(
         asyncio.to_thread(_yt.search, query, filter="songs", limit=limit),
-        asyncio.to_thread(_yt.search, query, filter="videos", limit=15),
+        asyncio.to_thread(_yt.search, query, filter="videos", limit=15) if videos else asyncio.sleep(0, []),
         return_exceptions=True,
     )
     out, seen = [], set()
-    for batch in (songs, videos):
+    for batch in (songs, clips):
         if isinstance(batch, Exception):
             log.warning("search batch failed: %s", batch)
             continue
@@ -182,6 +187,27 @@ async def search(query: str, limit: int = 30) -> list[dict]:
             if t and t["id"] not in seen:
                 seen.add(t["id"])
                 out.append(t)
+    _search_cache[key] = (time.time(), out)
+    _trim(_search_cache, 500)
+    return out
+
+
+async def search_artists(query: str, limit: int = 12) -> list[dict]:
+    query = query.strip()[:200]
+    if not query:
+        return []
+    key = "artists:" + query.lower()
+    cached = _search_cache.get(key)
+    if cached and time.time() - cached[0] < 600:
+        return cached[1]
+    try:
+        found = await asyncio.to_thread(_yt.search, query, filter="artists", limit=limit)
+    except Exception as e:
+        log.warning("artist search failed: %s", str(e)[:160])
+        return []
+    out = [{"id": r["browseId"], "name": r.get("artist") or r.get("title") or "",
+            "cover": _cover(r.get("thumbnails") or [], 300, crop=True), "subscribers": r.get("subscribers") or ""}
+           for r in found if r.get("browseId") and ARTIST_ID_RE.match(r["browseId"])]
     _search_cache[key] = (time.time(), out)
     _trim(_search_cache, 500)
     return out
@@ -216,22 +242,41 @@ def _playlist_tracks(playlist_id: str, limit: int = 40) -> list[dict]:
     return [t for t in (normalize(r) for r in data.get("tracks", [])) if t]
 
 
+CIS = ("RU", "KZ", "BY", "UA")
+# which chart of a country to show: what is trending first, then the daily/weekly tops
+CHART_PREFIXES = ("Trending 20", "Daily Top Music Videos", "Weekly Top", "Top 100 Music Videos")
+
+
+def _country_chart(country: str) -> dict | None:
+    charts = _yt.get_charts(country)
+    playlists = charts.get("videos") or charts.get("daily") or charts.get("weekly") or []
+    pid = next((p["playlistId"] for prefix in CHART_PREFIXES for p in playlists
+                if (p.get("title") or "").startswith(prefix) and p.get("playlistId")), None)
+    pid = pid or next((p["playlistId"] for p in playlists if p.get("playlistId")), None)
+    if not pid:
+        return None
+    tracks = _playlist_tracks(pid, 30)
+    return {"key": "country", "country": country, "tracks": tracks} if tracks else None
+
+
 def _build_home() -> dict:
     sections = []
-    charts: dict[str, dict] = {}  # one get_charts call per country
-    for key, country, prefix in (
-        ("trending", "RU", "Trending 20"),
-        ("top_ru", "RU", "Daily Top Music Videos"),
-        ("top_global", "ZZ", "Top 100 Music Videos"),
-    ):
-        try:
-            if country not in charts:
-                charts[country] = _yt.get_charts(country)
-            pid = _chart_playlist(charts[country], prefix)
-            if pid:
-                sections.append({"key": key, "tracks": _playlist_tracks(pid, 30)})
-        except Exception:
-            log.exception("chart %s failed", key)
+    try:
+        world = _yt.get_charts("ZZ")
+        supported = set((world.get("countries") or {}).get("options") or CIS)
+        pid = _chart_playlist(world, "Top 100 Music Videos")
+        global_top = {"key": "top_global", "tracks": _playlist_tracks(pid, 30)} if pid else None
+    except Exception:
+        log.exception("global chart failed")
+        supported, global_top = set(CIS), None
+
+    # the CIS countries side by side, each in its own thread (one by one they took several seconds)
+    countries = [c for c in CIS if c in supported]
+    with ThreadPoolExecutor(max_workers=len(countries) or 1) as pool:
+        results = list(pool.map(lambda c: _safe(_country_chart, c), countries))
+    sections += [r for r in results if r]
+    if global_top:
+        sections.append(global_top)
 
     genres = []
     try:
@@ -246,6 +291,44 @@ def _build_home() -> dict:
     return {"sections": sections, "genres": genres}
 
 
+def _safe(fn, *args):
+    try:
+        return fn(*args)
+    except Exception as e:
+        log.warning("%s%s failed: %s", fn.__name__, args, str(e)[:160])
+        return None
+
+
+async def recommend(history: list[dict]) -> list[dict]:
+    """'For you': YouTube Music radio from the last tracks played, minus what was already heard."""
+    seeds = [t["id"] for t in history if YT_ID_RE.match(t["id"])][:3]
+    if not seeds:  # nothing played yet: start from the top of the Russian chart
+        data = await home()
+        first = next((s["tracks"][0] for s in data["sections"] if s.get("country") == "RU" and s["tracks"]), None)
+        seeds = [first["id"]] if first else []
+    if not seeds:
+        return []
+    heard = {t["id"] for t in history}
+
+    def build() -> list[dict]:
+        out, seen = [], set(heard)
+        for vid in seeds:
+            try:
+                data = _yt.get_watch_playlist(vid, radio=True, limit=25)
+            except Exception as e:
+                log.info("radio for %s failed: %s", vid, str(e)[:120])
+                continue
+            for r in data.get("tracks", []):
+                t = normalize(r)
+                if t and t["id"] not in seen:
+                    seen.add(t["id"])
+                    out.append(t)
+        random.shuffle(out)
+        return out[:20]
+
+    return await _cached("rec:" + ",".join(seeds), build) or []
+
+
 async def home() -> dict:
     global _home_cache
     async with _home_lock:  # simultaneous cold requests build the page once
@@ -254,7 +337,12 @@ async def home() -> dict:
         data = await asyncio.to_thread(_build_home)
         if data["sections"]:
             _home_cache = (time.time(), data)
-        return data
+            return data
+    # YouTube Music unreachable (blocked network, outage): show what is popular on Zaycev instead
+    tracks = await sources.popular()
+    for t in tracks:
+        _meta[t["id"]] = t
+    return {**data, "sections": [{"key": "popular", "tracks": tracks}] if tracks else []}
 
 
 async def collection(playlist_id: str) -> list[dict]:

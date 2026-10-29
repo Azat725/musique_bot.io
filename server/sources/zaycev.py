@@ -20,15 +20,8 @@ def _seconds(text: str) -> int:
     return secs
 
 
-async def search(client: httpx.AsyncClient, query: str) -> list[tuple[dict, str]]:
-    r = await client.get(f"{API}/pages/search/tracks", params={"q": query, "page": 1, "limit": 10})
-    r.raise_for_status()
-    data = r.json()
-    if (data.get("pagesCount") or 0) >= 1000:  # the query was not understood: these are just popular tracks
-        return []
+def _tracks(data: dict, words: set[str] = frozenset()) -> list[tuple[dict, str]]:
     info = data.get("tracksInfo") or {}
-    # its search is loose with several words: keep only tracks that share a word with the query
-    words = {w for w in re.findall(r"\w+", query.lower()) if len(w) > 2}
     out = []
     for tid in data.get("trackIds") or []:
         t = info.get(str(tid)) or {}
@@ -45,6 +38,22 @@ async def search(client: httpx.AsyncClient, query: str) -> list[tuple[dict, str]
             "artist_id": "",
         }, str(tid)))
     return out
+
+
+async def search(client: httpx.AsyncClient, query: str) -> list[tuple[dict, str]]:
+    r = await client.get(f"{API}/pages/search/tracks", params={"q": query, "page": 1, "limit": 10})
+    r.raise_for_status()
+    data = r.json()
+    if (data.get("pagesCount") or 0) >= 1000:  # the query was not understood: these are just popular tracks
+        return []
+    # its search is loose with several words: keep only tracks that share a word with the query
+    return _tracks(data, {w for w in re.findall(r"\w+", query.lower()) if len(w) > 2})
+
+
+async def popular(client: httpx.AsyncClient, limit: int = 30) -> list[tuple[dict, str]]:
+    r = await client.get(f"{API}/pages/index/recommended", params={"limit": limit})
+    r.raise_for_status()
+    return _tracks(r.json())
 
 
 def download(ref: str, dest_base: Path) -> Path:

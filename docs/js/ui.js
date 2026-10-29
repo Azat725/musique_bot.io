@@ -35,6 +35,17 @@ const ICONS = {
   clock: '<circle cx="12" cy="12" r="8"/>' + P('M12 8v4.5l3 1.5'),
   vinyl: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><circle class="fill" cx="12" cy="12" r=".9"/>',
   close: P('M6 6l12 12M18 6 6 18'),
+  // favourites: records on a shelf (two sleeves and a disc) with a small heart above
+  shelf: P('M3 19.5h18M4.5 19.5v1.5M19.5 19.5v1.5') + '<rect x="4.5" y="9.5" width="4" height="10" rx=".4"/><rect x="9.6" y="8" width="4" height="11.5" rx=".4"/>'
+    + '<circle cx="17.6" cy="15.6" r="3.9"/><circle cx="17.6" cy="15.6" r="1.1"/>'
+    + '<path class="fill" d="M17.6 9.2s-2.7-1.6-2.7-3.5a1.45 1.45 0 0 1 2.7-.75 1.45 1.45 0 0 1 2.7.75c0 1.9-2.7 3.5-2.7 3.5z"/>',
+  check: P('m5 12.5 4.5 4.5L19 7.5'),
+  sort: P('M7 5v14m0 0-3-3m3 3 3-3M14 7h6M14 12h4.5M14 17h3'),
+  eq: P('M6 4v16M12 4v16M18 4v16') + '<rect class="fill" x="4" y="13" width="4" height="3" rx=".8"/><rect class="fill" x="10" y="7" width="4" height="3" rx=".8"/><rect class="fill" x="16" y="11" width="4" height="3" rx=".8"/>',
+  micFill: '<path class="fill" d="M12 3.5a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0v-5a3 3 0 0 1 3-3z"/>' + P('M6.5 11a5.5 5.5 0 0 0 11 0M12 16.5V20M9 20h6'),
+  // favourite artists: a microphone with a small heart beside it
+  micFav: P('M10 4.5a2.8 2.8 0 0 1 2.8 2.8v4.4a2.8 2.8 0 0 1-5.6 0V7.3A2.8 2.8 0 0 1 10 4.5zM4.8 11.3a5.2 5.2 0 0 0 10.4 0M10 16.5V20M7.2 20h5.6')
+    + '<path class="fill" d="M18.4 9.6s-2.9-1.7-2.9-3.7a1.5 1.5 0 0 1 2.9-.8 1.5 1.5 0 0 1 2.9.8c0 2-2.9 3.7-2.9 3.7z"/>',
   mic: P('M12 3.5a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0v-5a3 3 0 0 1 3-3zM6.5 11a5.5 5.5 0 0 0 11 0M12 16.5V20M9 20h6'),
 };
 
@@ -87,6 +98,14 @@ export function thumb(url, px = 144) {
   return url.replace(/=w\d+-h\d+/, `=w${px}-h${px}`);
 }
 
+const VINYL = '<div class="vl" aria-hidden="true"><div class="vl__slide"><div class="vl__disc"><span class="vl__groove"></span><span class="vl__label"></span></div></div><div class="vl__sleeve"><span class="vl__brand">Musique</span></div></div>';
+
+/** Loading placeholder: the same record-and-sleeve scene as the launch screen, smaller. It fades in
+ *  only after a quarter of a second, so fast screens never flash it. */
+export function loader() {
+  return `<div class="view-loader">${VINYL.replace('class="vl"', 'class="vl vl--sm"')}</div>`;
+}
+
 export function cover(url, cls = '', px = 144) {
   return url
     ? `<img class="cover ${cls}" src="${esc(thumb(url, px))}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`
@@ -110,7 +129,7 @@ export function toast(text) {
 
 // ---------- bottom sheet ----------
 
-export function sheet({ title = '', items = [], content = null }) {
+export function sheet({ title = '', items = [], content = null, done = false }) {
   return new Promise((resolve) => {
     const root = h(`<div class="sheet" role="dialog" aria-modal="true">
       <div class="sheet__scrim"></div>
@@ -118,7 +137,7 @@ export function sheet({ title = '', items = [], content = null }) {
         <div class="sheet__grip"></div>
         ${title ? `<div class="sheet__title">${title}</div>` : ''}
         <div class="sheet__body"></div>
-        <button class="sheet__cancel">${esc(t('cancel'))}</button>
+        <button class="sheet__cancel">${esc(t(done ? 'done' : 'cancel'))}</button>
       </div>
     </div>`);
     const body = root.querySelector('.sheet__body');
@@ -141,12 +160,12 @@ export function sheet({ title = '', items = [], content = null }) {
   });
 }
 
-export function promptName({ title, value = '', action }) {
+export function promptName({ title, value = '', action, placeholder = t('playlist_name'), max = 64 }) {
   return new Promise((resolve) => {
     const root = h(`<div class="dialog" role="dialog" aria-modal="true">
       <form class="dialog__panel">
         <div class="dialog__title">${esc(title)}</div>
-        <input class="field" maxlength="64" value="${esc(value)}" placeholder="${esc(t('playlist_name'))}" required>
+        <input class="field" maxlength="${max}" value="${esc(value)}" placeholder="${esc(placeholder)}" required>
         <div class="dialog__actions">
           <button type="button" class="btn btn--ghost" data-cancel>${esc(t('cancel'))}</button>
           <button type="submit" class="btn btn--accent">${esc(action)}</button>
@@ -175,17 +194,13 @@ export function confirmDialog(text) {
 
 // ---------- track list ----------
 
-// tracks from outside YouTube Music carry their source as an id prefix (server/sources)
-const SOURCES = { zc: 'Zaycev', bc: 'Bandcamp', jm: 'Jamendo', ia: 'Archive', rt: 'Rutube' };
-const sourceOf = (id) => SOURCES[String(id).split('.', 1)[0]] || '';
-
 export function trackRow(track, { index = null } = {}) {
   const row = h(`<div class="track" data-id="${esc(track.id)}" role="button" tabindex="0">
     ${index !== null ? `<span class="track__num">${index + 1}</span>` : ''}
     <div class="track__art">${cover(track.cover)}<span class="eq"><i></i><i></i><i></i></span></div>
     <div class="track__meta">
       <div class="track__title">${esc(track.title)}</div>
-      <div class="track__sub">${sourceOf(track.id) ? `<span class="track__src">${sourceOf(track.id)}</span>` : ''}<span class="track__artist">${esc(track.artist)}</span></div>
+      <div class="track__artist">${esc(track.artist)}</div>
     </div>
     <span class="track__time">${track.duration ? fmt(track.duration) : ''}</span>
     <button class="icon-btn track__more" aria-label="more">${icon('more')}</button>
@@ -227,6 +242,21 @@ export function markPlaying(root = document) {
     row.classList.add('is-current');
     row.classList.toggle('is-playing', player.playing);
   });
+}
+
+// ---------- artists ----------
+
+/** A row for an artist (search results, favourite artists); tapping it opens the artist card. */
+export function artistRow(a) {
+  const row = h(`<button class="artist-row" data-id="${esc(a.id)}">${cover(a.cover, 'artist-row__photo', 168)}
+    <span class="artist-row__meta"><span class="artist-row__name">${esc(a.name)}</span>
+      ${a.subscribers ? `<span class="artist-row__sub">${esc(t('artist_subscribers', { n: a.subscribers }))}</span>` : ''}</span>
+    ${icon('right', 'artist-row__chev')}</button>`);
+  row.addEventListener('click', () => {
+    haptic('light');
+    document.dispatchEvent(new CustomEvent('open-artist', { detail: { id: a.id, name: a.name } }));
+  });
+  return row;
 }
 
 // ---------- track actions ----------

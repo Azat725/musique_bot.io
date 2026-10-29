@@ -41,6 +41,16 @@ class TrackBody(BaseModel):
     track: TrackIn
 
 
+class ArtistIn(BaseModel):
+    id: str = Field(pattern=r"^[A-Za-z0-9_-]{10,64}$")  # music.ARTIST_ID_RE
+    name: str = Field(max_length=200)
+    cover: str = Field(default="", max_length=1000)
+
+
+class ArtistBody(BaseModel):
+    artist: ArtistIn
+
+
 class NameBody(BaseModel):
     name: str = Field(min_length=1, max_length=64)
 
@@ -71,15 +81,43 @@ async def home(user=User):
     return {**data, "recent": await db.history(user["id"], 12)}
 
 
+@app.get("/api/recommend")
+async def recommend(user=User):
+    return {"tracks": await music.recommend(await db.history(user["id"], 10))}
+
+
 @app.get("/api/search")
-async def search(q: str = "", user=User):
-    tracks, more = await asyncio.gather(music.search(q), music.search_more(q))
-    return {"tracks": tracks, "more": more}
+async def search(q: str = "", type: str = "all", user=User):
+    """type: all (artists, tracks and clips, other sources) | tracks (songs, other sources) | artists."""
+    if type == "artists":
+        return {"tracks": [], "more": [], "artists": await music.search_artists(q)}
+    jobs = [music.search(q, videos=type != "tracks"), music.search_more(q)]
+    if type == "all":
+        jobs.append(music.search_artists(q))
+    results = await asyncio.gather(*jobs)
+    return {"tracks": results[0], "more": results[1], "artists": results[2][:4] if type == "all" else []}
 
 
 @app.get("/api/collection/{playlist_id}")
 async def collection(playlist_id: str, user=User):
     return {"tracks": await music.collection(playlist_id)}
+
+
+@app.get("/api/artists")
+async def fav_artists(user=User):
+    return {"artists": await db.fav_artists(user["id"])}
+
+
+@app.post("/api/artists")
+async def add_fav_artist(body: ArtistBody, user=User):
+    await db.add_fav_artist(user["id"], body.artist.model_dump())
+    return {"ok": True}
+
+
+@app.delete("/api/artists/{artist_id}")
+async def remove_fav_artist(artist_id: str, user=User):
+    await db.remove_fav_artist(user["id"], artist_id)
+    return {"ok": True}
 
 
 @app.get("/api/artist")

@@ -2,16 +2,19 @@ import { api } from './api.js';
 import { setLang, t } from './i18n.js';
 import { player } from './player.js';
 import { loadLikes, onSettings, settings, syncCloudSettings } from './store.js';
-import { EASE_IO, cover, esc, h, haptic, icon, markPlaying, openArtist, reducedMotion, tg, toast } from './ui.js';
+import { EASE_IO, cover, esc, h, haptic, icon, loader, markPlaying, openArtist, reducedMotion, tg, toast } from './ui.js';
+import { initEq } from './eq.js';
+import { syncVinylNoise } from './sfx.js';
 import { closePlayer, initFullPlayer, isPlayerOpen, openPlayer, translate as translatePlayer } from './vinyl.js';
 import * as artist from './views/artist.js';
+import * as artists from './views/artists.js';
 import * as home from './views/home.js';
 import * as library from './views/library.js';
 import * as playlist from './views/playlist.js';
 import * as search from './views/search.js';
 import * as settingsView from './views/settings.js';
 
-const VIEWS = { home, search, library, settings: settingsView, playlist, artist };
+const VIEWS = { home, search, library, settings: settingsView, playlist, artist, artists };
 const TABS = [['home', 'home', 'nav_home'], ['search', 'search', 'nav_search'], ['library', 'library', 'nav_library'], ['settings', 'settings', 'nav_settings']];
 const COLORS = { light: '#EFE4CF', dark: '#1A1410' }; // --bg of each theme, for Telegram's header and bars
 
@@ -102,7 +105,7 @@ async function show(dir = null) {
   renderNav();
   syncBackButton();
   if (!entry.el) {
-    const skeleton = h('<div class="view"><div class="skeleton">' + '<div class="sk sk--row"></div>'.repeat(6) + '</div></div>');
+    const skeleton = h(`<div class="view">${loader()}</div>`);
     transition(skeleton, dir);
     window.scrollTo(0, 0);
     try {
@@ -213,7 +216,8 @@ mini.addEventListener('click', (e) => {
 });
 
 player.addEventListener('track', () => { renderMini(); markPlaying(main); });
-player.addEventListener('state', () => { renderMini(); markPlaying(main); });
+const noiseOn = () => syncVinylNoise(player.playing && !player.loading);
+player.addEventListener('state', () => { renderMini(); markPlaying(main); noiseOn(); });
 player.addEventListener('time', () => {
   if (isPlayerOpen()) return; // the mini player is hidden under the full one
   const bar = mini.firstElementChild; // .mini__progress
@@ -221,15 +225,31 @@ player.addEventListener('time', () => {
 });
 player.addEventListener('error', () => { haptic('error'); toast(t('toast_unavailable')); });
 
-// hq720 thumbnails don't exist for every video — fall back once to the always-present mqdefault
+// a cover that fails to load: a smaller size that always exists, otherwise the vinyl placeholder
 document.addEventListener('error', (e) => {
   const img = e.target;
-  if (img.tagName === 'IMG' && img.src.includes('/hq720.jpg')) img.src = img.src.replace('/hq720.jpg', '/mqdefault.jpg');
+  if (img.tagName !== 'IMG') return;
+  if (img.src.includes('/hq720.jpg')) img.src = img.src.replace('/hq720.jpg', '/mqdefault.jpg');
+  else if (img.src.includes('square250')) img.src = img.src.replace('square250', 'square100'); // Zaycev lacks some sizes
+  else if (img.closest('.record__label')) img.remove(); // the label stays plain bordeaux
+  else {
+    // no picture at all: the vinyl placeholder instead of a broken-image icon or an empty square
+    img.replaceWith(h(`<div class="${img.className} img-empty">${icon('vinyl')}</div>`));
+  }
 }, true);
 
 // ---------- boot ----------
 
+/** The record goes back into its sleeve and the launch screen fades away. */
+function dismissBoot() {
+  const boot = document.querySelector('.boot');
+  if (!boot) return;
+  boot.classList.add('is-done');
+  setTimeout(() => boot.remove(), 1000);
+}
+
 function noServer() {
+  dismissBoot();
   const el = h(`<div class="view"><div class="empty empty--full">${icon('vinyl', 'empty__icon')}
     <div class="empty__title">${esc(t('no_server_title'))}</div>
     <div class="empty__text">${esc(t('no_server_text'))}</div>
@@ -243,6 +263,7 @@ let shownLang = null;
 
 onSettings(() => {
   applyTheme(); // CSS-only, no re-render needed
+  noiseOn();
   if (settings.lang === shownLang) return;
   shownLang = settings.lang;
   setLang(settings.lang);
@@ -270,6 +291,7 @@ async function boot() {
   tg?.onEvent?.('themeChanged', applyTheme);
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', applyTheme);
   initFullPlayer();
+  initEq();
   renderNav();
 
   if (!me) return noServer();
@@ -279,7 +301,9 @@ async function boot() {
   } catch {
     return noServer();
   }
-  show();
+  setTimeout(dismissBoot, 6000); // a slow first screen keeps its own small loader, not the launch screen
+  await show();
+  dismissBoot();
 }
 
 boot();

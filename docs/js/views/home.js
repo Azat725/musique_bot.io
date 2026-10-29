@@ -1,11 +1,15 @@
 import { api } from '../api.js';
 import { t } from '../i18n.js';
 import { player } from '../player.js';
-import { brandMark, cover, esc, h, haptic, icon, openArtist, trackList } from '../ui.js';
+import { onSettings, settings } from '../store.js';
+import { brandMark, cover, esc, h, haptic, icon, loader, openArtist, trackList } from '../ui.js';
 
+/** "Good morning", or "Good morning, Azat" when a name is set in Settings. */
 function greeting() {
   const hr = new Date().getHours();
-  return t(hr < 5 ? 'greet_night' : hr < 12 ? 'greet_morning' : hr < 18 ? 'greet_day' : hr < 23 ? 'greet_evening' : 'greet_night');
+  const hello = t(hr < 5 ? 'greet_night' : hr < 12 ? 'greet_morning' : hr < 18 ? 'greet_day' : hr < 23 ? 'greet_evening' : 'greet_night');
+  const name = (settings.name || '').trim().slice(0, 24);
+  return name ? `${hello}, ${name}` : hello;
 }
 
 function cards(tracks) {
@@ -36,15 +40,6 @@ function sectionHead(title, onAll) {
   return head;
 }
 
-function skeleton() {
-  return h(`<div class="skeleton">
-    <div class="sk sk--title"></div>
-    <div class="cards">${'<div class="card"><div class="sk sk--cover"></div><div class="sk sk--line"></div></div>'.repeat(3)}</div>
-    <div class="sk sk--title"></div>
-    ${'<div class="sk sk--row"></div>'.repeat(5)}
-  </div>`);
-}
-
 export async function render(_, nav) {
   const root = h(`<div class="view">
     <header class="hero">
@@ -54,7 +49,9 @@ export async function render(_, nav) {
     <div class="home__body"></div>
   </div>`);
   const body = root.querySelector('.home__body');
-  body.append(skeleton());
+  const title = root.querySelector('.hero__title');
+  onSettings(() => { if (title.textContent !== greeting()) title.textContent = greeting(); });
+  body.append(h(loader()));
 
   const data = await api.home();
   body.innerHTML = '';
@@ -66,11 +63,26 @@ export async function render(_, nav) {
     body.append(s);
   }
 
+  // 'For you' comes in its own request so the page never waits for it
+  const forYou = h('<section class="section section--later" hidden></section>');
+  body.append(forYou);
+  api.recommend().then(({ tracks }) => {
+    if (!tracks?.length) return;
+    forYou.append(sectionHead(t('home_for_you'), openList(t('home_for_you'), tracks)), cards(tracks.slice(0, 15)));
+    forYou.hidden = false;
+  }).catch(() => {});
+
+  const countries = (data.sections || []).filter((s) => s.key === 'country' && s.tracks?.length);
+  for (const s of countries) {
+    const title = t('home_trending_in', { c: t('country_' + s.country) });
+    const sec = h('<section class="section"></section>');
+    sec.append(sectionHead(title, openList(title, s.tracks)), cards(s.tracks.slice(0, 15)));
+    body.append(sec);
+  }
   const byKey = Object.fromEntries((data.sections || []).map((s) => [s.key, s.tracks]));
-  if (byKey.trending?.length) {
+  if (byKey.popular?.length) {
     const s = h('<section class="section"></section>');
-    s.append(sectionHead(t('home_trending'), openList(t('home_trending'), byKey.trending)),
-      trackList(byKey.trending.slice(0, 5), { numbered: true }));
+    s.append(sectionHead(t('home_popular'), openList(t('home_popular'), byKey.popular)), trackList(byKey.popular.slice(0, 10), { numbered: true }));
     body.append(s);
   }
 
@@ -88,11 +100,19 @@ export async function render(_, nav) {
     body.append(s);
   }
 
-  for (const [key, label] of [['top_ru', 'home_top_ru'], ['top_global', 'home_top_global']]) {
+  for (const [key, label] of [['top_global', 'home_top_global']]) {
     if (!byKey[key]?.length) continue;
     const s = h('<section class="section"></section>');
     s.append(sectionHead(t(label), openList(t(label), byKey[key])), cards(byKey[key].slice(0, 15)));
     body.append(s);
+  }
+  if (!body.children.length || [...body.children].every((c) => c.hidden)) {
+    // nothing came back: say so instead of leaving an empty page
+    const empty = h(`<div class="empty">${icon('vinyl', 'empty__icon')}
+      <div class="empty__title">${esc(t('home_empty'))}</div><div class="empty__text">${esc(t('home_empty_text'))}</div>
+      <button class="btn btn--accent">${esc(t('nav_search'))}</button></div>`);
+    empty.querySelector('button').addEventListener('click', () => document.querySelector('[data-tab="search"]')?.click());
+    body.append(empty);
   }
   return root;
 }

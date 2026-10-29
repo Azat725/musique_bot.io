@@ -26,6 +26,7 @@ async def run(on_url: Callable[[str], Awaitable[None]]) -> None:
             "-o", "ServerAliveCountMax=3",
             "-o", "ExitOnForwardFailure=yes",
             "-o", "BatchMode=yes",
+            "-o", "ConnectTimeout=15",  # a service that accepts the connection but never answers must not hang the reconnect loop
             "-R", f"80:127.0.0.1:{config.PORT}",
             "nokey@localhost.run",
             stdin=asyncio.subprocess.DEVNULL,

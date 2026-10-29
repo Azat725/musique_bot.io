@@ -3,6 +3,7 @@ import { player } from './player.js';
 import { likes, toggleLike } from './store.js';
 import { EASE_IO, chooseAndAddToPlaylist, esc, fmt, h, haptic, icon, openArtist, reducedMotion, toast, trackMenu } from './ui.js';
 import { api } from './api.js';
+import { openEqualizer } from './eq.js';
 import { initSfx, playSfx, startScratch, startSpinNoise, whoosh } from './sfx.js';
 
 const RPM_MS = 1800; // one revolution at 33⅓ rpm
@@ -107,6 +108,7 @@ export function initFullPlayer() {
     <div class="fp__extra">
       <button class="pill" data-add>${icon('listPlus')}<span></span></button>
       <button class="pill" data-send>${icon('send')}<span></span></button>
+      <button class="pill pill--icon" data-eq aria-label="equalizer">${icon('eq')}</button>
     </div>
   </div>`);
   document.body.append(root);
@@ -124,6 +126,7 @@ export function initFullPlayer() {
   $('[data-shuffle]').addEventListener('click', () => { haptic('select'); player.toggleShuffle(); });
   $('[data-repeat]').addEventListener('click', () => { haptic('select'); player.cycleRepeat(); });
   $('[data-more]').addEventListener('click', () => player.current && trackMenu(player.current).then(syncLike));
+  $('[data-eq]').addEventListener('click', () => { haptic('light'); openEqualizer(); });
   $('[data-add]').addEventListener('click', () => player.current && chooseAndAddToPlaylist(player.current).catch(() => toast(t('toast_error'))));
   $('[data-send]').addEventListener('click', async () => {
     if (!player.current) return;

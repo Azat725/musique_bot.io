@@ -6,6 +6,8 @@ class Player extends EventTarget {
     super();
     this.audio = new Audio();
     this.audio.preload = 'auto';
+    // CORS mode: the equalizer can only process audio fetched this way (the server allows any origin)
+    if (!api.usesBlob) this.audio.crossOrigin = 'anonymous';
     this.queue = [];
     this.original = null; // queue order before shuffle
     this.index = -1;

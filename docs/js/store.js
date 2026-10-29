@@ -14,6 +14,11 @@ export const settings = {
   theme: 'system',
   lang: /^(ru|uk|be|kk)/i.test(tgLang) ? 'ru' : 'en',
   sounds: true,
+  eq: { on: false, preset: 'flat', gains: [0, 0, 0, 0, 0] },
+  vinylNoise: 0, // background record noise while music plays: 0 off, 1-3 louder
+  plSort: 'new',
+  searchMode: 'all',
+  name: '', // optional name for the home greeting
   ...load(),
 };
 
@@ -21,7 +26,7 @@ export function updateSettings(patch) {
   Object.assign(settings, patch);
   const json = JSON.stringify(settings);
   try { localStorage.setItem(KEY, json); } catch {}
-  try { tg?.CloudStorage?.setItem(KEY, json); } catch {}
+  try { if (tg?.isVersionAtLeast?.('6.9')) tg.CloudStorage.setItem(KEY, json); } catch {}
   listeners.forEach((fn) => fn(settings));
 }
 
@@ -78,6 +83,43 @@ export async function toggleLike(track) {
   likedTracks = [track, ...likedTracks];
   await api.like(track);
   return true;
+}
+
+// ---------- favourite artists ----------
+
+export const favArtists = new Set();
+let favArtistList = [];
+let favArtistsLoaded = null;
+
+export function loadFavArtists() {
+  favArtistsLoaded ||= api.favArtists().then(({ artists }) => {
+    favArtistList = artists;
+    favArtists.clear();
+    artists.forEach((a) => favArtists.add(a.id));
+  });
+  favArtistsLoaded.catch(() => { favArtistsLoaded = null; });
+  return favArtistsLoaded;
+}
+
+export async function favArtistsList() {
+  await loadFavArtists();
+  return favArtistList.slice();
+}
+
+/** Add or remove an artist ({id, name, cover}); returns whether it is now a favourite. */
+export async function toggleFavArtist(artist) {
+  const now = !favArtists.has(artist.id);
+  if (now) {
+    favArtists.add(artist.id);
+    favArtistList = [artist, ...favArtistList.filter((a) => a.id !== artist.id)];
+    await api.addFavArtist(artist);
+  } else {
+    favArtists.delete(artist.id);
+    favArtistList = favArtistList.filter((a) => a.id !== artist.id);
+    await api.removeFavArtist(artist.id);
+  }
+  document.dispatchEvent(new CustomEvent('fav-artists-changed'));
+  return now;
 }
 
 // ---------- playlists ----------
