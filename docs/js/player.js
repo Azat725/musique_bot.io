@@ -54,6 +54,9 @@ class Player extends EventTarget {
       if (this.errors <= 3 && this.index < this.queue.length - 1) this._errTimer = setTimeout(() => this.next(true), 1200);
       else this._state();
     });
+    // WebKit (iOS 16.4+): declare this page a music player, so the audio is not treated as ambient and
+    // is not cut by the mute switch or the lock screen. Unsupported browsers simply skip it.
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
     this._mediaSession();
   }
 
@@ -69,6 +72,8 @@ class Player extends EventTarget {
 
   /** 'state' only when something visible changed: buffering on a weak network fires these in bursts. */
   _state() {
+    // the lock screen and Control Center read this to show the right play/pause button
+    try { if (navigator.mediaSession) navigator.mediaSession.playbackState = this.current ? (this.playing ? 'playing' : 'paused') : 'none'; } catch {}
     const key = `${this.playing}|${this.loading}|${this.index}|${this.current?.id}`;
     if (key === this._lastState) return;
     this._lastState = key;
