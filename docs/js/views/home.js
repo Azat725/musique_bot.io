@@ -66,13 +66,23 @@ export async function render(_, nav) {
     body.append(s);
   }
 
-  const byKey = Object.fromEntries((data.sections || []).map((s) => [s.key, s.tracks]));
-  if (byKey.trending?.length) {
-    const s = h('<section class="section"></section>');
-    s.append(sectionHead(t('home_trending'), openList(t('home_trending'), byKey.trending)),
-      trackList(byKey.trending.slice(0, 5), { numbered: true }));
-    body.append(s);
+  // 'For you' comes in its own request so the page never waits for it
+  const forYou = h('<section class="section section--later" hidden></section>');
+  body.append(forYou);
+  api.recommend().then(({ tracks }) => {
+    if (!tracks?.length) return;
+    forYou.append(sectionHead(t('home_for_you'), openList(t('home_for_you'), tracks)), cards(tracks.slice(0, 15)));
+    forYou.hidden = false;
+  }).catch(() => {});
+
+  const countries = (data.sections || []).filter((s) => s.key === 'country' && s.tracks?.length);
+  for (const s of countries) {
+    const title = t('home_trending_in', { c: t('country_' + s.country) });
+    const sec = h('<section class="section"></section>');
+    sec.append(sectionHead(title, openList(title, s.tracks)), cards(s.tracks.slice(0, 15)));
+    body.append(sec);
   }
+  const byKey = Object.fromEntries((data.sections || []).map((s) => [s.key, s.tracks]));
 
   if (data.genres?.length) {
     const s = h('<section class="section"></section>');
@@ -88,7 +98,7 @@ export async function render(_, nav) {
     body.append(s);
   }
 
-  for (const [key, label] of [['top_ru', 'home_top_ru'], ['top_global', 'home_top_global']]) {
+  for (const [key, label] of [['top_global', 'home_top_global']]) {
     if (!byKey[key]?.length) continue;
     const s = h('<section class="section"></section>');
     s.append(sectionHead(t(label), openList(t(label), byKey[key])), cards(byKey[key].slice(0, 15)));
