@@ -12,7 +12,7 @@ import * as settingsView from './views/settings.js';
 
 const VIEWS = { home, search, library, settings: settingsView, playlist };
 const TABS = [['home', 'home', 'nav_home'], ['search', 'search', 'nav_search'], ['library', 'library', 'nav_library'], ['settings', 'settings', 'nav_settings']];
-const COLORS = { light: '#FFFFFF', dark: '#0B1426' };
+const COLORS = { light: '#EFE4CF', dark: '#1A1410' }; // --bg of each theme, for Telegram's header and bars
 
 const main = document.getElementById('main');
 const nav = document.getElementById('nav');
