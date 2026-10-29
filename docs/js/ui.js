@@ -35,6 +35,12 @@ const ICONS = {
   clock: '<circle cx="12" cy="12" r="8"/>' + P('M12 8v4.5l3 1.5'),
   vinyl: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><circle class="fill" cx="12" cy="12" r=".9"/>',
   close: P('M6 6l12 12M18 6 6 18'),
+  // favourites: records on a shelf (two sleeves and a disc) with a small heart above
+  shelf: P('M3 19.5h18M4.5 19.5v1.5M19.5 19.5v1.5') + '<rect x="4.5" y="9.5" width="4" height="10" rx=".4"/><rect x="9.6" y="8" width="4" height="11.5" rx=".4"/>'
+    + '<circle cx="17.6" cy="15.6" r="3.9"/><circle cx="17.6" cy="15.6" r="1.1"/>'
+    + '<path class="fill" d="M17.6 9.2s-2.7-1.6-2.7-3.5a1.45 1.45 0 0 1 2.7-.75 1.45 1.45 0 0 1 2.7.75c0 1.9-2.7 3.5-2.7 3.5z"/>',
+  check: P('m5 12.5 4.5 4.5L19 7.5'),
+  sort: P('M7 5v14m0 0-3-3m3 3 3-3M14 7h6M14 12h4.5M14 17h3'),
   eq: P('M6 4v16M12 4v16M18 4v16') + '<rect class="fill" x="4" y="13" width="4" height="3" rx=".8"/><rect class="fill" x="10" y="7" width="4" height="3" rx=".8"/><rect class="fill" x="16" y="11" width="4" height="3" rx=".8"/>',
   mic: P('M12 3.5a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0v-5a3 3 0 0 1 3-3zM6.5 11a5.5 5.5 0 0 0 11 0M12 16.5V20M9 20h6'),
 };
