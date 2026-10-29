@@ -1,7 +1,7 @@
 import { t } from './i18n.js';
 import { player } from './player.js';
 import { likes, toggleLike } from './store.js';
-import { chooseAndAddToPlaylist, esc, fmt, h, haptic, icon, toast, trackMenu } from './ui.js';
+import { EASE_IO, chooseAndAddToPlaylist, esc, fmt, h, haptic, icon, reducedMotion, toast, trackMenu } from './ui.js';
 import { api } from './api.js';
 import { initSfx, playSfx } from './sfx.js';
 
@@ -159,9 +159,12 @@ export function openPlayer() {
   open = true;
   clearTimeout(closeTimer);
   initSfx(); // opened by a tap: the one moment iOS lets audio start
+  rec?.el.getAnimations().forEach((a) => a.cancel()); // a record that flew back into the mini player
+  const fromMini = miniCoverRect();
   root.classList.add('is-open');
   root.setAttribute('aria-hidden', 'false');
   if (!rec || rec.track?.id !== player.current.id) placeRecord(player.current);
+  if (fromMini) fly(fromMini, true).then(syncState);
   syncState();
   syncTime();
   syncModes();
@@ -170,11 +173,33 @@ export function openPlayer() {
 
 export function closePlayer() {
   open = false;
+  rec?.el.getAnimations().forEach((a) => a.cancel()); // closed mid-flight: measure the record where it really stands
+  const toMini = miniCoverRect();
+  if (toMini) fly(toMini, false);
   root.classList.remove('is-open');
   root.setAttribute('aria-hidden', 'true');
   // stop the record once the slide-down has finished: nobody sees it spin
   closeTimer = setTimeout(() => { if (!open && rec) { cancelAnimationFrame(rec.raf); rec.rate = 0; rec.anim.pause(); } }, 450);
   document.dispatchEvent(new CustomEvent('player-open', { detail: false }));
+}
+
+function miniCoverRect() {
+  const r = document.querySelector('#mini .mini__cover')?.getBoundingClientRect();
+  return r?.width && !reducedMotion() ? r : null;
+}
+
+/** The record grows out of the mini player's cover (or shrinks back into it) while the player fades. */
+function fly(miniRect, opening) {
+  if (!rec) return Promise.resolve();
+  const box = rec.el.getBoundingClientRect(); // includes the player's own slide at this moment
+  const endLift = opening ? 0 : root.offsetHeight * 0.06; // closing: the player itself sinks by 6% meanwhile
+  const dx = miniRect.left + miniRect.width / 2 - (box.left + box.width / 2);
+  const dy = miniRect.top + miniRect.height / 2 - (box.top + box.height / 2) - endLift;
+  const small = { transform: `translate(${dx}px, ${dy}px) scale(${miniRect.width / box.width})`, opacity: opening ? 0.6 : 0 };
+  const full = { transform: 'none', opacity: 1 };
+  const anim = rec.el.animate(opening ? [small, full] : [full, small],
+    { duration: opening ? 600 : 460, easing: EASE_IO, fill: opening ? 'none' : 'forwards' });
+  return anim.finished.catch(() => {});
 }
 
 function placeRecord(track) {

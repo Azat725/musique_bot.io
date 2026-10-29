@@ -6,12 +6,14 @@
   display: flex; flex-direction: column;
   padding: 6px var(--gutter) calc(16px + var(--safe-b));
   background: var(--bg);
-  transform: translateY(100%);
-  transition: transform .42s var(--ease), visibility 0s linear .42s;
+  /* opens by rising and fading in while the record flies out of the mini player (vinyl.js fly()) */
+  opacity: 0;
+  transform: translateY(6%);
+  transition: opacity .5s var(--ease-io), transform .56s var(--ease-io), visibility 0s linear .56s;
   visibility: hidden;
   overflow: hidden;
 }
-.fp.is-open { transform: none; visibility: visible; transition: transform .42s var(--ease), visibility 0s; }
+.fp.is-open { opacity: 1; transform: none; visibility: visible; transition: opacity .44s var(--ease-io), transform .56s var(--ease-io), visibility 0s; }
 
 .fp__top { display: flex; align-items: center; justify-content: space-between; height: 48px; flex: none; }
 .fp__kicker { font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-2); }
@@ -112,5 +114,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .fp { transition: none; }
+  .fp, .fp.is-open { transform: none; transition: opacity .3s, visibility 0s linear .3s; }
 }

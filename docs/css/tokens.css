@@ -39,6 +39,7 @@
   --mini-h: 64px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --ease: cubic-bezier(.2, .75, .25, 1);
+  --ease-io: cubic-bezier(.65, 0, .35, 1); /* ease-in-out for every screen and panel transition */
 }
 
 /* warm dark: brown-black like an old record player cabinet, cream text */
