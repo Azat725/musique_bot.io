@@ -83,6 +83,7 @@ export const api = {
   /** Start /api/home during boot; the first home() call takes the request already in flight. */
   preloadHome() { homeRequest = get('/api/home'); homeRequest.catch(() => {}); },
   home() { const r = homeRequest || get('/api/home'); homeRequest = null; return r; },
+  recommend: () => get('/api/recommend'),
   search: (q, signal) => request('GET', '/api/search?q=' + encodeURIComponent(q), null, signal),
   collection: (id) => get('/api/collection/' + encodeURIComponent(id)),
   artist: (id) => get('/api/artist/' + encodeURIComponent(id)),

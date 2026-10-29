@@ -68,6 +68,7 @@ body.has-mini #main { padding-bottom: calc(var(--nav-h) + var(--mini-h) + var(--
 /* ---------- sections ---------- */
 
 .section { margin-top: 26px; }
+.section--later:not([hidden]) { animation: row-in .6s var(--ease-io) both; }
 .section__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; min-height: 32px; }
 .section__title { font: 600 20px/1.2 var(--font-serif); margin: 0; }
 .link { display: inline-flex; align-items: center; gap: 2px; font-size: 14px; font-weight: 500; color: var(--accent-text); }

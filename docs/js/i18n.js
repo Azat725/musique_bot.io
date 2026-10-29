@@ -2,8 +2,9 @@ const DICT = {
   ru: {
     nav_home: 'Главная', nav_search: 'Поиск', nav_library: 'Медиатека', nav_settings: 'Настройки',
     greet_morning: 'Доброе утро', greet_day: 'Добрый день', greet_evening: 'Добрый вечер', greet_night: 'Доброй ночи',
-    home_recent: 'Недавно слушали', home_trending: 'В тренде', home_top_ru: 'Топ дня', home_top_global: 'Мировой топ',
-    home_genres: 'Жанры', see_all: 'Все',
+    home_recent: 'Недавно слушали', home_top_global: 'Мировой топ',
+    home_genres: 'Жанры', see_all: 'Все', home_for_you: 'Для вас', home_trending_in: 'В тренде · {c}',
+    country_RU: 'Россия', country_KZ: 'Казахстан', country_BY: 'Беларусь', country_UA: 'Украина',
     genre_pop: 'Поп', genre_hiphop: 'Хип-хоп', genre_rock: 'Рок', genre_dance: 'Электроника', genre_latin: 'Латино', genre_jazz: 'Джаз',
     search_placeholder: 'Трек, исполнитель, альбом', search_hint: 'Найти пластинку', search_hint_sub: '',
     search_nothing: 'Ничего не найдено', search_recent: 'Вы искали', search_clear: 'Очистить', search_more: 'Другие источники',
@@ -40,8 +41,9 @@ const DICT = {
   en: {
     nav_home: 'Home', nav_search: 'Search', nav_library: 'Library', nav_settings: 'Settings',
     greet_morning: 'Good morning', greet_day: 'Good afternoon', greet_evening: 'Good evening', greet_night: 'Good night',
-    home_recent: 'Recently played', home_trending: 'Trending', home_top_ru: 'Top today', home_top_global: 'Global top',
-    home_genres: 'Genres', see_all: 'All',
+    home_recent: 'Recently played', home_top_global: 'Global top',
+    home_genres: 'Genres', see_all: 'All', home_for_you: 'For you', home_trending_in: 'Trending · {c}',
+    country_RU: 'Russia', country_KZ: 'Kazakhstan', country_BY: 'Belarus', country_UA: 'Ukraine',
     genre_pop: 'Pop', genre_hiphop: 'Hip-hop', genre_rock: 'Rock', genre_dance: 'Electronic', genre_latin: 'Latin', genre_jazz: 'Jazz',
     search_placeholder: 'Track, artist, album', search_hint: 'Find a record', search_hint_sub: '',
     search_nothing: 'Nothing found', search_recent: 'Recent searches', search_clear: 'Clear', search_more: 'Other sources',

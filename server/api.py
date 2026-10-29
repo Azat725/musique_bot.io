@@ -71,6 +71,11 @@ async def home(user=User):
     return {**data, "recent": await db.history(user["id"], 12)}
 
 
+@app.get("/api/recommend")
+async def recommend(user=User):
+    return {"tracks": await music.recommend(await db.history(user["id"], 10))}
+
+
 @app.get("/api/search")
 async def search(q: str = "", user=User):
     tracks, more = await asyncio.gather(music.search(q), music.search_more(q))
