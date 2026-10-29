@@ -1,7 +1,7 @@
 import { api } from '../api.js';
 import { t } from '../i18n.js';
 import { player } from '../player.js';
-import { brandMark, cover, esc, h, haptic, icon, openArtist, trackList } from '../ui.js';
+import { brandMark, cover, esc, h, haptic, icon, loader, openArtist, trackList } from '../ui.js';
 
 function greeting() {
   const hr = new Date().getHours();
@@ -36,15 +36,6 @@ function sectionHead(title, onAll) {
   return head;
 }
 
-function skeleton() {
-  return h(`<div class="skeleton">
-    <div class="sk sk--title"></div>
-    <div class="cards">${'<div class="card"><div class="sk sk--cover"></div><div class="sk sk--line"></div></div>'.repeat(3)}</div>
-    <div class="sk sk--title"></div>
-    ${'<div class="sk sk--row"></div>'.repeat(5)}
-  </div>`);
-}
-
 export async function render(_, nav) {
   const root = h(`<div class="view">
     <header class="hero">
@@ -54,7 +45,7 @@ export async function render(_, nav) {
     <div class="home__body"></div>
   </div>`);
   const body = root.querySelector('.home__body');
-  body.append(skeleton());
+  body.append(h(loader()));
 
   const data = await api.home();
   body.innerHTML = '';

@@ -2,7 +2,7 @@ import { api } from '../api.js';
 import { plural, t } from '../i18n.js';
 import { player } from '../player.js';
 import { invalidatePlaylists, likedList } from '../store.js';
-import { confirmDialog, esc, h, haptic, icon, promptName, sheet, toast, trackList } from '../ui.js';
+import { confirmDialog, esc, h, haptic, icon, loader, promptName, sheet, toast, trackList } from '../ui.js';
 
 async function loadTracks(p) {
   switch (p.kind) {
@@ -39,7 +39,7 @@ export async function render(params, nav) {
         <button class="icon-btn" data-more hidden aria-label="more">${icon('more')}</button>
       </div>
     </header>
-    <div class="list__body"><div class="skeleton">${'<div class="sk sk--row"></div>'.repeat(8)}</div></div>
+    <div class="list__body">${loader()}</div>
   </div>`);
   const body = root.querySelector('.list__body');
   const sub = root.querySelector('.view__sub');
