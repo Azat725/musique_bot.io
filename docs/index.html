@@ -19,6 +19,24 @@
   <main id="main"><div class="boot" style="display:flex;align-items:center;justify-content:center;height:60vh;color:#7B1E2B;font:600 22px Georgia,serif;letter-spacing:.04em">Musique</div></main>
   <div id="mini" class="mini" role="button" aria-label="player"></div>
   <nav id="nav" class="nav"></nav>
-  <script type="module" src="js/app.js?v=6"></script>
+  <script>
+    // If the app never replaces the placeholder, say why on screen (no devtools inside Telegram)
+    (function () {
+      var errs = [];
+      function note(m) { errs.push(String(m).slice(0, 160)); }
+      window.addEventListener('error', function (e) { note((e.message || 'error') + (e.filename ? ' @ ' + e.filename.split('/').pop() + ':' + e.lineno : '')); });
+      window.addEventListener('unhandledrejection', function (e) { note('promise: ' + (e.reason && e.reason.message || e.reason)); });
+      window.__musiqueNote = note;
+      setTimeout(function () {
+        var b = document.querySelector('.boot');
+        if (!b || !b.isConnected) return;
+        var info = ['Загрузка не завершилась', 'Telegram SDK: ' + (window.Telegram && window.Telegram.WebApp ? 'ok' : 'нет')]
+          .concat(errs.length ? errs : ['ошибок не поймано — скрипт, вероятно, не загрузился']);
+        b.style.cssText = 'padding:24px;color:#14213D;font:14px/1.5 sans-serif;white-space:pre-wrap;word-break:break-word';
+        b.textContent = info.join('\n');
+      }, 8000);
+    })();
+  </script>
+  <script type="module" src="js/app.js?v=6" onerror="window.__musiqueNote('не удалось загрузить js/app.js')"></script>
 </body>
 </html>
