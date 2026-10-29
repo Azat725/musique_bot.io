@@ -34,6 +34,7 @@ class TrackIn(BaseModel):
     artist: str = Field(max_length=300)
     duration: int = Field(ge=0, le=36000)
     cover: str = Field(default="", max_length=1000)
+    artist_id: str = Field(default="", max_length=64, pattern=r"^[A-Za-z0-9_-]*$")
 
 
 class TrackBody(BaseModel):
@@ -78,6 +79,31 @@ async def search(q: str = "", user=User):
 @app.get("/api/collection/{playlist_id}")
 async def collection(playlist_id: str, user=User):
     return {"tracks": await music.collection(playlist_id)}
+
+
+@app.get("/api/artist")
+async def find_artist(name: str = "", user=User):
+    """Artist id by name, for tracks saved before artist ids were kept."""
+    artist_id = await music.find_artist(name)
+    if not artist_id:
+        raise HTTPException(404, "artist not found")
+    return {"id": artist_id}
+
+
+@app.get("/api/artist/{artist_id}")
+async def artist(artist_id: str, user=User):
+    data = await music.artist(artist_id)
+    if not data:
+        raise HTTPException(404, "artist not found")
+    return data
+
+
+@app.get("/api/album/{browse_id}")
+async def album(browse_id: str, user=User):
+    data = await music.album(browse_id)
+    if not data:
+        raise HTTPException(404, "album not found")
+    return data
 
 
 # ---------- library ----------

@@ -35,6 +35,7 @@ const ICONS = {
   clock: '<circle cx="12" cy="12" r="8"/>' + P('M12 8v4.5l3 1.5'),
   vinyl: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><circle class="fill" cx="12" cy="12" r=".9"/>',
   close: P('M6 6l12 12M18 6 6 18'),
+  mic: P('M12 3.5a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0v-5a3 3 0 0 1 3-3zM6.5 11a5.5 5.5 0 0 0 11 0M12 16.5V20M9 20h6'),
 };
 
 export const EASE_IO = 'cubic-bezier(.65, 0, .35, 1)';
@@ -196,6 +197,7 @@ export function trackList(tracks, { numbered = false, context = null, onChange =
     const row = e.target.closest('.track');
     if (!row) return;
     const i = [...list.children].indexOf(row);
+    if (e.target.closest('.track__artist')) { e.stopPropagation(); openArtist(tracks[i]); return; }
     if (e.target.closest('.track__more')) {
       e.stopPropagation();
       const changed = await trackMenu(tracks[i], context);
@@ -225,6 +227,20 @@ export function markPlaying(root = document) {
 
 // ---------- track actions ----------
 
+/** Open the artist card for a track; with several artists ("A, B feat. C") the user picks one first. */
+export async function openArtist(track) {
+  if (!track?.artist || track.artist === '—') return;
+  const names = track.artist.split(/\s*(?:,|&|\sfeat\.?\s|\sft\.?\s|\sx\s)\s*/i).filter(Boolean);
+  let pick = 0;
+  if (names.length > 1) {
+    pick = await sheet({ title: esc(t('artist_choose')), items: names.map((n) => ({ icon: 'mic', label: n })) });
+    if (pick === null) return;
+  }
+  haptic('light');
+  // the stored id belongs to the first artist only; the others are looked up by name
+  document.dispatchEvent(new CustomEvent('open-artist', { detail: { id: pick === 0 ? track.artist_id || '' : '', name: names[pick] } }));
+}
+
 export async function chooseAndAddToPlaylist(track) {
   const playlists = await getPlaylists();
   const items = [{ icon: 'plus', label: t('lib_new_playlist') },
@@ -250,6 +266,7 @@ export async function trackMenu(track, context = null) {
     { icon: liked ? 'heartFill' : 'heart', label: t(liked ? 'menu_unlike' : 'menu_like'), run: 'like' },
     { icon: 'listPlus', label: t('menu_add_playlist'), run: 'playlist' },
     { icon: 'next2', label: t('menu_play_next'), run: 'next' },
+    { icon: 'mic', label: t('menu_artist'), run: 'artist' },
     { icon: 'send', label: t('menu_send'), run: 'send' },
   ];
   if (context?.playlistId) actions.push({ icon: 'trash', label: t('menu_remove'), run: 'remove', danger: true });
@@ -268,6 +285,7 @@ export async function trackMenu(track, context = null) {
       }
       case 'playlist': await chooseAndAddToPlaylist(track); break;
       case 'next': player.playNext(track); toast(t('toast_next')); break;
+      case 'artist': await openArtist(track); break;
       case 'send': await api.send(track); haptic('success'); toast(t('toast_sending')); break;
       case 'remove':
         await api.removeFromPlaylist(context.playlistId, track.id);

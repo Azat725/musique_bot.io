@@ -74,7 +74,9 @@
 .fp__info { display: flex; align-items: center; gap: 12px; margin-top: 8px; flex: none; }
 .fp__titles { flex: 1; min-width: 0; }
 .fp__title { font: 600 24px/1.2 var(--font-serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fp__artist { font-size: 15px; color: var(--text-2); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp__artist { display: block; max-width: 100%; font-size: 15px; color: var(--text-2); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-align: left; text-decoration: underline dotted var(--text-3); text-underline-offset: 4px; }
+.fp__artist:active { color: var(--text); }
 .fp__like { color: var(--text-2); }
 .fp__like.is-on { color: var(--accent-text); }
 .fp__like.is-on .ic { animation: like-pop .3s var(--ease); }
