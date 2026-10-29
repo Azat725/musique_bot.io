@@ -2,6 +2,7 @@ import { api } from '../api.js';
 import { t } from '../i18n.js';
 import { settings, updateSettings } from '../store.js';
 import { openEqualizer } from '../eq.js';
+import { showStories } from '../stories.js';
 import { brandMark, esc, h, haptic, icon, promptName, sheet, tg, toast } from '../ui.js';
 
 function segmented(name, options, value) {
@@ -58,7 +59,14 @@ export async function render() {
       <div class="group__item group__item--text">
         <div class="about__brand">${brandMark()}<span class="brand__name">Musique</span></div>
         <p>${esc(t('about_text'))}</p>
+        <ul class="about__features">
+          ${[['search', 'about_f_search'], ['vinyl', 'about_f_vinyl'], ['shelf', 'about_f_library'], ['eq', 'about_f_sound'], ['send', 'about_f_chat']]
+            .map(([ic, key]) => `<li>${icon(ic)}<span>${esc(t(key))}</span></li>`).join('')}
+        </ul>
       </div>
+      <button class="group__item" data-stories>
+        <span class="group__name">${esc(t('about_stories'))}</span>${icon('right', 'group__chev')}
+      </button>
     </section>
   </div>`);
 
@@ -99,6 +107,7 @@ export async function render() {
   const syncEqState = () => { eqState.textContent = settings.eq.on ? t('eq_' + settings.eq.preset) : t('eq_off'); };
   syncEqState();
   root.querySelector('[data-eq]').addEventListener('click', async () => { haptic('light'); await openEqualizer(); syncEqState(); });
+  root.querySelector('[data-stories]').addEventListener('click', () => { haptic('light'); showStories(); });
   root.querySelector('[data-clear]').addEventListener('click', async () => {
     await api.clearHistory();
     haptic('success');

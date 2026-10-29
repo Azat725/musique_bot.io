@@ -5,6 +5,7 @@ import { loadLikes, onSettings, settings, syncCloudSettings } from './store.js';
 import { EASE_IO, cover, esc, h, haptic, icon, loader, markPlaying, openArtist, reducedMotion, tg, toast } from './ui.js';
 import { initEq } from './eq.js';
 import { syncVinylNoise } from './sfx.js';
+import { maybeShowStories } from './stories.js';
 import { closePlayer, initFullPlayer, isPlayerOpen, openPlayer, translate as translatePlayer } from './vinyl.js';
 import * as artist from './views/artist.js';
 import * as artists from './views/artists.js';
@@ -304,6 +305,7 @@ async function boot() {
   setTimeout(dismissBoot, 6000); // a slow first screen keeps its own small loader, not the launch screen
   await show();
   dismissBoot();
+  maybeShowStories(); // the intro, once, for someone who has never used Musique
 }
 
 boot();

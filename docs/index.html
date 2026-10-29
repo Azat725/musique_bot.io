@@ -11,8 +11,9 @@
   <!-- fonts must never block rendering: if Google is unreachable the system fonts are used -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   <link rel="stylesheet" href="css/tokens.css?v=28">
-  <link rel="stylesheet" href="css/app.css?v=28">
+  <link rel="stylesheet" href="css/app.css?v=29">
   <link rel="stylesheet" href="css/player.css?v=28">
+  <link rel="stylesheet" href="css/stories.css?v=1">
   <!-- local copy of https://telegram.org/js/telegram-web-app.js?64 (taken 2026-10-29, its two per-event console.log calls removed): telegram.org hangs on some networks/VPNs, and the app module waits for this script -->
   <script src="vendor/telegram-web-app.js?v=2"></script>
   <script>
@@ -39,7 +40,7 @@
     "./js/views/settings.js": "./js/views/settings.js?v=28"
   } }
   </script>
-  <link rel="modulepreload" href="js/app.js?v=30">
+  <link rel="modulepreload" href="js/app.js?v=31">
   <link rel="modulepreload" href="js/api.js?v=28">
   <link rel="modulepreload" href="js/player.js?v=28">
   <link rel="modulepreload" href="js/ui.js?v=28">
@@ -91,6 +92,6 @@
       }, 25000);
     })();
   </script>
-  <script type="module" src="js/app.js?v=30" onerror="window.__musiqueNote('не удалось загрузить js/app.js')"></script>
+  <script type="module" src="js/app.js?v=31" onerror="window.__musiqueNote('не удалось загрузить js/app.js')"></script>
 </body>
 </html>
