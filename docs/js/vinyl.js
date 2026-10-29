@@ -3,9 +3,10 @@ import { player } from './player.js';
 import { likes, toggleLike } from './store.js';
 import { EASE_IO, chooseAndAddToPlaylist, esc, fmt, h, haptic, icon, reducedMotion, toast, trackMenu } from './ui.js';
 import { api } from './api.js';
-import { initSfx, playSfx } from './sfx.js';
+import { initSfx, playSfx, startScratch, startSpinNoise, whoosh } from './sfx.js';
 
 const RPM_MS = 1800; // one revolution at 33⅓ rpm
+const SECONDS_PER_TURN = 15; // turning the record by hand: one revolution moves the track by 15 s
 const NS = 'http://www.w3.org/2000/svg';
 
 // ---------- the record ----------
@@ -75,7 +76,8 @@ function rampTo(rec, target, ms) {
 
 // ---------- full-screen player ----------
 
-let root, stage, el, rec = null, open = false, swapping = 0, closeTimer = 0;
+let root, stage, bubble, el, rec = null, open = false, swapping = 0, closeTimer = 0;
+let stopSpinNoise = null, scrubbing = false;
 
 export function isPlayerOpen() { return open; }
 
@@ -86,7 +88,7 @@ export function initFullPlayer() {
       <div class="fp__kicker"></div>
       <button class="icon-btn" data-more aria-label="more">${icon('more')}</button>
     </header>
-    <div class="fp__stage"></div>
+    <div class="fp__stage"><div class="scrub" aria-hidden="true"><b class="scrub__time"></b><span class="scrub__delta"></span></div></div>
     <div class="fp__info">
       <div class="fp__titles"><div class="fp__title"></div><div class="fp__artist"></div></div>
       <button class="icon-btn fp__like" data-like aria-label="like">${icon('heart')}</button>
@@ -109,6 +111,7 @@ export function initFullPlayer() {
   </div>`);
   document.body.append(root);
   stage = root.querySelector('.fp__stage');
+  bubble = root.querySelector('.scrub');
   el = { bar: root.querySelector('.progress__bar'), cur: root.querySelector('[data-cur]'), dur: root.querySelector('[data-dur]'),
     play: root.querySelector('[data-play]'), title: root.querySelector('.fp__title'), artist: root.querySelector('.fp__artist') };
 
@@ -176,6 +179,7 @@ export function openPlayer() {
 export function closePlayer() {
   open = false;
   wake();
+  syncSpinNoise();
   rec?.el.getAnimations().forEach((a) => a.cancel()); // closed mid-flight: measure the record where it really stands
   const toMini = miniCoverRect();
   if (toMini) fly(toMini, false);
@@ -205,8 +209,12 @@ function fly(miniRect, opening) {
   return anim.finished.catch(() => {});
 }
 
+function clearRecords() {
+  stage.querySelectorAll('.record').forEach((r) => r.remove());
+}
+
 function placeRecord(track) {
-  stage.innerHTML = '';
+  clearRecords();
   rec = makeRecord(track);
   stage.append(rec.el);
 }
@@ -215,7 +223,7 @@ function onTrack({ track, dir }) {
   syncInfo();
   syncLike();
   syncTime();
-  if (!open) { rec = null; stage.innerHTML = ''; return; } // openPlayer builds the record when it is needed
+  if (!open) { rec = null; clearRecords(); return; } // openPlayer builds the record when it is needed
   if (!rec) { placeRecord(track); return; }
   if (rec.track?.id === track.id) return;
   swapRecord(track, dir < 0 ? -1 : 1);
@@ -268,8 +276,16 @@ function syncLike() {
 
 let shownPlaying = null;
 
+/** The quiet crackle of a spinning record while the track is still loading. */
+function syncSpinNoise() {
+  const want = open && player.loading && !!player.current;
+  if (want && !stopSpinNoise) stopSpinNoise = startSpinNoise();
+  else if (!want && stopSpinNoise) { stopSpinNoise(); stopSpinNoise = null; }
+}
+
 function syncState() {
-  if (!open) return;
+  if (!open || scrubbing) return; // while scrubbing the hand, not the player, drives the record
+  syncSpinNoise();
   if (shownPlaying !== player.playing) {
     shownPlaying = player.playing;
     el.play.innerHTML = icon(player.playing ? 'pause' : 'play');
@@ -278,7 +294,7 @@ function syncState() {
   if (!player.playing || player.loading) wake(); else armIdle();
   if (!rec || rec.el.getAnimations().some((a) => a.playState === 'running' && a !== rec.anim)) return;
   const spinning = player.playing && !player.loading;
-  rampTo(rec, spinning ? 1 : 0, spinning ? 900 : 700);
+  rampTo(rec, spinning ? 1 : player.loading ? 0.3 : 0, spinning ? 900 : 700); // turns slowly while loading
 }
 
 function setText(node, text) {
@@ -381,30 +397,105 @@ function setupSeek(bar) {
     if (!dragging) return;
     dragging = false;
     progress.classList.remove('is-drag');
-    player.seek(dragValue * player.duration);
+    const target = dragValue * player.duration;
+    if (Math.abs(target - player.time) > 3) whoosh(target > player.time);
+    player.seek(target);
   };
   bar.addEventListener('pointerup', end);
   bar.addEventListener('pointercancel', end);
 }
 
+// ---------- press and hold the record, then turn it to rewind or fast-forward ----------
+
+let scrub = null;
+
+function angleAt(x, y) {
+  return (Math.atan2(y - scrub.cy, x - scrub.cx) * 180) / Math.PI;
+}
+
+function beginScrub(x, y) {
+  // not while a record is still flying in
+  if (!rec || !player.current || !player.duration || rec.el.getAnimations().some((a) => a.playState === 'running')) return;
+  const r = rec.el.getBoundingClientRect();
+  scrub = { cx: r.left + r.width / 2, cy: r.top + r.height / 2, radius: r.width / 2, turns: 0, start: player.time,
+    target: player.time, wasPlaying: player.playing, lastT: performance.now(), anim0: Number(rec.anim.currentTime) || 0,
+    step: Math.floor(player.time / 5), quiet: 0, sound: startScratch() };
+  scrub.last = angleAt(x, y);
+  scrubbing = true;
+  cancelAnimationFrame(rec.raf); // the record stops under the hand
+  rec.rate = 0;
+  rec.anim.pause();
+  if (scrub.wasPlaying) player.audio.pause();
+  haptic('medium');
+  root.classList.add('is-scrubbing');
+  showBubble();
+}
+
+function moveScrub(e) {
+  const dx = e.clientX - scrub.cx, dy = e.clientY - scrub.cy;
+  if (Math.hypot(dx, dy) < scrub.radius * 0.15) return; // too close to the spindle: the angle jumps around
+  const a = angleAt(e.clientX, e.clientY);
+  let d = a - scrub.last;
+  if (d > 180) d -= 360;
+  if (d < -180) d += 360;
+  scrub.last = a;
+  scrub.turns += d / 360; // clockwise (the way the record plays) is forward
+  const now = performance.now();
+  scrub.sound?.update(d / 360 / (Math.max(8, now - scrub.lastT) / 1000));
+  scrub.lastT = now;
+  clearTimeout(scrub.quiet);
+  scrub.quiet = setTimeout(() => scrub?.sound?.update(0), 70); // the finger stopped: so does the sound
+  rec.anim.currentTime = (((scrub.anim0 + scrub.turns * RPM_MS) % RPM_MS) + RPM_MS) % RPM_MS; // the record follows the finger
+  scrub.target = Math.min(Math.max(0, scrub.start + scrub.turns * SECONDS_PER_TURN), Math.max(0, player.duration - 1));
+  const step = Math.floor(scrub.target / 5);
+  if (step !== scrub.step) { scrub.step = step; haptic('select'); }
+  showBubble();
+}
+
+function endScrub() {
+  const s = scrub;
+  scrub = null;
+  scrubbing = false;
+  clearTimeout(s.quiet);
+  s.sound?.stop();
+  root.classList.remove('is-scrubbing');
+  player.seek(s.target);
+  rec?.anim.play();
+  if (s.wasPlaying) player.audio.play().catch(() => {});
+  syncState();
+  syncTime();
+}
+
+function showBubble() {
+  const delta = Math.round(scrub.target - scrub.start);
+  bubble.querySelector('.scrub__time').textContent = fmt(scrub.target);
+  bubble.querySelector('.scrub__delta').textContent = delta ? `${delta > 0 ? '+' : '−'}${fmt(Math.abs(delta))}` : '';
+}
+
 // ---------- swipe the record to change tracks, tap to pause ----------
 
 function setupGestures() {
-  let x0 = null, y0 = 0, dx = 0, moved = false;
+  let x0 = null, y0 = 0, dx = 0, moved = false, holdTimer = 0;
   stage.addEventListener('pointerdown', (e) => {
     if (!rec) return;
     x0 = e.clientX; y0 = e.clientY; dx = 0; moved = false;
     stage.setPointerCapture(e.pointerId);
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(() => beginScrub(x0, y0), 300); // a finger that stays put grabs the record
   });
   stage.addEventListener('pointermove', (e) => {
     if (x0 === null || !rec) return;
+    if (scrub) { moveScrub(e); return; }
     dx = e.clientX - x0;
+    if (Math.hypot(dx, e.clientY - y0) > 8) clearTimeout(holdTimer); // moving right away: a swipe, not a hold
     if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(e.clientY - y0)) moved = true;
     if (moved) rec.el.style.transform = `translateX(${dx * 0.7}px) rotate(${dx * 0.08}deg)`;
   });
   const end = () => {
+    clearTimeout(holdTimer);
     if (x0 === null || !rec) return;
     x0 = null;
+    if (scrub) { endScrub(); return; }
     if (!moved) { haptic('medium'); player.toggle(); return; }
     if (Math.abs(dx) > 70 && player.queue.length > 1) {
       haptic('light');

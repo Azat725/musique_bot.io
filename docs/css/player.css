@@ -18,7 +18,17 @@
 .fp__top { display: flex; align-items: center; justify-content: space-between; height: 48px; flex: none; }
 .fp__kicker { font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-2); }
 
-.fp__stage { position: relative; flex: 1; min-height: calc(var(--size) + 24px); touch-action: pan-y; cursor: grab; }
+/* touch-action none: a circular drag on the record must never turn into a browser pan (pointercancel) */
+.fp__stage { position: relative; flex: 1; min-height: calc(var(--size) + 24px); touch-action: none; cursor: grab; }
+.fp.is-scrubbing .fp__stage { cursor: grabbing; }
+
+/* time bubble while the record is turned by hand */
+.scrub { position: absolute; left: 50%; top: 0; z-index: 2; display: flex; align-items: baseline; gap: 8px; padding: 7px 12px;
+  border-radius: var(--r-md); background: var(--toast); color: var(--on-toast); font-variant-numeric: tabular-nums; white-space: nowrap;
+  opacity: 0; transform: translate(-50%, 6px); transition: opacity .25s var(--ease-io), transform .3s var(--ease-io); pointer-events: none; }
+.scrub__time { font: 600 17px/1 var(--font-serif); }
+.scrub__delta { font-size: 13px; opacity: .75; }
+.fp.is-scrubbing .scrub { opacity: 1; transform: translate(-50%, -4px); }
 
 /* ---------- record ---------- */
 
@@ -28,7 +38,7 @@
   border-radius: 50%;
   box-shadow: 0 14px 36px var(--shadow);
   will-change: transform;
-  user-select: none; -webkit-user-select: none;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
 }
 :root[data-theme="dark"] .record { box-shadow: 0 14px 36px var(--shadow), 0 0 0 1px rgba(255, 240, 220, .06); }
 .record__spin { position: absolute; inset: 0; border-radius: 50%; }
