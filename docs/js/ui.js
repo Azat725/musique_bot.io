@@ -190,17 +190,13 @@ export function confirmDialog(text) {
 
 // ---------- track list ----------
 
-// tracks from outside YouTube Music carry their source as an id prefix (server/sources)
-const SOURCES = { zc: 'Zaycev', bc: 'Bandcamp', jm: 'Jamendo', ia: 'Archive', rt: 'Rutube' };
-const sourceOf = (id) => SOURCES[String(id).split('.', 1)[0]] || '';
-
 export function trackRow(track, { index = null } = {}) {
   const row = h(`<div class="track" data-id="${esc(track.id)}" role="button" tabindex="0">
     ${index !== null ? `<span class="track__num">${index + 1}</span>` : ''}
     <div class="track__art">${cover(track.cover)}<span class="eq"><i></i><i></i><i></i></span></div>
     <div class="track__meta">
       <div class="track__title">${esc(track.title)}</div>
-      <div class="track__sub">${sourceOf(track.id) ? `<span class="track__src">${sourceOf(track.id)}</span>` : ''}<span class="track__artist">${esc(track.artist)}</span></div>
+      <div class="track__artist">${esc(track.artist)}</div>
     </div>
     <span class="track__time">${track.duration ? fmt(track.duration) : ''}</span>
     <button class="icon-btn track__more" aria-label="more">${icon('more')}</button>
