@@ -24,11 +24,11 @@
   position: absolute; inset: 0; margin: auto;
   width: var(--size); height: var(--size);
   border-radius: 50%;
-  box-shadow: 0 14px 36px rgba(11, 20, 38, .28);
+  box-shadow: 0 14px 36px var(--shadow);
   will-change: transform;
   user-select: none; -webkit-user-select: none;
 }
-:root[data-theme="dark"] .record { box-shadow: 0 14px 36px rgba(0, 0, 0, .5), 0 0 0 1px rgba(255, 255, 255, .06); }
+:root[data-theme="dark"] .record { box-shadow: 0 14px 36px var(--shadow), 0 0 0 1px rgba(255, 240, 220, .06); }
 .record__spin { position: absolute; inset: 0; border-radius: 50%; }
 .record__disc, .record__sheen { position: absolute; inset: 0; width: 100%; height: 100%; }
 .record__sheen { pointer-events: none; }
@@ -48,7 +48,7 @@
   display: grid; place-items: center;
 }
 .record__label img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
-.record__blank { font: italic 500 13px/1 var(--font-serif); color: var(--white); }
+.record__blank { font: 500 13px/1 var(--font-serif); color: var(--white); }
 .record__hole {
   position: absolute; left: 50%; top: 50%;
   width: 3.4%; height: 3.4%; margin: -1.7% 0 0 -1.7%;
@@ -64,7 +64,7 @@
 .fp__title { font: 600 24px/1.2 var(--font-serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fp__artist { font-size: 15px; color: var(--text-2); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fp__like { color: var(--text-2); }
-.fp__like.is-on { color: var(--accent); }
+.fp__like.is-on { color: var(--accent-text); }
 .fp__like.is-on .ic { animation: like-pop .3s var(--ease); }
 @keyframes like-pop { 50% { transform: scale(1.25); } }
 
@@ -87,7 +87,7 @@
 .controls .icon-btn { width: 48px; height: 48px; position: relative; color: var(--text); }
 .controls .icon-btn--lg .ic { width: 30px; height: 30px; }
 .controls [data-shuffle], .controls [data-repeat] { color: var(--text-3); }
-.controls .is-on { color: var(--accent) !important; }
+.controls .is-on { color: var(--accent-text) !important; }
 .controls .is-on::after { content: ''; position: absolute; bottom: 4px; left: 50%; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--accent); }
 .play-btn { width: 70px; height: 70px; border-radius: 50%; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; transition: transform .15s; }
 .play-btn .ic { width: 32px; height: 32px; }
