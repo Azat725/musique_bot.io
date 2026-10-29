@@ -16,12 +16,14 @@ class Player extends EventTarget {
     this._logged = null;
     this._seq = 0;
     this._blobs = new Map(); // track id -> Promise<object URL>
+    this._errTimer = 0;
+    this._lastState = '';
 
     const a = this.audio;
     a.addEventListener('playing', () => {
       this.loading = false;
       this.errors = 0;
-      this._emit('state');
+      this._state();
       const tr = this.current;
       if (tr && this._logged !== tr.id) {
         this._logged = tr.id;
@@ -33,9 +35,9 @@ class Player extends EventTarget {
         }
       }
     });
-    a.addEventListener('pause', () => this._emit('state'));
-    a.addEventListener('waiting', () => { this.loading = true; this._emit('state'); });
-    a.addEventListener('canplay', () => { this.loading = false; this._emit('state'); });
+    a.addEventListener('pause', () => this._state());
+    a.addEventListener('waiting', () => { this.loading = true; this._state(); });
+    a.addEventListener('canplay', () => { this.loading = false; this._state(); });
     a.addEventListener('timeupdate', () => this._emit('time'));
     a.addEventListener('durationchange', () => this._emit('time'));
     a.addEventListener('ended', () => {
@@ -47,8 +49,8 @@ class Player extends EventTarget {
       this.loading = false;
       this.errors += 1;
       this._emit('error');
-      if (this.errors <= 3 && this.index < this.queue.length - 1) setTimeout(() => this.next(true), 1200);
-      else this._emit('state');
+      if (this.errors <= 3 && this.index < this.queue.length - 1) this._errTimer = setTimeout(() => this.next(true), 1200);
+      else this._state();
     });
     this._mediaSession();
   }
@@ -62,6 +64,14 @@ class Player extends EventTarget {
   }
 
   _emit(type, detail) { this.dispatchEvent(new CustomEvent(type, { detail })); }
+
+  /** 'state' only when something visible changed: buffering on a weak network fires these in bursts. */
+  _state() {
+    const key = `${this.playing}|${this.loading}|${this.index}|${this.current?.id}`;
+    if (key === this._lastState) return;
+    this._lastState = key;
+    this._emit('state');
+  }
 
   playQueue(tracks, start = 0, { shuffle = false } = {}) {
     this.queue = tracks.slice();
@@ -91,7 +101,7 @@ class Player extends EventTarget {
     if (!this.queue.length) return;
     if (this.index < this.queue.length - 1) this.index += 1;
     else if (this.repeat === 'all' || !auto) this.index = 0;
-    else { this._emit('state'); return; }
+    else { this._state(); return; }
     this._load(1);
   }
 
@@ -137,6 +147,7 @@ class Player extends EventTarget {
   _load(dir) {
     const tr = this.current;
     if (!tr) return;
+    clearTimeout(this._errTimer); // a pending auto-skip must not override the user's choice
     this.loading = true;
     const seq = ++this._seq;
     if (api.usesBlob) this.audio.pause(); // the previous track must not keep playing while the next downloads
@@ -148,7 +159,7 @@ class Player extends EventTarget {
       if (seq === this._seq) this.audio.dispatchEvent(new Event('error'));
     });
     this._emit('track', { track: tr, dir });
-    this._emit('state');
+    this._state();
     this._updateMediaSession(tr);
   }
 

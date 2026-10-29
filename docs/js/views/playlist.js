@@ -1,13 +1,14 @@
 import { api } from '../api.js';
 import { plural, t } from '../i18n.js';
 import { player } from '../player.js';
+import { invalidatePlaylists, likedList } from '../store.js';
 import { confirmDialog, esc, h, haptic, icon, promptName, sheet, toast, trackList } from '../ui.js';
 
 async function loadTracks(p) {
   switch (p.kind) {
     case 'tracks': return p.tracks;
     case 'yt': return (await api.collection(p.id)).tracks;
-    case 'likes': return (await api.likes()).tracks;
+    case 'likes': return likedList();
     case 'history': return (await api.history()).tracks;
     case 'user': {
       const data = await api.playlist(p.id);
@@ -75,10 +76,12 @@ export async function render(params, nav) {
         const name = await promptName({ title: t('rename'), value: params.title, action: t('save') });
         if (!name) return;
         await api.renamePlaylist(params.id, name);
+        invalidatePlaylists();
         params.title = name;
         root.querySelector('.view__title').textContent = name;
       } else if (i === 1 && await confirmDialog(t('playlist_delete_confirm', { name: params.title }))) {
         await api.deletePlaylist(params.id);
+        invalidatePlaylists();
         haptic('success');
         nav.back();
       }
@@ -89,7 +92,9 @@ export async function render(params, nav) {
   root.querySelector('.view__title').textContent = params.title;
   draw();
   if (params.kind === 'likes') {
-    root.onShow = async () => { tracks = await loadTracks(params); draw(); };
+    let dirty = false;
+    document.addEventListener('likes-changed', () => { dirty = true; });
+    root.onShow = async () => { if (!dirty) return; dirty = false; tracks = await loadTracks(params); draw(); };
   }
   return root;
 }

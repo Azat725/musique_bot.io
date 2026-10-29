@@ -1,39 +1,12 @@
 import { t } from './i18n.js';
 import { player } from './player.js';
-import { likes, settings, toggleLike } from './store.js';
+import { likes, toggleLike } from './store.js';
 import { chooseAndAddToPlaylist, esc, fmt, h, haptic, icon, toast, trackMenu } from './ui.js';
 import { api } from './api.js';
+import { initSfx, playSfx } from './sfx.js';
 
 const RPM_MS = 1800; // one revolution at 33⅓ rpm
 const NS = 'http://www.w3.org/2000/svg';
-
-// ---------- sound effects (Web Audio, so they mix with the music instead of interrupting it) ----------
-
-const sfx = { ctx: null, buffers: {} };
-
-async function initSfx() {
-  if (sfx.ctx) return;
-  const Ctx = window.AudioContext || window.webkitAudioContext;
-  if (!Ctx) return;
-  sfx.ctx = new Ctx();
-  for (const name of ['swipe', 'needle']) {
-    try {
-      const data = await (await fetch(`assets/sfx/${name}.mp3`)).arrayBuffer();
-      sfx.buffers[name] = await sfx.ctx.decodeAudioData(data);
-    } catch {}
-  }
-}
-
-function playSfx(name, volume = 0.55) {
-  if (!settings.sounds || !sfx.ctx || !sfx.buffers[name]) return;
-  if (sfx.ctx.state === 'suspended') sfx.ctx.resume();
-  const src = sfx.ctx.createBufferSource();
-  const gain = sfx.ctx.createGain();
-  gain.gain.value = volume;
-  src.buffer = sfx.buffers[name];
-  src.connect(gain).connect(sfx.ctx.destination);
-  src.start();
-}
 
 // ---------- the record ----------
 
@@ -94,13 +67,15 @@ function rampTo(rec, target, ms) {
     rec.rate = from + (target - from) * eased;
     rec.anim.playbackRate = rec.rate;
     if (k < 1) rec.raf = requestAnimationFrame(step);
+    else if (!target) rec.anim.pause(); // a stopped record must not keep an animation ticking
   };
+  if (target && rec.anim.playState === 'paused') rec.anim.play();
   rec.raf = requestAnimationFrame(step);
 }
 
 // ---------- full-screen player ----------
 
-let root, stage, rec = null, open = false, swapping = 0;
+let root, stage, el, rec = null, open = false, swapping = 0, closeTimer = 0;
 
 export function isPlayerOpen() { return open; }
 
@@ -117,7 +92,7 @@ export function initFullPlayer() {
       <button class="icon-btn fp__like" data-like aria-label="like">${icon('heart')}</button>
     </div>
     <div class="progress">
-      <div class="progress__bar"><div class="progress__fill"></div><div class="progress__knob"></div></div>
+      <div class="progress__bar"><div class="progress__fill"></div><div class="progress__thumb"><div class="progress__knob"></div></div></div>
       <div class="progress__times"><span data-cur>0:00</span><span data-dur>0:00</span></div>
     </div>
     <div class="controls">
@@ -134,6 +109,8 @@ export function initFullPlayer() {
   </div>`);
   document.body.append(root);
   stage = root.querySelector('.fp__stage');
+  el = { bar: root.querySelector('.progress__bar'), cur: root.querySelector('[data-cur]'), dur: root.querySelector('[data-dur]'),
+    play: root.querySelector('[data-play]'), title: root.querySelector('.fp__title'), artist: root.querySelector('.fp__artist') };
 
   const $ = (s) => root.querySelector(s);
   $('[data-close]').addEventListener('click', closePlayer);
@@ -166,7 +143,6 @@ export function initFullPlayer() {
   player.addEventListener('time', syncTime);
   player.addEventListener('modes', syncModes);
   document.addEventListener('likes-changed', syncLike);
-  document.addEventListener('pointerdown', initSfx, { once: true });
   translate();
 }
 
@@ -181,6 +157,8 @@ export function translate() {
 export function openPlayer() {
   if (!player.current) return;
   open = true;
+  clearTimeout(closeTimer);
+  initSfx(); // opened by a tap: the one moment iOS lets audio start
   root.classList.add('is-open');
   root.setAttribute('aria-hidden', 'false');
   if (!rec || rec.track?.id !== player.current.id) placeRecord(player.current);
@@ -194,6 +172,8 @@ export function closePlayer() {
   open = false;
   root.classList.remove('is-open');
   root.setAttribute('aria-hidden', 'true');
+  // stop the record once the slide-down has finished: nobody sees it spin
+  closeTimer = setTimeout(() => { if (!open && rec) { cancelAnimationFrame(rec.raf); rec.rate = 0; rec.anim.pause(); } }, 450);
   document.dispatchEvent(new CustomEvent('player-open', { detail: false }));
 }
 
@@ -207,7 +187,8 @@ function onTrack({ track, dir }) {
   syncInfo();
   syncLike();
   syncTime();
-  if (!open || !rec) { placeRecord(track); return; }
+  if (!open) { rec = null; stage.innerHTML = ''; return; } // openPlayer builds the record when it is needed
+  if (!rec) { placeRecord(track); return; }
   if (rec.track?.id === track.id) return;
   swapRecord(track, dir < 0 ? -1 : 1);
 }
@@ -246,8 +227,8 @@ function swapRecord(track, dir) {
 
 function syncInfo() {
   const tr = player.current;
-  root.querySelector('.fp__title').textContent = tr?.title || t('player_nothing');
-  root.querySelector('.fp__artist').textContent = tr?.artist || '';
+  el.title.textContent = tr?.title || t('player_nothing');
+  el.artist.textContent = tr?.artist || '';
 }
 
 function syncLike() {
@@ -257,20 +238,30 @@ function syncLike() {
   btn.classList.toggle('is-on', liked);
 }
 
+let shownPlaying = null;
+
 function syncState() {
-  root.querySelector('[data-play]').innerHTML = icon(player.playing ? 'pause' : 'play');
+  if (!open) return;
+  if (shownPlaying !== player.playing) {
+    shownPlaying = player.playing;
+    el.play.innerHTML = icon(player.playing ? 'pause' : 'play');
+  }
   root.classList.toggle('is-loading', player.loading);
   if (!rec || rec.el.getAnimations().some((a) => a.playState === 'running' && a !== rec.anim)) return;
   const spinning = player.playing && !player.loading;
   rampTo(rec, spinning ? 1 : 0, spinning ? 900 : 700);
 }
 
+function setText(node, text) {
+  if (node.textContent !== text) node.textContent = text;
+}
+
 function syncTime() {
   if (!open) return;
   const d = player.duration, c = player.time;
-  if (!dragging) root.querySelector('.progress').style.setProperty('--p', d ? Math.min(1, c / d) : 0);
-  root.querySelector('[data-cur]').textContent = fmt(dragging ? dragValue * d : c);
-  root.querySelector('[data-dur]').textContent = fmt(d);
+  if (!dragging) el.bar.style.setProperty('--p', d ? Math.min(1, c / d) : 0);
+  setText(el.cur, fmt(dragging ? dragValue * d : c));
+  setText(el.dur, fmt(d));
 }
 
 function syncModes() {
@@ -286,22 +277,21 @@ let dragging = false, dragValue = 0;
 
 function setupSeek(bar) {
   const progress = bar.parentElement;
-  const valueAt = (e) => {
-    const r = bar.getBoundingClientRect();
-    return Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
-  };
+  let rect = null; // measured once per drag: reading layout on every move forces a reflow
+  const valueAt = (e) => Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
   bar.addEventListener('pointerdown', (e) => {
     dragging = true;
+    rect = bar.getBoundingClientRect();
     bar.setPointerCapture(e.pointerId);
     dragValue = valueAt(e);
     progress.classList.add('is-drag');
-    progress.style.setProperty('--p', dragValue);
+    bar.style.setProperty('--p', dragValue);
     syncTime();
   });
   bar.addEventListener('pointermove', (e) => {
     if (!dragging) return;
     dragValue = valueAt(e);
-    progress.style.setProperty('--p', dragValue);
+    bar.style.setProperty('--p', dragValue);
     syncTime();
   });
   const end = () => {

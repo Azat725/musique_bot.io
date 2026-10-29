@@ -19,7 +19,7 @@ export async function render() {
   const input = root.querySelector('input');
   const clear = root.querySelector('.searchbar__clear');
   const body = root.querySelector('.search__body');
-  let timer, seq = 0;
+  let timer, seq = 0, inflight = null;
 
   function showIdle() {
     const recent = recentSearches();
@@ -47,9 +47,11 @@ export async function render() {
     clear.hidden = !q;
     if (!q) { lastQuery = ''; lastTracks = null; showIdle(); return; }
     const my = ++seq;
+    inflight?.abort(); // a superseded query must not keep the server busy
+    inflight = new AbortController();
     body.innerHTML = `<div class="skeleton">${'<div class="sk sk--row"></div>'.repeat(8)}</div>`;
     try {
-      const { tracks } = await api.search(q);
+      const { tracks } = await api.search(q, inflight.signal);
       if (my !== seq) return;
       lastQuery = q;
       lastTracks = tracks;

@@ -1,7 +1,7 @@
 import { api } from './api.js';
 import { t } from './i18n.js';
 import { player } from './player.js';
-import { likes, toggleLike } from './store.js';
+import { getPlaylists, invalidatePlaylists, likes, toggleLike } from './store.js';
 
 export const tg = window.Telegram?.WebApp;
 
@@ -22,7 +22,6 @@ const ICONS = {
   heartFill: '<path class="fill" d="M12 19.5s-7.5-4.6-7.5-10A4.2 4.2 0 0 1 12 7a4.2 4.2 0 0 1 7.5 2.5c0 5.4-7.5 10-7.5 10z"/>',
   more: '<circle class="fill" cx="5.5" cy="12" r="1.5"/><circle class="fill" cx="12" cy="12" r="1.5"/><circle class="fill" cx="18.5" cy="12" r="1.5"/>',
   down: P('m6 9.5 6 6 6-6'),
-  back: P('m14.5 6-6 6 6 6'),
   right: P('m9.5 6 6 6-6 6'),
   plus: P('M12 5v14M5 12h14'),
   send: P('M20 4 3.5 10.6l6.6 2.8L20 4zm0 0-9.9 9.4 2.8 6.6z'),
@@ -74,9 +73,16 @@ export function haptic(kind = 'light') {
   } catch {}
 }
 
-export function cover(url, cls = '') {
+/** Cover URL sized for where it is shown: a 1280px thumbnail decoded for a 48px row costs ~3.7 MB of memory. */
+export function thumb(url, px = 144) {
+  if (!url) return url;
+  if (url.includes('i.ytimg.com')) return px > 320 ? url : url.replace(/\/(hq720|maxresdefault|sddefault|hqdefault)\.jpg/, '/mqdefault.jpg');
+  return url.replace(/=w\d+-h\d+/, `=w${px}-h${px}`);
+}
+
+export function cover(url, cls = '', px = 144) {
   return url
-    ? `<img class="cover ${cls}" src="${esc(url)}" alt="" loading="lazy" referrerpolicy="no-referrer">`
+    ? `<img class="cover ${cls}" src="${esc(thumb(url, px))}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`
     : `<div class="cover cover--empty ${cls}">${icon('vinyl')}</div>`;
 }
 
@@ -178,7 +184,7 @@ export function trackRow(track, { index = null } = {}) {
 
 /** Render a playable list; clicking a row plays the list starting at it. */
 export function trackList(tracks, { numbered = false, context = null, onChange = null } = {}) {
-  const list = h('<div class="tracks"></div>');
+  const list = h(`<div class="tracks ${numbered ? 'tracks--numbered' : ''}"></div>`);
   tracks.forEach((tr, i) => list.append(trackRow(tr, { index: numbered ? i : null })));
   list.addEventListener('click', async (e) => {
     const row = e.target.closest('.track');
@@ -198,18 +204,23 @@ export function trackList(tracks, { numbered = false, context = null, onChange =
   return list;
 }
 
+/** Highlight the current track. Touches only the rows that change, not the whole list. */
 export function markPlaying(root = document) {
   const id = player.current?.id;
-  root.querySelectorAll('.track').forEach((row) => {
-    row.classList.toggle('is-current', row.dataset.id === id);
-    row.classList.toggle('is-playing', row.dataset.id === id && player.playing);
+  root.querySelectorAll('.track.is-current').forEach((row) => {
+    if (row.dataset.id !== id) row.classList.remove('is-current', 'is-playing');
+  });
+  if (!id) return;
+  root.querySelectorAll(`.track[data-id="${CSS.escape(id)}"]`).forEach((row) => {
+    row.classList.add('is-current');
+    row.classList.toggle('is-playing', player.playing);
   });
 }
 
 // ---------- track actions ----------
 
 export async function chooseAndAddToPlaylist(track) {
-  const { playlists } = await api.playlists();
+  const playlists = await getPlaylists();
   const items = [{ icon: 'plus', label: t('lib_new_playlist') },
     ...playlists.map((p) => ({ icon: 'library', label: p.name }))];
   const choice = await sheet({ title: esc(t('menu_add_playlist')), items });
@@ -222,6 +233,7 @@ export async function chooseAndAddToPlaylist(track) {
     pl = { id, name };
   }
   await api.addToPlaylist(pl.id, track);
+  invalidatePlaylists();
   haptic('success');
   toast(t('toast_added', { name: pl.name }));
 }
@@ -253,6 +265,7 @@ export async function trackMenu(track, context = null) {
       case 'send': await api.send(track); haptic('success'); toast(t('toast_sending')); break;
       case 'remove':
         await api.removeFromPlaylist(context.playlistId, track.id);
+        invalidatePlaylists();
         toast(t('toast_removed'));
         return 'removed';
     }

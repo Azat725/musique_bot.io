@@ -18,10 +18,11 @@ function resolveBase() {
 const base = resolveBase();
 let streamToken = '';
 
-async function request(method, path, body) {
+async function request(method, path, body, signal) {
   if (!base) throw new Error('no-server');
   const ctrl = new AbortController(); // never hang on a blocked or sleeping server (AbortSignal.timeout is missing in older WebViews)
   const timer = setTimeout(() => ctrl.abort(), path === '/api/me' ? 15000 : 45000);
+  signal?.addEventListener('abort', () => ctrl.abort());
   try {
     const res = await fetch(base + path, {
       signal: ctrl.signal,
@@ -44,6 +45,8 @@ const get = (p) => request('GET', p);
 const post = (p, b) => request('POST', p, b);
 const del = (p) => request('DELETE', p);
 
+let homeRequest = null;
+
 // <audio> can't send the header that skips ngrok's interstitial page, so there the audio is fetched explicitly
 const usesBlob = /\.ngrok[\w-]*\.(dev|app|io)$/.test(new URL(base || 'http://x').hostname);
 
@@ -63,8 +66,10 @@ export const api = {
     return data.user;
   },
   streamUrl: (id) => `${base}/api/stream/${id}?t=${encodeURIComponent(streamToken)}`,
-  home: () => get('/api/home'),
-  search: (q) => get('/api/search?q=' + encodeURIComponent(q)),
+  /** Start /api/home during boot; the first home() call takes the request already in flight. */
+  preloadHome() { homeRequest = get('/api/home'); homeRequest.catch(() => {}); },
+  home() { const r = homeRequest || get('/api/home'); homeRequest = null; return r; },
+  search: (q, signal) => request('GET', '/api/search?q=' + encodeURIComponent(q), null, signal),
   collection: (id) => get('/api/collection/' + encodeURIComponent(id)),
   likes: () => get('/api/likes'),
   like: (track) => post('/api/likes', { track }),

@@ -12,7 +12,7 @@ function cards(tracks) {
   const row = h('<div class="cards"></div>');
   tracks.forEach((tr, i) => {
     const card = h(`<button class="card">
-      ${cover(tr.cover, 'card__cover')}
+      ${cover(tr.cover, 'card__cover', 400)}
       <span class="card__title">${esc(tr.title)}</span>
       <span class="card__artist">${esc(tr.artist)}</span>
     </button>`);

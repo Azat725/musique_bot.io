@@ -29,7 +29,13 @@ _meta: dict[str, dict] = {}
 _search_cache: dict[str, tuple[float, list]] = {}
 _home_cache: tuple[float, dict] | None = None
 _url_cache: dict[str, tuple[float, "Source"]] = {}
+_collection_cache: dict[str, tuple[float, list]] = {}
 _locks: dict[str, asyncio.Lock] = {}
+_home_lock = asyncio.Lock()
+# a 2 GB VPS: a burst of prefetches must not run a dozen downloads and encoders at once
+_download_slots = asyncio.Semaphore(2)
+_ffmpeg_slots = asyncio.Semaphore(1)
+FFMPEG_TIMEOUT = 300
 _yt_blocked_until = 0.0
 
 AUDIO_EXTS = {".m4a", ".mp3", ".webm", ".opus", ".ogg"}
@@ -108,11 +114,19 @@ def normalize(r: dict) -> dict | None:
         "cover": _cover(r.get("thumbnails") or r.get("thumbnail") or []),
     }
     _meta[vid] = track
+    _trim(_meta, 5000)
     return track
+
+
+def _trim(cache: dict, limit: int) -> None:
+    """Drop the oldest entries (dicts keep insertion order) so long-running caches stay bounded."""
+    while len(cache) > limit:
+        cache.pop(next(iter(cache)))
 
 
 def remember(track: dict) -> None:
     _meta[track["id"]] = track
+    _trim(_meta, 5000)
 
 
 async def track_meta(vid: str) -> dict | None:
@@ -158,13 +172,11 @@ async def search(query: str, limit: int = 30) -> list[dict]:
                 seen.add(t["id"])
                 out.append(t)
     _search_cache[key] = (time.time(), out)
-    if len(_search_cache) > 500:
-        _search_cache.pop(next(iter(_search_cache)))
+    _trim(_search_cache, 500)
     return out
 
 
-def _chart_playlist(country: str, prefix: str) -> str | None:
-    charts = _yt.get_charts(country)
+def _chart_playlist(charts: dict, prefix: str) -> str | None:
     for item in charts.get("videos", []):
         if item.get("title", "").startswith(prefix):
             return item["playlistId"]
@@ -178,13 +190,16 @@ def _playlist_tracks(playlist_id: str, limit: int = 40) -> list[dict]:
 
 def _build_home() -> dict:
     sections = []
+    charts: dict[str, dict] = {}  # one get_charts call per country
     for key, country, prefix in (
         ("trending", "RU", "Trending 20"),
         ("top_ru", "RU", "Daily Top Music Videos"),
         ("top_global", "ZZ", "Top 100 Music Videos"),
     ):
         try:
-            pid = _chart_playlist(country, prefix)
+            if country not in charts:
+                charts[country] = _yt.get_charts(country)
+            pid = _chart_playlist(charts[country], prefix)
             if pid:
                 sections.append({"key": key, "tracks": _playlist_tracks(pid, 30)})
         except Exception:
@@ -197,7 +212,7 @@ def _build_home() -> dict:
             title = g.get("title", "")
             for key, needle in GENRES.items():
                 if needle.lower() in title.lower() and key not in {x["key"] for x in genres}:
-                    genres.append({"key": key, "id": g["playlistId"], "cover": _cover(g.get("thumbnails", []))})
+                    genres.append({"key": key, "id": g["playlistId"]})
     except Exception:
         log.exception("genres failed")
     return {"sections": sections, "genres": genres}
@@ -205,18 +220,25 @@ def _build_home() -> dict:
 
 async def home() -> dict:
     global _home_cache
-    if _home_cache and time.time() - _home_cache[0] < 3600:
-        return _home_cache[1]
-    data = await asyncio.to_thread(_build_home)
-    if data["sections"]:
-        _home_cache = (time.time(), data)
-    return data
+    async with _home_lock:  # simultaneous cold requests build the page once
+        if _home_cache and time.time() - _home_cache[0] < 3600:
+            return _home_cache[1]
+        data = await asyncio.to_thread(_build_home)
+        if data["sections"]:
+            _home_cache = (time.time(), data)
+        return data
 
 
 async def collection(playlist_id: str) -> list[dict]:
     if not re.match(r"^[A-Za-z0-9_-]{10,64}$", playlist_id):
         return []
-    return await asyncio.to_thread(_playlist_tracks, playlist_id, 60)
+    cached = _collection_cache.get(playlist_id)
+    if cached and time.time() - cached[0] < 3600:
+        return cached[1]
+    tracks = await asyncio.to_thread(_playlist_tracks, playlist_id, 60)
+    _collection_cache[playlist_id] = (time.time(), tracks)
+    _trim(_collection_cache, 200)
+    return tracks
 
 
 # ---------- audio resolution ----------
@@ -313,7 +335,7 @@ def _fetch_hls(playlist_url: str, headers: dict, dest: Path) -> None:
     if config.FFMPEG:
         # remux to a regular (non-fragmented) m4a so every player can seek in it
         subprocess.run([config.FFMPEG, "-y", "-loglevel", "error", "-i", str(raw), "-c", "copy",
-                        "-movflags", "+faststart", "-f", "mp4", str(tmp)], check=True,
+                        "-movflags", "+faststart", "-f", "mp4", str(tmp)], check=True, timeout=FFMPEG_TIMEOUT,
                        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         raw.unlink(missing_ok=True)
         tmp.replace(dest)
@@ -332,10 +354,9 @@ def _sc_info(url: str) -> dict | Exception:
 
 def _sc_download(vid: str, meta: dict) -> Path:
     last_error: Exception | None = None
-    candidates = _sc_pick(meta)
-    with ThreadPoolExecutor(max_workers=4) as pool:  # resolve candidates in parallel, keep score order
-        infos = list(pool.map(_sc_info, candidates))
-    for info in infos:
+    # candidates in score order, resolved one at a time: the best one usually works
+    for url in _sc_pick(meta):
+        info = _sc_info(url)
         if isinstance(info, Exception):
             last_error = info
             continue
@@ -362,12 +383,21 @@ def _sc_download(vid: str, meta: dict) -> Path:
 
 
 def _prune_cache() -> None:
-    files = sorted((p for p in config.CACHE_DIR.rglob("*") if p.is_file()), key=lambda p: p.stat().st_atime)
-    total = sum(p.stat().st_size for p in files)
-    while files and total > config.CACHE_LIMIT_BYTES:
-        p = files.pop(0)
-        total -= p.stat().st_size
-        p.unlink(missing_ok=True)
+    files = []
+    for p in config.CACHE_DIR.rglob("*"):
+        if p.is_file() and p.suffix not in (".part", ".raw"):  # never delete a download in progress
+            st = p.stat()
+            files.append((st.st_mtime, st.st_size, p))
+    files.sort()
+    total = sum(size for _, size, _ in files)
+    for _, size, p in files:
+        if total <= config.CACHE_LIMIT_BYTES:
+            break
+        try:
+            p.unlink(missing_ok=True)
+            total -= size
+        except OSError:  # being served right now (Windows locks open files)
+            pass
 
 
 def _mark_if_blocked(e: Exception) -> None:
@@ -380,6 +410,9 @@ def _mark_if_blocked(e: Exception) -> None:
 
 
 def _lock(vid: str) -> asyncio.Lock:
+    if len(_locks) > 1000:
+        for key in [k for k, lock in _locks.items() if not lock.locked()]:
+            del _locks[key]
     return _locks.setdefault(vid, asyncio.Lock())
 
 
@@ -389,17 +422,18 @@ async def ensure_file(vid: str) -> Path:
         path = _cached_file(vid)
         if path:
             return path
-        if time.time() > _yt_blocked_until:
-            try:
-                path = await asyncio.to_thread(_yt_download, vid)
-            except Exception as e:
-                log.warning("YouTube download failed for %s: %s", vid, str(e)[:160])
-                _mark_if_blocked(e)
-        if not path:
-            meta = await track_meta(vid)
-            if not meta:
-                raise LookupError("unknown track")
-            path = await asyncio.to_thread(_sc_download, vid, meta)
+        async with _download_slots:
+            if time.time() > _yt_blocked_until:
+                try:
+                    path = await asyncio.to_thread(_yt_download, vid)
+                except Exception as e:
+                    log.warning("YouTube download failed for %s: %s", vid, str(e)[:160])
+                    _mark_if_blocked(e)
+            if not path:
+                meta = await track_meta(vid)
+                if not meta:
+                    raise LookupError("unknown track")
+                path = await asyncio.to_thread(_sc_download, vid, meta)
         await asyncio.to_thread(_prune_cache)
         return path
 
@@ -416,6 +450,7 @@ async def resolve(vid: str, fresh: bool = False) -> Source:
         try:
             src = await asyncio.to_thread(_yt_direct, vid)
             _url_cache[vid] = (time.time(), src)
+            _trim(_url_cache, 500)
             return src
         except Exception as e:
             log.warning("YouTube resolve failed for %s: %s", vid, str(e)[:160])
@@ -428,7 +463,7 @@ def _encode_lite(src: Path, dest: Path) -> None:
     tmp = dest.with_suffix(".part")
     subprocess.run([config.FFMPEG, "-y", "-loglevel", "error", "-i", str(src), "-vn", "-c:a", "aac",
                     "-b:a", config.STREAM_BITRATE, "-movflags", "+faststart", "-f", "mp4", str(tmp)], check=True,
-                   creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                   timeout=FFMPEG_TIMEOUT, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     tmp.replace(dest)
 
 
@@ -444,7 +479,8 @@ async def stream_file(vid: str) -> Path:
     src = await ensure_file(vid)
     async with _lock("lite:" + vid):
         if not dest.exists():
-            await asyncio.to_thread(_encode_lite, src, dest)
+            async with _ffmpeg_slots:
+                await asyncio.to_thread(_encode_lite, src, dest)
     return dest
 
 

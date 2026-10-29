@@ -89,9 +89,13 @@ function switchTab(next) {
   show();
 }
 
-function renderNav() {
-  nav.innerHTML = TABS.map(([key, ic, label]) =>
-    `<button class="nav__item ${key === tab ? 'is-on' : ''}" data-tab="${key}">${icon(ic)}<span>${esc(t(label))}</span></button>`).join('');
+/** Built once (and again on a language change); navigation only moves the `is-on` class. */
+function renderNav(rebuild = false) {
+  if (rebuild || !nav.firstChild) {
+    nav.innerHTML = TABS.map(([key, ic, label]) =>
+      `<button class="nav__item" data-tab="${key}">${icon(ic)}<span>${esc(t(label))}</span></button>`).join('');
+  }
+  nav.querySelectorAll('.nav__item').forEach((b) => b.classList.toggle('is-on', b.dataset.tab === tab));
 }
 
 nav.addEventListener('click', (e) => {
@@ -152,7 +156,8 @@ mini.addEventListener('click', (e) => {
 player.addEventListener('track', () => { renderMini(); markPlaying(main); });
 player.addEventListener('state', () => { renderMini(); markPlaying(main); });
 player.addEventListener('time', () => {
-  const bar = mini.querySelector('.mini__progress');
+  if (isPlayerOpen()) return; // the mini player is hidden under the full one
+  const bar = mini.firstElementChild; // .mini__progress
   if (bar) bar.style.setProperty('--p', player.duration ? player.time / player.duration : 0);
 });
 player.addEventListener('error', () => { haptic('error'); toast(t('toast_unavailable')); });
@@ -175,10 +180,15 @@ function noServer() {
   nav.hidden = true;
 }
 
+let shownLang = null;
+
 onSettings(() => {
+  applyTheme(); // CSS-only, no re-render needed
+  if (settings.lang === shownLang) return;
+  shownLang = settings.lang;
   setLang(settings.lang);
-  applyTheme();
   translatePlayer();
+  renderNav(true);
   // re-render views in the new language, keeping navigation
   Object.values(stacks).forEach((stack) => stack.forEach((entry) => { entry.el = null; }));
   show();
@@ -186,14 +196,16 @@ onSettings(() => {
 
 async function boot() {
   window.__musiqueStarted = true; // read by the load diagnostics in index.html
-  const marks = window.__musiqueMarks = { start: Math.round(performance.now()) };
   try {
-    tg?.ready();
-    tg?.expand();
+    tg?.expand(); // ready() is already called in index.html
     if (tg?.isVersionAtLeast?.('7.7')) tg.disableVerticalSwipes();
   } catch {}
+  // the server round trips don't depend on the settings: start them before waiting for CloudStorage
+  // (a slow VPN or a cold tunnel can miss the first /me attempt)
+  const me = api.hasServer() ? api.me().catch(() => api.me()) : null;
+  if (me) { me.catch(() => {}); api.preloadHome(); }
   await syncCloudSettings();
-  marks.cloud = Math.round(performance.now());
+  shownLang = settings.lang;
   setLang(settings.lang);
   applyTheme();
   tg?.onEvent?.('themeChanged', applyTheme);
@@ -201,17 +213,14 @@ async function boot() {
   initFullPlayer();
   renderNav();
 
-  if (!api.hasServer()) return noServer();
+  if (!me) return noServer();
   try {
-    // a slow VPN or a cold tunnel can miss the first attempt
-    await api.me().catch((e) => { marks.meErr = e.name + ':' + e.message; return api.me(); });
-    marks.me = Math.round(performance.now());
+    await me;
     loadLikes().catch(() => {});
   } catch {
     return noServer();
   }
   show();
-  marks.shown = Math.round(performance.now());
 }
 
 boot();

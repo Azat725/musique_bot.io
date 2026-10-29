@@ -48,22 +48,52 @@ export function syncCloudSettings() {
 // ---------- likes ----------
 
 export const likes = new Set();
+let likedTracks = [];
+let likesLoaded = null;
 
-export async function loadLikes() {
-  const { tracks } = await api.likes();
-  likes.clear();
-  tracks.forEach((t) => likes.add(t.id));
+/** Liked tracks, downloaded once per session and then kept in step with toggleLike(). */
+export function loadLikes() {
+  likesLoaded ||= api.likes().then(({ tracks }) => {
+    likedTracks = tracks;
+    likes.clear();
+    tracks.forEach((t) => likes.add(t.id));
+  });
+  likesLoaded.catch(() => { likesLoaded = null; });
+  return likesLoaded;
+}
+
+export async function likedList() {
+  await loadLikes();
+  return likedTracks.slice();
 }
 
 export async function toggleLike(track) {
   if (likes.has(track.id)) {
     likes.delete(track.id);
+    likedTracks = likedTracks.filter((t) => t.id !== track.id);
     await api.unlike(track.id);
     return false;
   }
   likes.add(track.id);
+  likedTracks = [track, ...likedTracks];
   await api.like(track);
   return true;
+}
+
+// ---------- playlists ----------
+
+let playlistsCache = null;
+
+/** The user's playlists, fetched once and refetched only after a change. */
+export function getPlaylists() {
+  playlistsCache ||= api.playlists().then((r) => r.playlists);
+  playlistsCache.catch(() => { playlistsCache = null; });
+  return playlistsCache;
+}
+
+export function invalidatePlaylists() {
+  playlistsCache = null;
+  document.dispatchEvent(new CustomEvent('playlists-changed'));
 }
 
 // ---------- recent searches ----------
