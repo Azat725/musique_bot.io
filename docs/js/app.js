@@ -2,7 +2,7 @@ import { api } from './api.js';
 import { setLang, t } from './i18n.js';
 import { player } from './player.js';
 import { loadLikes, onSettings, settings, syncCloudSettings } from './store.js';
-import { cover, esc, h, haptic, icon, markPlaying, tg, toast } from './ui.js';
+import { EASE_IO, cover, esc, h, haptic, icon, markPlaying, reducedMotion, tg, toast } from './ui.js';
 import { closePlayer, initFullPlayer, isPlayerOpen, openPlayer, translate as translatePlayer } from './vinyl.js';
 import * as home from './views/home.js';
 import * as library from './views/library.js';
@@ -46,21 +46,64 @@ const navApi = {
     const stack = stacks[tab];
     stack[stack.length - 1].scroll = window.scrollY;
     stack.push({ name, params });
-    show();
+    show('forward');
   },
   back() {
     const stack = stacks[tab];
-    if (stack.length > 1) { stack.pop(); show(); }
+    if (stack.length > 1) { stack.pop(); show('back'); }
   },
 };
 
-async function show() {
+// how the incoming and the outgoing screen move: deeper slides in from the right, back from the left, tabs cross-fade
+const MOVES = {
+  forward: { in: [{ opacity: 0, transform: 'translateX(28px)' }, { opacity: 1, transform: 'none' }],
+    out: [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(-14px)' }] },
+  back: { in: [{ opacity: 0, transform: 'translateX(-28px)' }, { opacity: 1, transform: 'none' }],
+    out: [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(28px)' }] },
+  tab: { in: [{ opacity: 0, transform: 'scale(.985)' }, { opacity: 1, transform: 'none' }],
+    out: [{ opacity: 1 }, { opacity: 0 }] },
+};
+let finishLeaving = null;
+
+/** Put `next` on screen. The old screen is lifted out of the flow where it stands and fades away over the new one. */
+function transition(next, dir) {
+  finishLeaving?.(); // a second tap first finishes the transition still running
+  const prev = main.firstElementChild;
+  if (prev === next) return;
+  if (!prev || !dir) {
+    main.replaceChildren(next);
+    next.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, easing: EASE_IO });
+    return;
+  }
+  const move = reducedMotion() ? MOVES.tab : MOVES[dir];
+  const top = prev.getBoundingClientRect().top;
+  Object.assign(prev.style, { position: 'fixed', top: `${top}px`, left: '0', right: '0', zIndex: '1', pointerEvents: 'none' });
+  main.append(next);
+  next.animate(move.in, { duration: 440, easing: EASE_IO });
+  const out = prev.animate(move.out, { duration: 300, easing: EASE_IO, fill: 'forwards' });
+  let finished = false;
+  const done = () => {
+    if (finished) return;
+    finished = true;
+    prev.remove();
+    prev.removeAttribute('style'); // cached screens are shown again later
+    out.cancel();
+    if (finishLeaving === done) finishLeaving = null;
+  };
+  finishLeaving = done;
+  out.finished.then(done, done);
+  setTimeout(done, 700); // animations stall while the WebView is in the background; never leave the old screen behind
+}
+
+async function show(dir = null) {
   const stack = stacks[tab];
   const entry = stack[stack.length - 1];
   renderNav();
   syncBackButton();
   if (!entry.el) {
-    main.replaceChildren(h('<div class="view"><div class="skeleton">' + '<div class="sk sk--row"></div>'.repeat(6) + '</div></div>'));
+    const skeleton = h('<div class="view"><div class="skeleton">' + '<div class="sk sk--row"></div>'.repeat(6) + '</div></div>');
+    transition(skeleton, dir);
+    window.scrollTo(0, 0);
     try {
       entry.el = await VIEWS[entry.name].render(entry.params, navApi);
     } catch (e) {
@@ -68,10 +111,16 @@ async function show() {
       entry.el = errorView(() => { entry.el = null; show(); });
     }
     if (stacks[tab][stacks[tab].length - 1] !== entry) return; // user navigated away meanwhile
+    if (skeleton.isConnected) {
+      skeleton.replaceWith(entry.el);
+      entry.el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 240, easing: EASE_IO });
+    } else {
+      transition(entry.el, null);
+    }
   } else {
     entry.el.onShow?.();
+    transition(entry.el, dir);
   }
-  main.replaceChildren(entry.el);
   markPlaying(main);
   window.scrollTo(0, entry.scroll || 0);
 }
@@ -79,23 +128,25 @@ async function show() {
 function switchTab(next) {
   if (next === tab) {
     // tapping the active tab returns to its root
-    if (stacks[tab].length > 1) { stacks[tab].length = 1; show(); }
+    if (stacks[tab].length > 1) { stacks[tab].length = 1; show('back'); }
     else window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
   stacks[tab][stacks[tab].length - 1].scroll = window.scrollY;
   tab = next;
   haptic('select');
-  show();
+  show('tab');
 }
 
 /** Built once (and again on a language change); navigation only moves the `is-on` class. */
 function renderNav(rebuild = false) {
   if (rebuild || !nav.firstChild) {
     nav.innerHTML = TABS.map(([key, ic, label]) =>
-      `<button class="nav__item" data-tab="${key}">${icon(ic)}<span>${esc(t(label))}</span></button>`).join('');
+      `<button class="nav__item" data-tab="${key}">${icon(ic)}<span>${esc(t(label))}</span></button>`).join('')
+      + '<span class="nav__needle" aria-hidden="true"></span>';
   }
   nav.querySelectorAll('.nav__item').forEach((b) => b.classList.toggle('is-on', b.dataset.tab === tab));
+  nav.style.setProperty('--tab', TABS.findIndex(([key]) => key === tab)); // the needle slides under the active tab
 }
 
 nav.addEventListener('click', (e) => {

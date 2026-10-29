@@ -7,10 +7,13 @@ export const tg = window.Telegram?.WebApp;
 
 const P = (d) => `<path d="${d}"/>`;
 const ICONS = {
-  home: P('M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z'),
-  search: '<circle cx="11" cy="11" r="6.5"/>' + P('m16 16 4.5 4.5'),
-  library: P('M5 4v16M10 4v16') + P('m14.5 4.6 4.6 15'),
-  settings: P('M4 7h10M18 7h2M4 17h4M12 17h8') + '<circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
+  // retro tab icons: gramophone, magnifier over a record, a record sliding out of its sleeve, a volume knob
+  home: P('M4.5 16.5h12v3.5h-12z') + P('M6 16.5c0-1 2.2-1.6 4.5-1.6s4.5.6 4.5 1.6') + P('M10.5 15V13.4c0-.9.7-1.5 1.7-1.5')
+    + '<g class="ic__horn">' + P('M11.8 11.6 15.2 5.6M12.6 12.2 19.4 9') + '<ellipse cx="17.3" cy="7.3" rx="2.7" ry="1.3" transform="rotate(39 17.3 7.3)"/></g>',
+  search: '<circle cx="10.5" cy="10.5" r="6.5"/><g class="ic__rec"><circle cx="10.5" cy="10.5" r="3"/><circle class="fill" cx="11.6" cy="10.5" r=".8"/></g>' + P('m15.4 15.4 4.6 4.6'),
+  library: P('M4 6.5h10.5v13H4z') + '<g class="ic__disc">' + P('M14.5 7a6 6 0 0 1 0 12') + P('M14.5 10.6a2.4 2.4 0 0 1 0 4.8') + '</g>',
+  settings: '<g class="ic__knob"><circle cx="12" cy="13.5" r="6"/>' + P('M12 13.5 8.6 10.1') + '</g>'
+    + P('M4.3 10.7 2.7 10.1M7.3 6.8 6.3 5.4M12 5.3V3.6M16.7 6.8l1-1.4M19.7 10.7l1.6-.6'),
   play: '<path class="fill" d="M8 5.5v13a.8.8 0 0 0 1.2.7l10.4-6.5a.8.8 0 0 0 0-1.4L9.2 4.8A.8.8 0 0 0 8 5.5z"/>',
   pause: '<rect class="fill" x="6.5" y="5" width="3.8" height="14" rx="1"/><rect class="fill" x="13.7" y="5" width="3.8" height="14" rx="1"/>',
   next: '<path class="fill" d="M5 6.2v11.6a.7.7 0 0 0 1.1.6l8.4-5.8a.7.7 0 0 0 0-1.2L6.1 5.6a.7.7 0 0 0-1.1.6z"/>' + P('M18.5 5.5v13'),
@@ -33,6 +36,9 @@ const ICONS = {
   vinyl: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><circle class="fill" cx="12" cy="12" r=".9"/>',
   close: P('M6 6l12 12M18 6 6 18'),
 };
+
+export const EASE_IO = 'cubic-bezier(.65, 0, .35, 1)';
+export const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export function icon(name, cls = '') {
   return `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
@@ -123,7 +129,7 @@ export function sheet({ title = '', items = [], content = null }) {
     });
     function close(value) {
       root.classList.remove('is-open');
-      setTimeout(() => root.remove(), 260);
+      setTimeout(() => root.remove(), 380);
       resolve(value ?? null);
     }
     root.querySelector('.sheet__scrim').addEventListener('click', () => close(null));
