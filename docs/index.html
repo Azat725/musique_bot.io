@@ -13,7 +13,8 @@
   <link rel="stylesheet" href="css/tokens.css?v=4">
   <link rel="stylesheet" href="css/app.css?v=4">
   <link rel="stylesheet" href="css/player.css?v=4">
-  <script src="https://telegram.org/js/telegram-web-app.js" defer></script>
+  <!-- local copy of https://telegram.org/js/telegram-web-app.js: telegram.org hangs on some networks/VPNs, and the app module waits for this script -->
+  <script src="vendor/telegram-web-app.js?v=1"></script>
 </head>
 <body>
   <main id="main"><div class="boot" style="display:flex;align-items:center;justify-content:center;height:60vh;color:#7B1E2B;font:600 22px Georgia,serif;letter-spacing:.04em">Musique</div></main>
@@ -37,6 +38,6 @@
       }, 8000);
     })();
   </script>
-  <script type="module" src="js/app.js?v=6" onerror="window.__musiqueNote('не удалось загрузить js/app.js')"></script>
+  <script type="module" src="js/app.js?v=7" onerror="window.__musiqueNote('не удалось загрузить js/app.js')"></script>
 </body>
 </html>
