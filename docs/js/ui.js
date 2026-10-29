@@ -1,16 +1,19 @@
 import { api } from './api.js';
 import { t } from './i18n.js';
 import { player } from './player.js';
-import { likes, toggleLike } from './store.js';
+import { getPlaylists, invalidatePlaylists, likes, toggleLike } from './store.js';
 
 export const tg = window.Telegram?.WebApp;
 
 const P = (d) => `<path d="${d}"/>`;
 const ICONS = {
-  home: P('M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z'),
-  search: '<circle cx="11" cy="11" r="6.5"/>' + P('m16 16 4.5 4.5'),
-  library: P('M5 4v16M10 4v16') + P('m14.5 4.6 4.6 15'),
-  settings: P('M4 7h10M18 7h2M4 17h4M12 17h8') + '<circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
+  // retro tab icons: gramophone, magnifier over a record, a record sliding out of its sleeve, a volume knob
+  home: P('M4.5 16.5h12v3.5h-12z') + P('M6 16.5c0-1 2.2-1.6 4.5-1.6s4.5.6 4.5 1.6') + P('M10.5 15V13.4c0-.9.7-1.5 1.7-1.5')
+    + '<g class="ic__horn">' + P('M11.8 11.6 15.2 5.6M12.6 12.2 19.4 9') + '<ellipse cx="17.3" cy="7.3" rx="2.7" ry="1.3" transform="rotate(39 17.3 7.3)"/></g>',
+  search: '<circle cx="10.5" cy="10.5" r="6.5"/><g class="ic__rec"><circle cx="10.5" cy="10.5" r="3"/><circle class="fill" cx="11.6" cy="10.5" r=".8"/></g>' + P('m15.4 15.4 4.6 4.6'),
+  library: P('M4 6.5h10.5v13H4z') + '<g class="ic__disc">' + P('M14.5 7a6 6 0 0 1 0 12') + P('M14.5 10.6a2.4 2.4 0 0 1 0 4.8') + '</g>',
+  settings: '<g class="ic__knob"><circle cx="12" cy="13.5" r="6"/>' + P('M12 13.5 8.6 10.1') + '</g>'
+    + P('M4.3 10.7 2.7 10.1M7.3 6.8 6.3 5.4M12 5.3V3.6M16.7 6.8l1-1.4M19.7 10.7l1.6-.6'),
   play: '<path class="fill" d="M8 5.5v13a.8.8 0 0 0 1.2.7l10.4-6.5a.8.8 0 0 0 0-1.4L9.2 4.8A.8.8 0 0 0 8 5.5z"/>',
   pause: '<rect class="fill" x="6.5" y="5" width="3.8" height="14" rx="1"/><rect class="fill" x="13.7" y="5" width="3.8" height="14" rx="1"/>',
   next: '<path class="fill" d="M5 6.2v11.6a.7.7 0 0 0 1.1.6l8.4-5.8a.7.7 0 0 0 0-1.2L6.1 5.6a.7.7 0 0 0-1.1.6z"/>' + P('M18.5 5.5v13'),
@@ -22,7 +25,6 @@ const ICONS = {
   heartFill: '<path class="fill" d="M12 19.5s-7.5-4.6-7.5-10A4.2 4.2 0 0 1 12 7a4.2 4.2 0 0 1 7.5 2.5c0 5.4-7.5 10-7.5 10z"/>',
   more: '<circle class="fill" cx="5.5" cy="12" r="1.5"/><circle class="fill" cx="12" cy="12" r="1.5"/><circle class="fill" cx="18.5" cy="12" r="1.5"/>',
   down: P('m6 9.5 6 6 6-6'),
-  back: P('m14.5 6-6 6 6 6'),
   right: P('m9.5 6 6 6-6 6'),
   plus: P('M12 5v14M5 12h14'),
   send: P('M20 4 3.5 10.6l6.6 2.8L20 4zm0 0-9.9 9.4 2.8 6.6z'),
@@ -33,7 +35,11 @@ const ICONS = {
   clock: '<circle cx="12" cy="12" r="8"/>' + P('M12 8v4.5l3 1.5'),
   vinyl: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><circle class="fill" cx="12" cy="12" r=".9"/>',
   close: P('M6 6l12 12M18 6 6 18'),
+  mic: P('M12 3.5a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0v-5a3 3 0 0 1 3-3zM6.5 11a5.5 5.5 0 0 0 11 0M12 16.5V20M9 20h6'),
 };
+
+export const EASE_IO = 'cubic-bezier(.65, 0, .35, 1)';
+export const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export function icon(name, cls = '') {
   return `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
@@ -74,9 +80,16 @@ export function haptic(kind = 'light') {
   } catch {}
 }
 
-export function cover(url, cls = '') {
+/** Cover URL sized for where it is shown: a 1280px thumbnail decoded for a 48px row costs ~3.7 MB of memory. */
+export function thumb(url, px = 144) {
+  if (!url) return url;
+  if (url.includes('i.ytimg.com')) return px > 320 ? url : url.replace(/\/(hq720|maxresdefault|sddefault|hqdefault)\.jpg/, '/mqdefault.jpg');
+  return url.replace(/=w\d+-h\d+/, `=w${px}-h${px}`);
+}
+
+export function cover(url, cls = '', px = 144) {
   return url
-    ? `<img class="cover ${cls}" src="${esc(url)}" alt="" loading="lazy" referrerpolicy="no-referrer">`
+    ? `<img class="cover ${cls}" src="${esc(thumb(url, px))}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`
     : `<div class="cover cover--empty ${cls}">${icon('vinyl')}</div>`;
 }
 
@@ -117,7 +130,7 @@ export function sheet({ title = '', items = [], content = null }) {
     });
     function close(value) {
       root.classList.remove('is-open');
-      setTimeout(() => root.remove(), 260);
+      setTimeout(() => root.remove(), 380);
       resolve(value ?? null);
     }
     root.querySelector('.sheet__scrim').addEventListener('click', () => close(null));
@@ -162,15 +175,19 @@ export function confirmDialog(text) {
 
 // ---------- track list ----------
 
+// tracks from outside YouTube Music carry their source as an id prefix (server/sources)
+const SOURCES = { zc: 'Zaycev', bc: 'Bandcamp', jm: 'Jamendo', ia: 'Archive', rt: 'Rutube' };
+const sourceOf = (id) => SOURCES[String(id).split('.', 1)[0]] || '';
+
 export function trackRow(track, { index = null } = {}) {
   const row = h(`<div class="track" data-id="${esc(track.id)}" role="button" tabindex="0">
     ${index !== null ? `<span class="track__num">${index + 1}</span>` : ''}
     <div class="track__art">${cover(track.cover)}<span class="eq"><i></i><i></i><i></i></span></div>
     <div class="track__meta">
       <div class="track__title">${esc(track.title)}</div>
-      <div class="track__artist">${esc(track.artist)}</div>
+      <div class="track__sub">${sourceOf(track.id) ? `<span class="track__src">${sourceOf(track.id)}</span>` : ''}<span class="track__artist">${esc(track.artist)}</span></div>
     </div>
-    <span class="track__time">${fmt(track.duration)}</span>
+    <span class="track__time">${track.duration ? fmt(track.duration) : ''}</span>
     <button class="icon-btn track__more" aria-label="more">${icon('more')}</button>
   </div>`);
   return row;
@@ -178,12 +195,13 @@ export function trackRow(track, { index = null } = {}) {
 
 /** Render a playable list; clicking a row plays the list starting at it. */
 export function trackList(tracks, { numbered = false, context = null, onChange = null } = {}) {
-  const list = h('<div class="tracks"></div>');
+  const list = h(`<div class="tracks ${numbered ? 'tracks--numbered' : ''}"></div>`);
   tracks.forEach((tr, i) => list.append(trackRow(tr, { index: numbered ? i : null })));
   list.addEventListener('click', async (e) => {
     const row = e.target.closest('.track');
     if (!row) return;
     const i = [...list.children].indexOf(row);
+    if (e.target.closest('.track__artist')) { e.stopPropagation(); openArtist(tracks[i]); return; }
     if (e.target.closest('.track__more')) {
       e.stopPropagation();
       const changed = await trackMenu(tracks[i], context);
@@ -198,18 +216,37 @@ export function trackList(tracks, { numbered = false, context = null, onChange =
   return list;
 }
 
+/** Highlight the current track. Touches only the rows that change, not the whole list. */
 export function markPlaying(root = document) {
   const id = player.current?.id;
-  root.querySelectorAll('.track').forEach((row) => {
-    row.classList.toggle('is-current', row.dataset.id === id);
-    row.classList.toggle('is-playing', row.dataset.id === id && player.playing);
+  root.querySelectorAll('.track.is-current').forEach((row) => {
+    if (row.dataset.id !== id) row.classList.remove('is-current', 'is-playing');
+  });
+  if (!id) return;
+  root.querySelectorAll(`.track[data-id="${CSS.escape(id)}"]`).forEach((row) => {
+    row.classList.add('is-current');
+    row.classList.toggle('is-playing', player.playing);
   });
 }
 
 // ---------- track actions ----------
 
+/** Open the artist card for a track; with several artists ("A, B feat. C") the user picks one first. */
+export async function openArtist(track) {
+  if (!track?.artist || track.artist === '—') return;
+  const names = track.artist.split(/\s*(?:,|&|\sfeat\.?\s|\sft\.?\s|\sx\s)\s*/i).filter(Boolean);
+  let pick = 0;
+  if (names.length > 1) {
+    pick = await sheet({ title: esc(t('artist_choose')), items: names.map((n) => ({ icon: 'mic', label: n })) });
+    if (pick === null) return;
+  }
+  haptic('light');
+  // the stored id belongs to the first artist only; the others are looked up by name
+  document.dispatchEvent(new CustomEvent('open-artist', { detail: { id: pick === 0 ? track.artist_id || '' : '', name: names[pick] } }));
+}
+
 export async function chooseAndAddToPlaylist(track) {
-  const { playlists } = await api.playlists();
+  const playlists = await getPlaylists();
   const items = [{ icon: 'plus', label: t('lib_new_playlist') },
     ...playlists.map((p) => ({ icon: 'library', label: p.name }))];
   const choice = await sheet({ title: esc(t('menu_add_playlist')), items });
@@ -222,6 +259,7 @@ export async function chooseAndAddToPlaylist(track) {
     pl = { id, name };
   }
   await api.addToPlaylist(pl.id, track);
+  invalidatePlaylists();
   haptic('success');
   toast(t('toast_added', { name: pl.name }));
 }
@@ -232,6 +270,7 @@ export async function trackMenu(track, context = null) {
     { icon: liked ? 'heartFill' : 'heart', label: t(liked ? 'menu_unlike' : 'menu_like'), run: 'like' },
     { icon: 'listPlus', label: t('menu_add_playlist'), run: 'playlist' },
     { icon: 'next2', label: t('menu_play_next'), run: 'next' },
+    { icon: 'mic', label: t('menu_artist'), run: 'artist' },
     { icon: 'send', label: t('menu_send'), run: 'send' },
   ];
   if (context?.playlistId) actions.push({ icon: 'trash', label: t('menu_remove'), run: 'remove', danger: true });
@@ -250,9 +289,11 @@ export async function trackMenu(track, context = null) {
       }
       case 'playlist': await chooseAndAddToPlaylist(track); break;
       case 'next': player.playNext(track); toast(t('toast_next')); break;
+      case 'artist': await openArtist(track); break;
       case 'send': await api.send(track); haptic('success'); toast(t('toast_sending')); break;
       case 'remove':
         await api.removeFromPlaylist(context.playlistId, track.id);
+        invalidatePlaylists();
         toast(t('toast_removed'));
         return 'removed';
     }

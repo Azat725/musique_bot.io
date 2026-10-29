@@ -2,17 +2,18 @@ import { api } from './api.js';
 import { setLang, t } from './i18n.js';
 import { player } from './player.js';
 import { loadLikes, onSettings, settings, syncCloudSettings } from './store.js';
-import { cover, esc, h, haptic, icon, markPlaying, tg, toast } from './ui.js';
+import { EASE_IO, cover, esc, h, haptic, icon, markPlaying, openArtist, reducedMotion, tg, toast } from './ui.js';
 import { closePlayer, initFullPlayer, isPlayerOpen, openPlayer, translate as translatePlayer } from './vinyl.js';
+import * as artist from './views/artist.js';
 import * as home from './views/home.js';
 import * as library from './views/library.js';
 import * as playlist from './views/playlist.js';
 import * as search from './views/search.js';
 import * as settingsView from './views/settings.js';
 
-const VIEWS = { home, search, library, settings: settingsView, playlist };
+const VIEWS = { home, search, library, settings: settingsView, playlist, artist };
 const TABS = [['home', 'home', 'nav_home'], ['search', 'search', 'nav_search'], ['library', 'library', 'nav_library'], ['settings', 'settings', 'nav_settings']];
-const COLORS = { light: '#FFFFFF', dark: '#0B1426' };
+const COLORS = { light: '#EFE4CF', dark: '#1A1410' }; // --bg of each theme, for Telegram's header and bars
 
 const main = document.getElementById('main');
 const nav = document.getElementById('nav');
@@ -46,21 +47,64 @@ const navApi = {
     const stack = stacks[tab];
     stack[stack.length - 1].scroll = window.scrollY;
     stack.push({ name, params });
-    show();
+    show('forward');
   },
   back() {
     const stack = stacks[tab];
-    if (stack.length > 1) { stack.pop(); show(); }
+    if (stack.length > 1) { stack.pop(); show('back'); }
   },
 };
 
-async function show() {
+// how the incoming and the outgoing screen move: deeper slides in from the right, back from the left, tabs cross-fade
+const MOVES = {
+  forward: { in: [{ opacity: 0, transform: 'translateX(28px)' }, { opacity: 1, transform: 'none' }],
+    out: [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(-14px)' }] },
+  back: { in: [{ opacity: 0, transform: 'translateX(-28px)' }, { opacity: 1, transform: 'none' }],
+    out: [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(28px)' }] },
+  tab: { in: [{ opacity: 0, transform: 'scale(.985)' }, { opacity: 1, transform: 'none' }],
+    out: [{ opacity: 1 }, { opacity: 0 }] },
+};
+let finishLeaving = null;
+
+/** Put `next` on screen. The old screen is lifted out of the flow where it stands and fades away over the new one. */
+function transition(next, dir) {
+  finishLeaving?.(); // a second tap first finishes the transition still running
+  const prev = main.firstElementChild;
+  if (prev === next) return;
+  if (!prev || !dir) {
+    main.replaceChildren(next);
+    next.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, easing: EASE_IO });
+    return;
+  }
+  const move = reducedMotion() ? MOVES.tab : MOVES[dir];
+  const top = prev.getBoundingClientRect().top;
+  Object.assign(prev.style, { position: 'fixed', top: `${top}px`, left: '0', right: '0', zIndex: '1', pointerEvents: 'none' });
+  main.append(next);
+  next.animate(move.in, { duration: 440, easing: EASE_IO });
+  const out = prev.animate(move.out, { duration: 300, easing: EASE_IO, fill: 'forwards' });
+  let finished = false;
+  const done = () => {
+    if (finished) return;
+    finished = true;
+    prev.remove();
+    prev.removeAttribute('style'); // cached screens are shown again later
+    out.cancel();
+    if (finishLeaving === done) finishLeaving = null;
+  };
+  finishLeaving = done;
+  out.finished.then(done, done);
+  setTimeout(done, 700); // animations stall while the WebView is in the background; never leave the old screen behind
+}
+
+async function show(dir = null) {
   const stack = stacks[tab];
   const entry = stack[stack.length - 1];
   renderNav();
   syncBackButton();
   if (!entry.el) {
-    main.replaceChildren(h('<div class="view"><div class="skeleton">' + '<div class="sk sk--row"></div>'.repeat(6) + '</div></div>'));
+    const skeleton = h('<div class="view"><div class="skeleton">' + '<div class="sk sk--row"></div>'.repeat(6) + '</div></div>');
+    transition(skeleton, dir);
+    window.scrollTo(0, 0);
     try {
       entry.el = await VIEWS[entry.name].render(entry.params, navApi);
     } catch (e) {
@@ -68,10 +112,16 @@ async function show() {
       entry.el = errorView(() => { entry.el = null; show(); });
     }
     if (stacks[tab][stacks[tab].length - 1] !== entry) return; // user navigated away meanwhile
+    if (skeleton.isConnected) {
+      skeleton.replaceWith(entry.el);
+      entry.el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 240, easing: EASE_IO });
+    } else {
+      transition(entry.el, null);
+    }
   } else {
     entry.el.onShow?.();
+    transition(entry.el, dir);
   }
-  main.replaceChildren(entry.el);
   markPlaying(main);
   window.scrollTo(0, entry.scroll || 0);
 }
@@ -79,19 +129,25 @@ async function show() {
 function switchTab(next) {
   if (next === tab) {
     // tapping the active tab returns to its root
-    if (stacks[tab].length > 1) { stacks[tab].length = 1; show(); }
+    if (stacks[tab].length > 1) { stacks[tab].length = 1; show('back'); }
     else window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
   stacks[tab][stacks[tab].length - 1].scroll = window.scrollY;
   tab = next;
   haptic('select');
-  show();
+  show('tab');
 }
 
-function renderNav() {
-  nav.innerHTML = TABS.map(([key, ic, label]) =>
-    `<button class="nav__item ${key === tab ? 'is-on' : ''}" data-tab="${key}">${icon(ic)}<span>${esc(t(label))}</span></button>`).join('');
+/** Built once (and again on a language change); navigation only moves the `is-on` class. */
+function renderNav(rebuild = false) {
+  if (rebuild || !nav.firstChild) {
+    nav.innerHTML = TABS.map(([key, ic, label]) =>
+      `<button class="nav__item" data-tab="${key}">${icon(ic)}<span>${esc(t(label))}</span></button>`).join('')
+      + '<span class="nav__needle" aria-hidden="true"></span>';
+  }
+  nav.querySelectorAll('.nav__item').forEach((b) => b.classList.toggle('is-on', b.dataset.tab === tab));
+  nav.style.setProperty('--tab', TABS.findIndex(([key]) => key === tab)); // the needle slides under the active tab
 }
 
 nav.addEventListener('click', (e) => {
@@ -110,6 +166,12 @@ function syncBackButton() {
 if (hasBackButton) tg.BackButton.onClick(() => {
   if (isPlayerOpen()) closePlayer();
   else navApi.back();
+});
+document.addEventListener('open-artist', (e) => {
+  const top = stacks[tab][stacks[tab].length - 1];
+  if (isPlayerOpen()) closePlayer();
+  if (top.name === 'artist' && (top.params.id ? top.params.id === e.detail.id : top.params.name === e.detail.name)) return;
+  navApi.push('artist', { ...e.detail });
 });
 document.addEventListener('player-open', (e) => {
   document.body.classList.toggle('player-open', e.detail);
@@ -144,6 +206,7 @@ function renderMini() {
 
 mini.addEventListener('click', (e) => {
   if (e.target.closest('[data-mini-play]')) { haptic('light'); player.toggle(); return; }
+  if (e.target.closest('.mini__artist')) { openArtist(player.current); return; }
   if (e.target.closest('[data-mini-next]')) { haptic('light'); player.next(); return; }
   haptic('light');
   openPlayer();
@@ -152,7 +215,8 @@ mini.addEventListener('click', (e) => {
 player.addEventListener('track', () => { renderMini(); markPlaying(main); });
 player.addEventListener('state', () => { renderMini(); markPlaying(main); });
 player.addEventListener('time', () => {
-  const bar = mini.querySelector('.mini__progress');
+  if (isPlayerOpen()) return; // the mini player is hidden under the full one
+  const bar = mini.firstElementChild; // .mini__progress
   if (bar) bar.style.setProperty('--p', player.duration ? player.time / player.duration : 0);
 });
 player.addEventListener('error', () => { haptic('error'); toast(t('toast_unavailable')); });
@@ -175,10 +239,15 @@ function noServer() {
   nav.hidden = true;
 }
 
+let shownLang = null;
+
 onSettings(() => {
+  applyTheme(); // CSS-only, no re-render needed
+  if (settings.lang === shownLang) return;
+  shownLang = settings.lang;
   setLang(settings.lang);
-  applyTheme();
   translatePlayer();
+  renderNav(true);
   // re-render views in the new language, keeping navigation
   Object.values(stacks).forEach((stack) => stack.forEach((entry) => { entry.el = null; }));
   show();
@@ -186,14 +255,16 @@ onSettings(() => {
 
 async function boot() {
   window.__musiqueStarted = true; // read by the load diagnostics in index.html
-  const marks = window.__musiqueMarks = { start: Math.round(performance.now()) };
   try {
-    tg?.ready();
-    tg?.expand();
+    tg?.expand(); // ready() is already called in index.html
     if (tg?.isVersionAtLeast?.('7.7')) tg.disableVerticalSwipes();
   } catch {}
+  // the server round trips don't depend on the settings: start them before waiting for CloudStorage
+  // (a slow VPN or a cold tunnel can miss the first /me attempt)
+  const me = api.hasServer() ? api.me().catch(() => api.me()) : null;
+  if (me) { me.catch(() => {}); api.preloadHome(); }
   await syncCloudSettings();
-  marks.cloud = Math.round(performance.now());
+  shownLang = settings.lang;
   setLang(settings.lang);
   applyTheme();
   tg?.onEvent?.('themeChanged', applyTheme);
@@ -201,17 +272,14 @@ async function boot() {
   initFullPlayer();
   renderNav();
 
-  if (!api.hasServer()) return noServer();
+  if (!me) return noServer();
   try {
-    // a slow VPN or a cold tunnel can miss the first attempt
-    await api.me().catch((e) => { marks.meErr = e.name + ':' + e.message; return api.me(); });
-    marks.me = Math.round(performance.now());
+    await me;
     loadLikes().catch(() => {});
   } catch {
     return noServer();
   }
   show();
-  marks.shown = Math.round(performance.now());
 }
 
 boot();

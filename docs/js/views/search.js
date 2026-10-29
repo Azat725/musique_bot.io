@@ -5,6 +5,19 @@ import { esc, h, icon, trackList } from '../ui.js';
 
 let lastQuery = '';
 let lastTracks = null;
+let lastMore = [];
+
+/** YouTube Music results, then a block with what the other sources found. */
+function results(tracks, more) {
+  const frag = document.createDocumentFragment();
+  if (tracks.length) frag.append(trackList(tracks));
+  if (more.length) {
+    const s = h(`<section class="section"><div class="section__head"><h2 class="section__title">${esc(t('search_more'))}</h2></div></section>`);
+    s.append(trackList(more));
+    frag.append(s);
+  }
+  return frag;
+}
 
 export async function render() {
   const root = h(`<div class="view">
@@ -19,7 +32,7 @@ export async function render() {
   const input = root.querySelector('input');
   const clear = root.querySelector('.searchbar__clear');
   const body = root.querySelector('.search__body');
-  let timer, seq = 0;
+  let timer, seq = 0, inflight = null;
 
   function showIdle() {
     const recent = recentSearches();
@@ -27,7 +40,7 @@ export async function render() {
     if (!recent.length) {
       body.append(h(`<div class="empty">${icon('vinyl', 'empty__icon')}
         <div class="empty__title">${esc(t('search_hint'))}</div>
-        <div class="empty__text">${esc(t('search_hint_sub'))}</div></div>`));
+</div>`));
       return;
     }
     const head = h(`<div class="section__head"><h2 class="section__title">${esc(t('search_recent'))}</h2>
@@ -45,17 +58,20 @@ export async function render() {
   async function run(q, remember = false) {
     q = q.trim();
     clear.hidden = !q;
-    if (!q) { lastQuery = ''; lastTracks = null; showIdle(); return; }
+    if (!q) { lastQuery = ''; lastTracks = null; lastMore = []; showIdle(); return; }
     const my = ++seq;
+    inflight?.abort(); // a superseded query must not keep the server busy
+    inflight = new AbortController();
     body.innerHTML = `<div class="skeleton">${'<div class="sk sk--row"></div>'.repeat(8)}</div>`;
     try {
-      const { tracks } = await api.search(q);
+      const { tracks, more = [] } = await api.search(q, inflight.signal);
       if (my !== seq) return;
       lastQuery = q;
       lastTracks = tracks;
+      lastMore = more;
       if (remember) pushRecentSearch(q);
       body.innerHTML = '';
-      body.append(tracks.length ? trackList(tracks)
+      body.append(tracks.length || more.length ? results(tracks, more)
         : h(`<div class="empty"><div class="empty__title">${esc(t('search_nothing'))}</div></div>`));
     } catch {
       if (my === seq) body.innerHTML = `<div class="empty"><div class="empty__title">${esc(t('toast_error'))}</div></div>`;
@@ -69,13 +85,13 @@ export async function render() {
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { clearTimeout(timer); run(input.value, true); input.blur(); }
   });
-  input.addEventListener('blur', () => { if (input.value.trim() && lastTracks?.length) pushRecentSearch(input.value.trim()); });
+  input.addEventListener('blur', () => { if (input.value.trim() && (lastTracks?.length || lastMore.length)) pushRecentSearch(input.value.trim()); });
   clear.addEventListener('click', () => { input.value = ''; run(''); input.focus(); });
 
   if (lastQuery && lastTracks) {
     input.value = lastQuery;
     clear.hidden = false;
-    body.append(trackList(lastTracks));
+    body.append(results(lastTracks, lastMore));
   } else {
     showIdle();
   }

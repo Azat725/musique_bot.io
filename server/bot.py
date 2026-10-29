@@ -77,6 +77,11 @@ async def text_search(message: Message):
     except Exception:
         log.exception("search failed")
         tracks = []
+    if not tracks:  # nothing on YouTube Music: try the other sources
+        try:
+            tracks = (await music.search_more(message.text))[:8]
+        except Exception:
+            log.exception("search on other sources failed")
     if not tracks:
         await status.edit_text(_t(code, "nothing"))
         return

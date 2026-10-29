@@ -8,11 +8,14 @@ from urllib.parse import quote
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parent
-load_dotenv(ROOT / ".env")
+# ENV_FILE lets dev.ps1 load a separate env (test bot token) without touching the production .env
+load_dotenv(os.getenv("ENV_FILE") or ROOT / ".env")
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 WEBAPP_URL = os.getenv("WEBAPP_URL", "https://azat725.github.io/musique_bot.io/docs/")
 PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "").rstrip("/")
+# 1 - serve ../docs at /app (dev only: test the branch's frontend without GitHub Pages)
+SERVE_DOCS = os.getenv("SERVE_DOCS", "0") == "1"
 PORT = int(os.getenv("PORT", "8000"))
 HOST = os.getenv("HOST", "127.0.0.1")  # 0.0.0.0 inside Docker
 DEBUG = os.getenv("DEBUG", "0") == "1"
@@ -20,6 +23,9 @@ DEBUG = os.getenv("DEBUG", "0") == "1"
 TUNNEL = os.getenv("TUNNEL", "none")
 # Bitrate the Mini App stream is re-encoded to (free tunnels are slow); "0" streams the original file
 STREAM_BITRATE = os.getenv("STREAM_BITRATE", "64k")
+# music beyond YouTube Music, searched in parallel (server/sources); remove a name to switch it off
+SOURCES = os.getenv("SOURCES", "zaycev,bandcamp,jamendo,archive,rutube").lower()
+JAMENDO_CLIENT_ID = os.getenv("JAMENDO_CLIENT_ID", "")  # free key from devportal.jamendo.com; empty = Jamendo off
 
 DATA_DIR = Path(os.getenv("DATA_DIR", ROOT))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -48,8 +54,9 @@ _STARTED = int(time.time())
 
 
 def webapp_url() -> str:
+    base = f"{PUBLIC_API_URL}/app/" if SERVE_DOCS and PUBLIC_API_URL else WEBAPP_URL
     # v= changes on every start so iOS WebViews can't keep serving a stale cached index.html
-    sep = "&" if "?" in WEBAPP_URL else "?"
+    sep = "&" if "?" in base else "?"
     if not PUBLIC_API_URL:
-        return f"{WEBAPP_URL}{sep}v={_STARTED}"
-    return f"{WEBAPP_URL}{sep}api={quote(PUBLIC_API_URL, safe='')}&v={_STARTED}"
+        return f"{base}{sep}v={_STARTED}"
+    return f"{base}{sep}api={quote(PUBLIC_API_URL, safe='')}&v={_STARTED}"

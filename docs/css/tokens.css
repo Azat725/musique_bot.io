@@ -1,23 +1,29 @@
-/* Musique design tokens — French flag palette: white, bordeaux, navy. Flat colours only. */
+/* Musique design tokens — French flag palette (bordeaux, navy) on warm cream paper. Flat colours only. */
 :root {
   --navy: #14213D;
-  --navy-deep: #0B1426;
   --bordeaux: #7B1E2B;
   --white: #FFFFFF;
 
-  --bg: #FFFFFF;
-  --surface: #F4F5F8;
-  --surface-2: #E9ECF2;
+  --bg: #EFE4CF;
+  --surface: #F8F1E3;
+  --surface-2: #E6D8BE;
   --text: #14213D;
-  --text-2: #5B6478;
-  --text-3: #8C93A3;
-  --line: #E3E6EC;
-  --accent: #7B1E2B;
+  --text-2: #5E5546;
+  --text-3: #7D7260;
+  --line: #DCCDB1;
+  --accent: #7B1E2B;        /* fills: buttons, progress, switches (white text on it) */
+  --accent-text: #7B1E2B;   /* accent used as text/icon colour on the background */
   --accent-press: #63161F;
-  --accent-soft: #F3E7E9;
+  --accent-soft: #E8D3C8;
   --on-accent: #FFFFFF;
   --tile-navy: #14213D;
-  --scrim: rgba(11, 20, 38, 0.45);
+  --mini: #14213D;
+  --on-mini: #FFFFFF;
+  --toast: #14213D;
+  --on-toast: #F8F1E3;
+  --scrim: rgba(26, 20, 16, 0.45);
+  --shade: rgba(26, 20, 16, 0.55);
+  --shadow: rgba(60, 38, 18, 0.28);
   --vinyl: #101218;
   --groove: rgba(255, 255, 255, 0.05);
   --groove-strong: rgba(255, 255, 255, 0.11);
@@ -33,24 +39,33 @@
   --mini-h: 64px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --ease: cubic-bezier(.2, .75, .25, 1);
+  --ease-io: cubic-bezier(.65, 0, .35, 1); /* ease-in-out for every screen and panel transition */
 }
 
+/* warm dark: brown-black like an old record player cabinet, cream text */
 :root[data-theme="dark"] {
-  --bg: #0B1426;
-  --surface: #14213D;
-  --surface-2: #1B2A4A;
-  --text: #FFFFFF;
-  --text-2: #A3ADC2;
-  --text-3: #6F7A93;
-  --line: #24324F;
+  --bg: #1A1410;
+  --surface: #241C16;
+  --surface-2: #2E241C;
+  --text: #F1E6D2;
+  --text-2: #BFAE95;
+  --text-3: #8A7B66;
+  --line: #3A2E24;
   --accent: #A8394A;
+  --accent-text: #D06A75;
   --accent-press: #8E2E3D;
-  --accent-soft: #2A1E31;
+  --accent-soft: #3A2224;
   --on-accent: #FFFFFF;
-  --tile-navy: #1B2A4A;
-  --scrim: rgba(0, 0, 0, 0.55);
-  --vinyl: #05070C;
-  --groove: rgba(255, 255, 255, 0.045);
-  --groove-strong: rgba(255, 255, 255, 0.1);
-  --sheen: rgba(255, 255, 255, 0.06);
+  --tile-navy: #2A3247;
+  --mini: #2E241C;
+  --on-mini: #F1E6D2;
+  --toast: #F1E6D2;
+  --on-toast: #1A1410;
+  --scrim: rgba(0, 0, 0, 0.6);
+  --shade: rgba(10, 7, 5, 0.6);
+  --shadow: rgba(0, 0, 0, 0.55);
+  --vinyl: #0A0806;
+  --groove: rgba(255, 240, 220, 0.045);
+  --groove-strong: rgba(255, 240, 220, 0.1);
+  --sheen: rgba(255, 240, 220, 0.06);
 }

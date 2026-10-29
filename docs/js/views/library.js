@@ -1,12 +1,13 @@
 import { api } from '../api.js';
 import { plural, t } from '../i18n.js';
-import { likes } from '../store.js';
-import { esc, h, haptic, icon, promptName } from '../ui.js';
+import { getPlaylists, invalidatePlaylists, likes } from '../store.js';
+import { esc, h, haptic, icon, promptName, thumb } from '../ui.js';
 
 function mosaic(covers) {
   if (!covers.length) return `<div class="mosaic mosaic--empty">${icon('library')}</div>`;
-  if (covers.length < 4) return `<div class="mosaic"><img src="${esc(covers[0])}" alt="" referrerpolicy="no-referrer"></div>`;
-  return `<div class="mosaic mosaic--4">${covers.map((c) => `<img src="${esc(c)}" alt="" referrerpolicy="no-referrer">`).join('')}</div>`;
+  const img = (c, px) => `<img src="${esc(thumb(c, px))}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`;
+  if (covers.length < 4) return `<div class="mosaic">${img(covers[0], 168)}</div>`;
+  return `<div class="mosaic mosaic--4">${covers.map((c) => img(c, 96)).join('')}</div>`;
 }
 
 export async function render(_, nav) {
@@ -27,8 +28,10 @@ export async function render(_, nav) {
   root.querySelector('[data-go="history"]').addEventListener('click', () => nav.push('playlist', { kind: 'history', title: t('lib_history') }));
 
   const list = root.querySelector('.playlists');
+  let dirty = false;
+  document.addEventListener('playlists-changed', () => { dirty = true; });
   async function load() {
-    const { playlists } = await api.playlists();
+    const playlists = await getPlaylists();
     list.innerHTML = '';
     if (!playlists.length) {
       list.append(h(`<div class="empty empty--inline"><div class="empty__text">${esc(t('lib_empty_playlists'))}</div></div>`));
@@ -47,13 +50,14 @@ export async function render(_, nav) {
     const name = await promptName({ title: t('lib_new_playlist'), action: t('create') });
     if (!name) return;
     const { id } = await api.createPlaylist(name);
+    invalidatePlaylists();
     haptic('success');
     nav.push('playlist', { kind: 'user', id, title: name });
   });
 
   await load();
   root.onShow = () => {
-    load();
+    if (dirty) { dirty = false; load(); }
     root.querySelector('[data-go="likes"] .tile__sub').textContent = plural(likes.size);
   };
   return root;

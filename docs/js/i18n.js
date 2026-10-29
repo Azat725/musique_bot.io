@@ -5,8 +5,8 @@ const DICT = {
     home_recent: 'Недавно слушали', home_trending: 'В тренде', home_top_ru: 'Топ дня', home_top_global: 'Мировой топ',
     home_genres: 'Жанры', see_all: 'Все',
     genre_pop: 'Поп', genre_hiphop: 'Хип-хоп', genre_rock: 'Рок', genre_dance: 'Электроника', genre_latin: 'Латино', genre_jazz: 'Джаз',
-    search_placeholder: 'Трек, исполнитель, альбом', search_hint: 'Найдите любую музыку', search_hint_sub: 'Поиск по YouTube Music и открытым источникам',
-    search_nothing: 'Ничего не найдено', search_recent: 'Вы искали', search_clear: 'Очистить',
+    search_placeholder: 'Трек, исполнитель, альбом', search_hint: 'Найти пластинку', search_hint_sub: '',
+    search_nothing: 'Ничего не найдено', search_recent: 'Вы искали', search_clear: 'Очистить', search_more: 'Другие источники',
     lib_likes: 'Избранное', lib_history: 'История', lib_playlists: 'Плейлисты', lib_new_playlist: 'Новый плейлист',
     lib_empty_playlists: 'Создайте первый плейлист — добавляйте треки через меню «⋯».',
     tracks_one: 'трек', tracks_few: 'трека', tracks_many: 'треков',
@@ -15,15 +15,18 @@ const DICT = {
     playlist_empty: 'Здесь пока пусто', likes_empty: 'Отмечайте треки сердцем — они появятся здесь',
     history_empty: 'Вы ещё ничего не слушали', clear_history: 'Очистить историю',
     menu_like: 'В избранное', menu_unlike: 'Убрать из избранного', menu_add_playlist: 'Добавить в плейлист',
-    menu_send: 'Отправить в чат', menu_play_next: 'Играть следующим', menu_remove: 'Убрать из плейлиста',
+    menu_send: 'Отправить в чат', menu_play_next: 'Играть следующим', menu_remove: 'Убрать из плейлиста', menu_artist: 'К исполнителю',
+    artist_kicker: 'Исполнитель', artist_popular: 'Популярные треки', artist_albums: 'Альбомы', artist_singles: 'Синглы и EP',
+    artist_related: 'Похожие исполнители', artist_about: 'Об исполнителе', artist_choose: 'Чья карточка?',
+    artist_listeners: '{n} слушателей в месяц', artist_subscribers: '{n} подписчиков', album_kicker: 'Альбом', more: 'Ещё',
     cancel: 'Отмена', save: 'Сохранить', create: 'Создать',
     toast_sending: 'Отправляем трек в чат с ботом…', toast_added: 'Добавлено в «{name}»', toast_liked: 'Добавлено в избранное',
     toast_unliked: 'Удалено из избранного', toast_next: 'Сыграет следующим', toast_unavailable: 'Трек недоступен, переключаю',
     toast_error: 'Что-то пошло не так', toast_removed: 'Удалено',
     pill_playlist: 'В плейлист', pill_send: 'В чат',
-    player_now: 'Сейчас играет', player_loading: 'Загрузка…', player_nothing: 'Ничего не играет',
+    player_now: 'Сейчас играет', player_nothing: 'Ничего не играет',
     settings_appearance: 'Оформление', settings_theme: 'Тема', theme_system: 'Авто', theme_light: 'Светлая', theme_dark: 'Тёмная',
-    settings_language: 'Язык', settings_sounds: 'Звук пластинки', settings_sounds_hint: 'Щелчок иглы при смене трека',
+    settings_language: 'Язык', settings_sounds: 'Звук пластинки', settings_sounds_hint: 'Треск при загрузке, скретч при перемотке, щелчок иглы',
     settings_data: 'Данные', settings_about: 'О приложении',
     about_text: 'Musique ищет музыку в YouTube Music и открытых источниках. Откройте трек на весь экран — он заиграет на виниловой пластинке.',
     settings_cleared: 'История очищена',
@@ -35,8 +38,8 @@ const DICT = {
     home_recent: 'Recently played', home_trending: 'Trending', home_top_ru: 'Top today', home_top_global: 'Global top',
     home_genres: 'Genres', see_all: 'All',
     genre_pop: 'Pop', genre_hiphop: 'Hip-hop', genre_rock: 'Rock', genre_dance: 'Electronic', genre_latin: 'Latin', genre_jazz: 'Jazz',
-    search_placeholder: 'Track, artist, album', search_hint: 'Find any music', search_hint_sub: 'Search across YouTube Music and open sources',
-    search_nothing: 'Nothing found', search_recent: 'Recent searches', search_clear: 'Clear',
+    search_placeholder: 'Track, artist, album', search_hint: 'Find a record', search_hint_sub: '',
+    search_nothing: 'Nothing found', search_recent: 'Recent searches', search_clear: 'Clear', search_more: 'Other sources',
     lib_likes: 'Favourites', lib_history: 'History', lib_playlists: 'Playlists', lib_new_playlist: 'New playlist',
     lib_empty_playlists: 'Create your first playlist — add tracks via the “⋯” menu.',
     tracks_one: 'track', tracks_few: 'tracks', tracks_many: 'tracks',
@@ -45,15 +48,18 @@ const DICT = {
     playlist_empty: 'Nothing here yet', likes_empty: 'Tap the heart on a track to save it here',
     history_empty: 'You haven’t listened to anything yet', clear_history: 'Clear history',
     menu_like: 'Add to favourites', menu_unlike: 'Remove from favourites', menu_add_playlist: 'Add to playlist',
-    menu_send: 'Send to chat', menu_play_next: 'Play next', menu_remove: 'Remove from playlist',
+    menu_send: 'Send to chat', menu_play_next: 'Play next', menu_remove: 'Remove from playlist', menu_artist: 'Go to artist',
+    artist_kicker: 'Artist', artist_popular: 'Popular', artist_albums: 'Albums', artist_singles: 'Singles & EPs',
+    artist_related: 'Fans also like', artist_about: 'About', artist_choose: 'Which artist?',
+    artist_listeners: '{n} monthly listeners', artist_subscribers: '{n} subscribers', album_kicker: 'Album', more: 'More',
     cancel: 'Cancel', save: 'Save', create: 'Create',
     toast_sending: 'Sending the track to your chat…', toast_added: 'Added to “{name}”', toast_liked: 'Added to favourites',
     toast_unliked: 'Removed from favourites', toast_next: 'Will play next', toast_unavailable: 'Track unavailable, skipping',
     toast_error: 'Something went wrong', toast_removed: 'Removed',
     pill_playlist: 'To playlist', pill_send: 'To chat',
-    player_now: 'Now playing', player_loading: 'Loading…', player_nothing: 'Nothing playing',
+    player_now: 'Now playing', player_nothing: 'Nothing playing',
     settings_appearance: 'Appearance', settings_theme: 'Theme', theme_system: 'Auto', theme_light: 'Light', theme_dark: 'Dark',
-    settings_language: 'Language', settings_sounds: 'Vinyl sound', settings_sounds_hint: 'Needle click when the track changes',
+    settings_language: 'Language', settings_sounds: 'Vinyl sound', settings_sounds_hint: 'Crackle while loading, scratch when scrubbing, needle click',
     settings_data: 'Data', settings_about: 'About',
     about_text: 'Musique finds music on YouTube Music and open sources. Open a track full screen and it plays on a vinyl record.',
     settings_cleared: 'History cleared',
@@ -66,10 +72,6 @@ let lang = 'ru';
 export function setLang(value) {
   lang = DICT[value] ? value : 'en';
   document.documentElement.lang = lang;
-}
-
-export function getLang() {
-  return lang;
 }
 
 export function t(key, vars = {}) {

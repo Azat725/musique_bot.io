@@ -3,22 +3,53 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#FFFFFF">
+  <meta name="theme-color" content="#EFE4CF">
   <title>Musique</title>
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- fonts must never block rendering: if Google is unreachable the system fonts are used -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&display=swap&subset=cyrillic" rel="stylesheet" media="print" onload="this.media='all'">
-  <link rel="stylesheet" href="css/tokens.css?v=5">
-  <link rel="stylesheet" href="css/app.css?v=5">
-  <link rel="stylesheet" href="css/player.css?v=5">
-  <!-- local copy of https://telegram.org/js/telegram-web-app.js?64 (taken 2026-10-29): telegram.org hangs on some networks/VPNs, and the app module waits for this script -->
-  <script src="vendor/telegram-web-app.js?v=1"></script>
-  <script>try { window.Telegram.WebApp.ready(); } catch (e) {}</script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="css/tokens.css?v=19">
+  <link rel="stylesheet" href="css/app.css?v=19">
+  <link rel="stylesheet" href="css/player.css?v=19">
+  <!-- local copy of https://telegram.org/js/telegram-web-app.js?64 (taken 2026-10-29, its two per-event console.log calls removed): telegram.org hangs on some networks/VPNs, and the app module waits for this script -->
+  <script src="vendor/telegram-web-app.js?v=2"></script>
+  <script>
+    try { window.Telegram.WebApp.ready(); } catch (e) {}
+    // theme before the first paint, so a dark-theme user never sees a white flash
+    (function () {
+      var s = {};
+      try { s = JSON.parse(localStorage.getItem('musique.settings')) || {}; } catch (e) {}
+      var w = window.Telegram && window.Telegram.WebApp;
+      var theme = s.theme && s.theme !== 'system' ? s.theme
+        : (w && w.colorScheme) || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.dataset.theme = theme;
+      if (theme === 'dark') document.querySelector('meta[name="theme-color"]').content = '#1A1410';
+    })();
+  </script>
+  <!-- one version for every module: imports inside the modules are bare, and iOS caches them separately -->
+  <script type="importmap">
+  { "imports": {
+    "./js/api.js": "./js/api.js?v=19", "./js/i18n.js": "./js/i18n.js?v=19", "./js/player.js": "./js/player.js?v=19",
+    "./js/store.js": "./js/store.js?v=19", "./js/ui.js": "./js/ui.js?v=19", "./js/vinyl.js": "./js/vinyl.js?v=19",
+    "./js/sfx.js": "./js/sfx.js?v=19",
+    "./js/views/artist.js": "./js/views/artist.js?v=19", "./js/views/home.js": "./js/views/home.js?v=19", "./js/views/library.js": "./js/views/library.js?v=19",
+    "./js/views/playlist.js": "./js/views/playlist.js?v=19", "./js/views/search.js": "./js/views/search.js?v=19",
+    "./js/views/settings.js": "./js/views/settings.js?v=19"
+  } }
+  </script>
+  <link rel="modulepreload" href="js/app.js?v=19">
+  <link rel="modulepreload" href="js/api.js?v=19">
+  <link rel="modulepreload" href="js/player.js?v=19">
+  <link rel="modulepreload" href="js/ui.js?v=19">
+  <link rel="modulepreload" href="js/vinyl.js?v=19">
+  <link rel="modulepreload" href="js/store.js?v=19">
+  <link rel="modulepreload" href="js/i18n.js?v=19">
+  <link rel="modulepreload" href="js/views/home.js?v=19">
 </head>
 <body>
-  <main id="main"><div class="boot" style="display:flex;align-items:center;justify-content:center;height:60vh;color:#7B1E2B;font:600 22px Georgia,serif;letter-spacing:.04em">Musique</div></main>
+  <main id="main"><div class="boot" style="display:flex;align-items:center;justify-content:center;height:60vh;color:var(--accent);font:600 22px Georgia,serif;letter-spacing:.04em">Musique</div></main>
   <div id="mini" class="mini" role="button" aria-label="player"></div>
   <nav id="nav" class="nav"></nav>
   <script>
@@ -35,7 +66,7 @@
         if (window.__musiqueStarted && !errs.length) { b.textContent = 'Подключение к серверу…'; return; }
         var info = ['Загрузка не завершилась', 'app.js: ' + (window.__musiqueStarted ? 'запущен' : 'не запустился'), 'Telegram SDK: ' + (window.Telegram && window.Telegram.WebApp ? 'ok' : 'нет')]
           .concat(errs.length ? errs : ['ошибок не поймано — скрипт, вероятно, не загрузился']);
-        b.style.cssText = 'padding:24px;color:#14213D;font:14px/1.5 sans-serif;white-space:pre-wrap;word-break:break-word';
+        b.style.cssText = 'padding:24px;color:var(--text);font:14px/1.5 sans-serif;white-space:pre-wrap;word-break:break-word';
         b.textContent = info.join('\n');
       }, 8000);
       // ?musique_debug=1: overlay with load timings, for debugging inside Telegram clients where devtools are unavailable
@@ -43,7 +74,8 @@
         var lines = performance.getEntriesByType('resource').map(function (e) {
           return Math.round(e.startTime) + '+' + Math.round(e.duration) + ' ' + (e.responseStatus || '') + ' ' + e.name.replace(/^https:\/\/[^/]+/, '').split('?')[0].slice(-40);
         });
-        lines.unshift('dom ' + Math.round(performance.timing.domContentLoadedEventEnd - performance.timing.navigationStart) + ' ms, started ' + !!window.__musiqueStarted + ', marks ' + JSON.stringify(window.__musiqueMarks || {}));
+        var nav = performance.getEntriesByType('navigation')[0];
+        lines.unshift('dom ' + Math.round(nav ? nav.domContentLoadedEventEnd : 0) + ' ms, started ' + !!window.__musiqueStarted);
         var d = document.createElement('pre');
         d.style.cssText = 'position:fixed;inset:auto 0 0 0;max-height:60vh;overflow:auto;margin:0;padding:8px;background:#fff;color:#000;font:10px/1.3 monospace;z-index:99999';
         d.textContent = lines.join('\n');
@@ -51,6 +83,6 @@
       }, 25000);
     })();
   </script>
-  <script type="module" src="js/app.js?v=11" onerror="window.__musiqueNote('не удалось загрузить js/app.js')"></script>
+  <script type="module" src="js/app.js?v=19" onerror="window.__musiqueNote('не удалось загрузить js/app.js')"></script>
 </body>
 </html>

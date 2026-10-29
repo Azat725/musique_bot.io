@@ -7,7 +7,7 @@ from . import config
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS tracks (
-    id TEXT PRIMARY KEY, title TEXT, artist TEXT, duration INTEGER, cover TEXT
+    id TEXT PRIMARY KEY, title TEXT, artist TEXT, duration INTEGER, cover TEXT, artist_id TEXT DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS likes (
     user_id INTEGER, track_id TEXT, created REAL, PRIMARY KEY (user_id, track_id)
@@ -24,6 +24,9 @@ CREATE TABLE IF NOT EXISTS history (
 CREATE TABLE IF NOT EXISTS tg_files (
     track_id TEXT PRIMARY KEY, file_id TEXT
 );
+CREATE TABLE IF NOT EXISTS sources (
+    id TEXT PRIMARY KEY, ref TEXT
+);
 CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id);
 """
 
@@ -35,6 +38,11 @@ async def init() -> None:
     _db = await aiosqlite.connect(config.DB_PATH)
     _db.row_factory = aiosqlite.Row
     await _db.executescript(SCHEMA)
+    # databases created before the artist card have no artist_id column yet
+    async with _db.execute("PRAGMA table_info(tracks)") as cur:
+        columns = {r["name"] for r in await cur.fetchall()}
+    if "artist_id" not in columns:
+        await _db.execute("ALTER TABLE tracks ADD COLUMN artist_id TEXT DEFAULT ''")
     await _db.commit()
 
 
@@ -45,15 +53,16 @@ async def close() -> None:
 
 def _track(row) -> dict:
     return {"id": row["id"], "title": row["title"], "artist": row["artist"],
-            "duration": row["duration"], "cover": row["cover"]}
+            "duration": row["duration"], "cover": row["cover"], "artist_id": row["artist_id"] or ""}
 
 
 async def save_track(t: dict) -> None:
     await _db.execute(
-        "INSERT INTO tracks (id, title, artist, duration, cover) VALUES (?, ?, ?, ?, ?) "
+        "INSERT INTO tracks (id, title, artist, duration, cover, artist_id) VALUES (?, ?, ?, ?, ?, ?) "
         "ON CONFLICT(id) DO UPDATE SET title=excluded.title, artist=excluded.artist, "
-        "duration=excluded.duration, cover=COALESCE(NULLIF(excluded.cover, ''), tracks.cover)",
-        (t["id"], t["title"], t["artist"], t["duration"], t["cover"]),
+        "duration=excluded.duration, cover=COALESCE(NULLIF(excluded.cover, ''), tracks.cover), "
+        "artist_id=COALESCE(NULLIF(excluded.artist_id, ''), tracks.artist_id)",
+        (t["id"], t["title"], t["artist"], t["duration"], t["cover"], t.get("artist_id") or ""),
     )
 
 
@@ -61,6 +70,18 @@ async def get_track(track_id: str) -> dict | None:
     async with _db.execute("SELECT * FROM tracks WHERE id = ?", (track_id,)) as cur:
         row = await cur.fetchone()
     return _track(row) if row else None
+
+
+async def save_sources(rows: list[tuple[str, str]]) -> None:
+    """Where tracks from other sources live (a URL or an item path), keyed by their track id."""
+    await _db.executemany("INSERT INTO sources (id, ref) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET ref = excluded.ref", rows)
+    await _db.commit()
+
+
+async def source_ref(track_id: str) -> str | None:
+    async with _db.execute("SELECT ref FROM sources WHERE id = ?", (track_id,)) as cur:
+        row = await cur.fetchone()
+    return row["ref"] if row else None
 
 
 # ---------- likes ----------

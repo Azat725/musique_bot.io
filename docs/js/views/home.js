@@ -1,7 +1,7 @@
 import { api } from '../api.js';
 import { t } from '../i18n.js';
 import { player } from '../player.js';
-import { brandMark, cover, esc, h, haptic, icon, trackList } from '../ui.js';
+import { brandMark, cover, esc, h, haptic, icon, openArtist, trackList } from '../ui.js';
 
 function greeting() {
   const hr = new Date().getHours();
@@ -12,11 +12,15 @@ function cards(tracks) {
   const row = h('<div class="cards"></div>');
   tracks.forEach((tr, i) => {
     const card = h(`<button class="card">
-      ${cover(tr.cover, 'card__cover')}
+      ${cover(tr.cover, 'card__cover', 400)}
       <span class="card__title">${esc(tr.title)}</span>
       <span class="card__artist">${esc(tr.artist)}</span>
     </button>`);
-    card.addEventListener('click', () => { haptic('light'); player.playQueue(tracks, i); });
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.card__artist')) { openArtist(tr); return; }
+      haptic('light');
+      player.playQueue(tracks, i);
+    });
     row.append(card);
   });
   return row;

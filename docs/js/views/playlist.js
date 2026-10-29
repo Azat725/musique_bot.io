@@ -1,13 +1,19 @@
 import { api } from '../api.js';
 import { plural, t } from '../i18n.js';
 import { player } from '../player.js';
+import { invalidatePlaylists, likedList } from '../store.js';
 import { confirmDialog, esc, h, haptic, icon, promptName, sheet, toast, trackList } from '../ui.js';
 
 async function loadTracks(p) {
   switch (p.kind) {
     case 'tracks': return p.tracks;
     case 'yt': return (await api.collection(p.id)).tracks;
-    case 'likes': return (await api.likes()).tracks;
+    case 'album': {
+      const data = await api.album(p.id);
+      p.title = data.title || p.title;
+      return data.tracks;
+    }
+    case 'likes': return likedList();
     case 'history': return (await api.history()).tracks;
     case 'user': {
       const data = await api.playlist(p.id);
@@ -24,7 +30,7 @@ const EMPTY = { likes: 'likes_empty', history: 'history_empty' };
 export async function render(params, nav) {
   const root = h(`<div class="view">
     <header class="view__head view__head--list">
-      <div class="view__kicker">${esc(params.kind === 'user' ? t('lib_playlists') : '')}</div>
+      <div class="view__kicker">${esc(params.kind === 'user' ? t('lib_playlists') : params.kind === 'album' ? t('album_kicker') : '')}</div>
       <h1 class="view__title">${esc(params.title)}</h1>
       <div class="view__sub"></div>
       <div class="list-actions">
@@ -75,10 +81,12 @@ export async function render(params, nav) {
         const name = await promptName({ title: t('rename'), value: params.title, action: t('save') });
         if (!name) return;
         await api.renamePlaylist(params.id, name);
+        invalidatePlaylists();
         params.title = name;
         root.querySelector('.view__title').textContent = name;
       } else if (i === 1 && await confirmDialog(t('playlist_delete_confirm', { name: params.title }))) {
         await api.deletePlaylist(params.id);
+        invalidatePlaylists();
         haptic('success');
         nav.back();
       }
@@ -89,7 +97,9 @@ export async function render(params, nav) {
   root.querySelector('.view__title').textContent = params.title;
   draw();
   if (params.kind === 'likes') {
-    root.onShow = async () => { tracks = await loadTracks(params); draw(); };
+    let dirty = false;
+    document.addEventListener('likes-changed', () => { dirty = true; });
+    root.onShow = async () => { if (!dirty) return; dirty = false; tracks = await loadTracks(params); draw(); };
   }
   return root;
 }
