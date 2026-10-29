@@ -1,6 +1,7 @@
 import glob
 import os
 import shutil
+import time
 from pathlib import Path
 from urllib.parse import quote
 
@@ -43,8 +44,12 @@ def _find_ffmpeg() -> str | None:
 FFMPEG = _find_ffmpeg()
 
 
+_STARTED = int(time.time())
+
+
 def webapp_url() -> str:
-    if not PUBLIC_API_URL:
-        return WEBAPP_URL
+    # v= changes on every start so iOS WebViews can't keep serving a stale cached index.html
     sep = "&" if "?" in WEBAPP_URL else "?"
-    return f"{WEBAPP_URL}{sep}api={quote(PUBLIC_API_URL, safe='')}"
+    if not PUBLIC_API_URL:
+        return f"{WEBAPP_URL}{sep}v={_STARTED}"
+    return f"{WEBAPP_URL}{sep}api={quote(PUBLIC_API_URL, safe='')}&v={_STARTED}"
