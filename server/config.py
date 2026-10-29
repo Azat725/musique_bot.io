@@ -51,8 +51,9 @@ _STARTED = int(time.time())
 
 
 def webapp_url() -> str:
+    base = f"{PUBLIC_API_URL}/app/" if SERVE_DOCS and PUBLIC_API_URL else WEBAPP_URL
     # v= changes on every start so iOS WebViews can't keep serving a stale cached index.html
-    sep = "&" if "?" in WEBAPP_URL else "?"
+    sep = "&" if "?" in base else "?"
     if not PUBLIC_API_URL:
-        return f"{WEBAPP_URL}{sep}v={_STARTED}"
-    return f"{WEBAPP_URL}{sep}api={quote(PUBLIC_API_URL, safe='')}&v={_STARTED}"
+        return f"{base}{sep}v={_STARTED}"
+    return f"{base}{sep}api={quote(PUBLIC_API_URL, safe='')}&v={_STARTED}"
