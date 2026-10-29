@@ -1,14 +1,26 @@
 const tg = window.Telegram?.WebApp;
 const API_KEY = 'musique.api';
 
-function resolveBase() {
-  const fromQuery = new URLSearchParams(location.search).get('api');
-  if (fromQuery) {
-    try { localStorage.setItem(API_KEY, fromQuery); } catch {}
-    return fromQuery.replace(/\/$/, '');
+/** A usable server address from a possibly over-encoded value ("https%3A%2F%2F…"), or '' if there is none. */
+export function cleanBase(value) {
+  let v = String(value || '').trim();
+  for (let i = 0; i < 3 && !/^https?:\/\//i.test(v) && v.includes('%'); i++) {
+    try { v = decodeURIComponent(v); } catch { break; }
   }
   try {
-    const saved = localStorage.getItem(API_KEY);
+    const u = new URL(v);
+    return /^https?:$/.test(u.protocol) ? v.replace(/\/$/, '') : '';
+  } catch { return ''; }
+}
+
+function resolveBase() {
+  const fromQuery = cleanBase(new URLSearchParams(location.search).get('api'));
+  if (fromQuery) {
+    try { localStorage.setItem(API_KEY, fromQuery); } catch {}
+    return fromQuery;
+  }
+  try {
+    const saved = cleanBase(localStorage.getItem(API_KEY));
     if (saved) return saved;
   } catch {}
   if (/^(localhost|127\.)/.test(location.hostname) || location.protocol === 'file:') return 'http://localhost:8000';
@@ -48,7 +60,9 @@ const del = (p) => request('DELETE', p);
 let homeRequest = null;
 
 // <audio> can't send the header that skips ngrok's interstitial page, so there the audio is fetched explicitly
-const usesBlob = /\.ngrok[\w-]*\.(dev|app|io)$/.test(new URL(base || 'http://x').hostname);
+const usesBlob = (() => {
+  try { return /\.ngrok[\w-]*\.(dev|app|io)$/.test(new URL(base || 'http://x').hostname); } catch { return false; }
+})();
 
 export const api = {
   hasServer: () => !!base,
