@@ -1,7 +1,8 @@
 import { api } from '../api.js';
 import { t } from '../i18n.js';
 import { player } from '../player.js';
-import { cover, esc, h, haptic, icon, thumb, trackList } from '../ui.js';
+import { favArtists, loadFavArtists, toggleFavArtist } from '../store.js';
+import { cover, esc, h, haptic, icon, thumb, toast, trackList } from '../ui.js';
 
 function sectionHead(title, onAll) {
   const head = h(`<div class="section__head"><h2 class="section__title">${esc(title)}</h2></div>`);
@@ -64,6 +65,7 @@ export async function render(params, nav) {
       <div class="list-actions">
         <button class="btn btn--accent" data-play>${icon('play')}${esc(t('play'))}</button>
         <button class="btn btn--outline" data-shuffle>${icon('shuffle')}${esc(t('shuffle'))}</button>
+        <button class="icon-btn artist__fav" data-fav aria-label="${esc(t('artist_fav'))}"></button>
       </div>
     </header>
     <div class="artist__body"></div>
@@ -71,6 +73,26 @@ export async function render(params, nav) {
   const body = root.querySelector('.artist__body');
   const tracks = a.tracks || [];
   root.querySelector('.list-actions').classList.toggle('is-disabled', !tracks.length);
+  // the microphone adds the artist to the favourite artists in the Library
+  const fav = root.querySelector('[data-fav]');
+  const me = { id: params.id || a.id, name: a.name || params.name, cover: a.cover || '' };
+  const syncFav = () => {
+    const on = favArtists.has(me.id);
+    fav.innerHTML = icon(on ? 'micFill' : 'mic');
+    fav.classList.toggle('is-on', on);
+    fav.setAttribute('aria-pressed', on);
+  };
+  loadFavArtists().then(syncFav, syncFav);
+  document.addEventListener('fav-artists-changed', syncFav);
+  fav.addEventListener('click', async () => {
+    haptic('light');
+    try {
+      const now = await toggleFavArtist(me);
+      haptic('success');
+      toast(t(now ? 'toast_artist_fav' : 'toast_artist_unfav'));
+    } catch { toast(t('toast_error')); }
+    syncFav();
+  });
   root.querySelector('[data-play]').addEventListener('click', () => { if (tracks.length) { haptic('medium'); player.playQueue(tracks, 0); } });
   root.querySelector('[data-shuffle]').addEventListener('click', () => { if (tracks.length) { haptic('medium'); player.playQueue(tracks, 0, { shuffle: true }); } });
 

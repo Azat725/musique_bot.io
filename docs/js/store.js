@@ -85,6 +85,43 @@ export async function toggleLike(track) {
   return true;
 }
 
+// ---------- favourite artists ----------
+
+export const favArtists = new Set();
+let favArtistList = [];
+let favArtistsLoaded = null;
+
+export function loadFavArtists() {
+  favArtistsLoaded ||= api.favArtists().then(({ artists }) => {
+    favArtistList = artists;
+    favArtists.clear();
+    artists.forEach((a) => favArtists.add(a.id));
+  });
+  favArtistsLoaded.catch(() => { favArtistsLoaded = null; });
+  return favArtistsLoaded;
+}
+
+export async function favArtistsList() {
+  await loadFavArtists();
+  return favArtistList.slice();
+}
+
+/** Add or remove an artist ({id, name, cover}); returns whether it is now a favourite. */
+export async function toggleFavArtist(artist) {
+  const now = !favArtists.has(artist.id);
+  if (now) {
+    favArtists.add(artist.id);
+    favArtistList = [artist, ...favArtistList.filter((a) => a.id !== artist.id)];
+    await api.addFavArtist(artist);
+  } else {
+    favArtists.delete(artist.id);
+    favArtistList = favArtistList.filter((a) => a.id !== artist.id);
+    await api.removeFavArtist(artist.id);
+  }
+  document.dispatchEvent(new CustomEvent('fav-artists-changed'));
+  return now;
+}
+
 // ---------- playlists ----------
 
 let playlistsCache = null;

@@ -24,6 +24,9 @@ CREATE TABLE IF NOT EXISTS history (
 CREATE TABLE IF NOT EXISTS tg_files (
     track_id TEXT PRIMARY KEY, file_id TEXT
 );
+CREATE TABLE IF NOT EXISTS fav_artists (
+    user_id INTEGER, artist_id TEXT, name TEXT, cover TEXT, created REAL, PRIMARY KEY (user_id, artist_id)
+);
 CREATE TABLE IF NOT EXISTS sources (
     id TEXT PRIMARY KEY, ref TEXT
 );
@@ -82,6 +85,27 @@ async def source_ref(track_id: str) -> str | None:
     async with _db.execute("SELECT ref FROM sources WHERE id = ?", (track_id,)) as cur:
         row = await cur.fetchone()
     return row["ref"] if row else None
+
+
+# ---------- favourite artists ----------
+
+async def fav_artists(user_id: int) -> list[dict]:
+    async with _db.execute("SELECT artist_id, name, cover FROM fav_artists WHERE user_id = ? ORDER BY created DESC",
+                           (user_id,)) as cur:
+        return [{"id": r["artist_id"], "name": r["name"], "cover": r["cover"]} for r in await cur.fetchall()]
+
+
+async def add_fav_artist(user_id: int, a: dict) -> None:
+    await _db.execute(
+        "INSERT INTO fav_artists VALUES (?, ?, ?, ?, ?) ON CONFLICT(user_id, artist_id) DO UPDATE SET "
+        "name = excluded.name, cover = COALESCE(NULLIF(excluded.cover, ''), fav_artists.cover)",
+        (user_id, a["id"], a["name"], a["cover"], time.time()))
+    await _db.commit()
+
+
+async def remove_fav_artist(user_id: int, artist_id: str) -> None:
+    await _db.execute("DELETE FROM fav_artists WHERE user_id = ? AND artist_id = ?", (user_id, artist_id))
+    await _db.commit()
 
 
 # ---------- likes ----------

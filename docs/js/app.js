@@ -7,13 +7,14 @@ import { initEq } from './eq.js';
 import { syncVinylNoise } from './sfx.js';
 import { closePlayer, initFullPlayer, isPlayerOpen, openPlayer, translate as translatePlayer } from './vinyl.js';
 import * as artist from './views/artist.js';
+import * as artists from './views/artists.js';
 import * as home from './views/home.js';
 import * as library from './views/library.js';
 import * as playlist from './views/playlist.js';
 import * as search from './views/search.js';
 import * as settingsView from './views/settings.js';
 
-const VIEWS = { home, search, library, settings: settingsView, playlist, artist };
+const VIEWS = { home, search, library, settings: settingsView, playlist, artist, artists };
 const TABS = [['home', 'home', 'nav_home'], ['search', 'search', 'nav_search'], ['library', 'library', 'nav_library'], ['settings', 'settings', 'nav_settings']];
 const COLORS = { light: '#EFE4CF', dark: '#1A1410' }; // --bg of each theme, for Telegram's header and bars
 

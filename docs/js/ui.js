@@ -42,6 +42,10 @@ const ICONS = {
   check: P('m5 12.5 4.5 4.5L19 7.5'),
   sort: P('M7 5v14m0 0-3-3m3 3 3-3M14 7h6M14 12h4.5M14 17h3'),
   eq: P('M6 4v16M12 4v16M18 4v16') + '<rect class="fill" x="4" y="13" width="4" height="3" rx=".8"/><rect class="fill" x="10" y="7" width="4" height="3" rx=".8"/><rect class="fill" x="16" y="11" width="4" height="3" rx=".8"/>',
+  micFill: '<path class="fill" d="M12 3.5a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0v-5a3 3 0 0 1 3-3z"/>' + P('M6.5 11a5.5 5.5 0 0 0 11 0M12 16.5V20M9 20h6'),
+  // favourite artists: a microphone with a small heart beside it
+  micFav: P('M10 4.5a2.8 2.8 0 0 1 2.8 2.8v4.4a2.8 2.8 0 0 1-5.6 0V7.3A2.8 2.8 0 0 1 10 4.5zM4.8 11.3a5.2 5.2 0 0 0 10.4 0M10 16.5V20M7.2 20h5.6')
+    + '<path class="fill" d="M18.4 9.6s-2.9-1.7-2.9-3.7a1.5 1.5 0 0 1 2.9-.8 1.5 1.5 0 0 1 2.9.8c0 2-2.9 3.7-2.9 3.7z"/>',
   mic: P('M12 3.5a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0v-5a3 3 0 0 1 3-3zM6.5 11a5.5 5.5 0 0 0 11 0M12 16.5V20M9 20h6'),
 };
 

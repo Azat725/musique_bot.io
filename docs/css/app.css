@@ -254,6 +254,13 @@ body.player-open .eq i { animation-play-state: paused; } /* hidden under the ful
 .tile__sub { font-size: 13px; opacity: .75; margin-top: 2px; }
 .tile--accent { background: var(--accent); }
 .tile--navy { background: var(--tile-navy); }
+.tile--wide { grid-column: 1 / -1; height: 72px; flex-direction: row; align-items: center; gap: 14px; background: var(--surface); color: var(--text);
+  border: 3px double var(--line); }
+.tile--wide .ic { width: 30px; height: 30px; margin: 0; color: var(--accent-text); }
+.tile__text { display: flex; flex-direction: column; }
+.artist__fav { width: 44px; height: 44px; border: 1px solid var(--line); border-radius: var(--r-md); color: var(--text-2); }
+.artist__fav.is-on { color: var(--accent-text); border-color: var(--accent-text); }
+.artist__fav.is-on .ic { animation: like-pop .3s var(--ease); }
 .tile:active { opacity: .88; }
 
 .playlists { display: flex; flex-direction: column; }
