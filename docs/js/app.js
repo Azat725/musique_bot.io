@@ -230,9 +230,10 @@ document.addEventListener('error', (e) => {
   if (img.tagName !== 'IMG') return;
   if (img.src.includes('/hq720.jpg')) img.src = img.src.replace('/hq720.jpg', '/mqdefault.jpg');
   else if (img.src.includes('square250')) img.src = img.src.replace('square250', 'square100'); // Zaycev lacks some sizes
-  else if (img.classList.contains('cover')) {
-    // no picture at all: the vinyl placeholder instead of a broken-image icon
-    img.replaceWith(h(`<div class="${img.className} cover--empty">${icon('vinyl')}</div>`));
+  else if (img.closest('.record__label')) img.remove(); // the label stays plain bordeaux
+  else {
+    // no picture at all: the vinyl placeholder instead of a broken-image icon or an empty square
+    img.replaceWith(h(`<div class="${img.className} img-empty">${icon('vinyl')}</div>`));
   }
 }, true);
 
