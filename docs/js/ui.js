@@ -88,6 +88,14 @@ export function thumb(url, px = 144) {
   return url.replace(/=w\d+-h\d+/, `=w${px}-h${px}`);
 }
 
+const VINYL = '<div class="vl" aria-hidden="true"><div class="vl__slide"><div class="vl__disc"><span class="vl__groove"></span><span class="vl__label"></span></div></div><div class="vl__sleeve"><span class="vl__brand">Musique</span></div></div>';
+
+/** Loading placeholder: the same record-and-sleeve scene as the launch screen, smaller. It fades in
+ *  only after a quarter of a second, so fast screens never flash it. */
+export function loader() {
+  return `<div class="view-loader">${VINYL.replace('class="vl"', 'class="vl vl--sm"')}</div>`;
+}
+
 export function cover(url, cls = '', px = 144) {
   return url
     ? `<img class="cover ${cls}" src="${esc(thumb(url, px))}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`

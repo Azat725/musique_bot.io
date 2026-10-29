@@ -160,7 +160,7 @@ body.player-open .eq i { animation-play-state: paused; } /* hidden under the ful
 .chip { height: 34px; padding: 0 14px; border: 1px solid var(--line); border-radius: var(--r-md); font-size: 14px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chip:active { background: var(--surface); }
 
-/* ---------- empty / skeleton ---------- */
+/* ---------- empty / loading ---------- */
 
 .empty { text-align: center; padding: 56px 24px; color: var(--text-2); display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .empty--inline { padding: 18px 0; text-align: left; align-items: flex-start; }
@@ -170,14 +170,44 @@ body.player-open .eq i { animation-play-state: paused; } /* hidden under the ful
 .empty__text { font-size: 14px; max-width: 300px; }
 .empty .btn { margin-top: 14px; }
 
-.skeleton { display: flex; flex-direction: column; gap: 10px; padding-top: 6px; }
-.skeleton .cards { overflow: hidden; }
-.sk { background: var(--surface); border-radius: var(--r-sm); animation: pulse 1.2s ease-in-out infinite; }
-.sk--title { height: 22px; width: 45%; margin-top: 18px; }
-.sk--cover { width: 136px; height: 136px; border-radius: var(--r-md); }
-.sk--line { height: 12px; width: 100px; margin-top: 10px; }
-.sk--row { height: 56px; }
 @keyframes pulse { 50% { opacity: .5; } }
+
+/* vinyl loader: a record slides out of a cardboard sleeve, spins, and goes back in when done */
+.vl { --s: 132px; position: relative; width: calc(var(--s) * 1.62); height: var(--s); }
+.vl--sm { --s: 64px; }
+.vl__sleeve { position: absolute; left: 0; top: 0; z-index: 1; width: var(--s); height: var(--s); display: grid; place-items: center;
+  background: var(--surface); border: 3px double var(--line); border-radius: 4px; box-shadow: 0 6px 16px var(--shadow); }
+.vl--sm .vl__sleeve { border-width: 2px; box-shadow: 0 3px 8px var(--shadow); }
+.vl__brand { font: 600 calc(var(--s) * .14)/1 var(--font-serif); letter-spacing: .04em; color: var(--accent-text); }
+.vl--sm .vl__brand { display: none; }
+.vl__slide { position: absolute; left: calc(var(--s) * .04); top: calc(var(--s) * .04); width: calc(var(--s) * .92); height: calc(var(--s) * .92);
+  animation: vl-out .9s var(--ease-io) .15s both; }
+.vl__disc { position: absolute; inset: 0; border-radius: 50%; background: var(--vinyl);
+  /* grooves as flat rings: no gradients */
+  box-shadow: inset 0 0 0 calc(var(--s) * .05) var(--vinyl), inset 0 0 0 calc(var(--s) * .055) rgba(255, 240, 220, .1),
+    inset 0 0 0 calc(var(--s) * .12) var(--vinyl), inset 0 0 0 calc(var(--s) * .125) rgba(255, 240, 220, .08),
+    inset 0 0 0 calc(var(--s) * .19) var(--vinyl), inset 0 0 0 calc(var(--s) * .195) rgba(255, 240, 220, .08);
+  animation: vl-spin 1.8s linear infinite; }
+.vl__groove { position: absolute; inset: 14%; border-radius: 50%; border: 2px solid transparent; border-top-color: rgba(255, 240, 220, .22); }
+.vl__label { position: absolute; inset: 34%; border-radius: 50%; background: var(--bordeaux); box-shadow: inset 0 0 0 calc(var(--s) * .06) var(--bordeaux), inset 0 0 0 calc(var(--s) * .07) rgba(255, 255, 255, .25); }
+.vl__label::after { content: ''; position: absolute; left: 50%; top: 50%; width: 10%; height: 10%; margin: -5% 0 0 -5%; border-radius: 50%; background: var(--bg); }
+@keyframes vl-out { from { transform: translateX(0); } to { transform: translateX(62%); } }
+@keyframes vl-in { from { transform: translateX(62%); } to { transform: translateX(0); } }
+@keyframes vl-spin { to { transform: rotate(360deg); } }
+@keyframes vl-away { to { opacity: 0; transform: scale(.94); } }
+
+.boot { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; background: var(--bg); }
+.boot__note { font-size: 14px; color: var(--text-2); }
+.boot.is-done .vl__slide { animation: vl-in .55s var(--ease-io) both; }
+.boot.is-done { animation: vl-away .4s var(--ease-io) .45s both; pointer-events: none; }
+
+.view-loader { display: flex; justify-content: center; padding: 64px 0; opacity: 0; animation: fade-in .3s var(--ease-io) .25s forwards; }
+@keyframes fade-in { to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .vl__slide { animation: none; transform: translateX(62%); }
+  .boot.is-done .vl__slide { animation: none; }
+}
 
 /* ---------- artist ---------- */
 

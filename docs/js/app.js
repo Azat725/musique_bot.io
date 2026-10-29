@@ -2,7 +2,7 @@ import { api } from './api.js';
 import { setLang, t } from './i18n.js';
 import { player } from './player.js';
 import { loadLikes, onSettings, settings, syncCloudSettings } from './store.js';
-import { EASE_IO, cover, esc, h, haptic, icon, markPlaying, openArtist, reducedMotion, tg, toast } from './ui.js';
+import { EASE_IO, cover, esc, h, haptic, icon, loader, markPlaying, openArtist, reducedMotion, tg, toast } from './ui.js';
 import { initEq } from './eq.js';
 import { syncVinylNoise } from './sfx.js';
 import { closePlayer, initFullPlayer, isPlayerOpen, openPlayer, translate as translatePlayer } from './vinyl.js';
@@ -104,7 +104,7 @@ async function show(dir = null) {
   renderNav();
   syncBackButton();
   if (!entry.el) {
-    const skeleton = h('<div class="view"><div class="skeleton">' + '<div class="sk sk--row"></div>'.repeat(6) + '</div></div>');
+    const skeleton = h(`<div class="view">${loader()}</div>`);
     transition(skeleton, dir);
     window.scrollTo(0, 0);
     try {
@@ -232,7 +232,16 @@ document.addEventListener('error', (e) => {
 
 // ---------- boot ----------
 
+/** The record goes back into its sleeve and the launch screen fades away. */
+function dismissBoot() {
+  const boot = document.querySelector('.boot');
+  if (!boot) return;
+  boot.classList.add('is-done');
+  setTimeout(() => boot.remove(), 1000);
+}
+
 function noServer() {
+  dismissBoot();
   const el = h(`<div class="view"><div class="empty empty--full">${icon('vinyl', 'empty__icon')}
     <div class="empty__title">${esc(t('no_server_title'))}</div>
     <div class="empty__text">${esc(t('no_server_text'))}</div>
@@ -284,7 +293,9 @@ async function boot() {
   } catch {
     return noServer();
   }
-  show();
+  setTimeout(dismissBoot, 6000); // a slow first screen keeps its own small loader, not the launch screen
+  await show();
+  dismissBoot();
 }
 
 boot();

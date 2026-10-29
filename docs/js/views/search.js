@@ -1,7 +1,7 @@
 import { api } from '../api.js';
 import { t } from '../i18n.js';
 import { clearRecentSearches, pushRecentSearch, recentSearches } from '../store.js';
-import { esc, h, icon, trackList } from '../ui.js';
+import { esc, h, icon, loader, trackList } from '../ui.js';
 
 let lastQuery = '';
 let lastTracks = null;
@@ -62,7 +62,7 @@ export async function render() {
     const my = ++seq;
     inflight?.abort(); // a superseded query must not keep the server busy
     inflight = new AbortController();
-    body.innerHTML = `<div class="skeleton">${'<div class="sk sk--row"></div>'.repeat(8)}</div>`;
+    body.innerHTML = loader();
     try {
       const { tracks, more = [] } = await api.search(q, inflight.signal);
       if (my !== seq) return;

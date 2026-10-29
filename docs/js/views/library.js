@@ -1,7 +1,7 @@
 import { api } from '../api.js';
 import { plural, t } from '../i18n.js';
 import { getPlaylists, invalidatePlaylists, likes } from '../store.js';
-import { esc, h, haptic, icon, promptName, thumb } from '../ui.js';
+import { esc, h, haptic, icon, loader, promptName, thumb } from '../ui.js';
 
 function mosaic(covers) {
   if (!covers.length) return `<div class="mosaic mosaic--empty">${icon('library')}</div>`;
@@ -20,7 +20,7 @@ export async function render(_, nav) {
     <section class="section">
       <div class="section__head"><h2 class="section__title">${esc(t('lib_playlists'))}</h2>
         <button class="icon-btn icon-btn--accent" data-create aria-label="${esc(t('lib_new_playlist'))}">${icon('plus')}</button></div>
-      <div class="playlists"><div class="skeleton">${'<div class="sk sk--row"></div>'.repeat(3)}</div></div>
+      <div class="playlists">${loader()}</div>
     </section>
   </div>`);
 
