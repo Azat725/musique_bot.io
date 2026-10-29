@@ -242,7 +242,7 @@ def _playlist_tracks(playlist_id: str, limit: int = 40) -> list[dict]:
     return [t for t in (normalize(r) for r in data.get("tracks", [])) if t]
 
 
-CIS = ("RU", "KZ", "BY", "UA")
+CIS = ("RU", "KZ", "BY", "US")  # charts shown on the home screen, in this order
 # which chart of a country to show: what is trending first, then the daily/weekly tops
 CHART_PREFIXES = ("Trending 20", "Daily Top Music Videos", "Weekly Top", "Top 100 Music Videos")
 
