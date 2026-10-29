@@ -112,6 +112,7 @@
 .pill span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pill .ic { width: 18px; height: 18px; }
 .pill:active { background: var(--surface); }
+.pill--icon { width: 38px; padding: 0; justify-content: center; flex: none; }
 
 /* ---------- idle: interface fades away, the record drifts to the centre ---------- */
 

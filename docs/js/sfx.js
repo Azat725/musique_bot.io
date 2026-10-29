@@ -21,9 +21,11 @@ function context() {
   return ctx;
 }
 
+const wanted = () => settings.sounds || settings.vinylNoise > 0;
+
 /** Call from a user gesture: iOS only unlocks audio there, so a silent sample is played right away. */
 export function initSfx() {
-  if (!settings.sounds || !context()) return;
+  if (!wanted() || !context()) return;
   const src = ctx.createBufferSource();
   src.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
   src.connect(ctx.destination);
@@ -33,8 +35,8 @@ export function initSfx() {
 }
 
 /** Mark a sound as started: wakes the context and keeps it awake until release(). */
-function hold() {
-  if (!settings.sounds || !context()) return null;
+function hold(always = false) {
+  if (!(always ? wanted() : settings.sounds) || !context()) return null;
   active += 1;
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
   return ctx;
@@ -91,12 +93,12 @@ function crackles() {
 }
 
 /** Quiet surface noise of a spinning record (hiss, dust crackle, a rumble pulsing at 33⅓ rpm). Returns stop(). */
-export function startSpinNoise() {
-  if (!hold()) return () => {};
+export function startSpinNoise(volume = 1, background = false) {
+  if (!hold(background)) return () => {};
   const t = ctx.currentTime;
   const out = ctx.createGain();
   out.gain.setValueAtTime(0, t);
-  out.gain.linearRampToValueAtTime(1, t + 0.35);
+  out.gain.linearRampToValueAtTime(volume, t + (background ? 1.2 : 0.35));
   out.connect(ctx.destination);
 
   const hiss = noise();
@@ -134,6 +136,22 @@ export function startSpinNoise() {
     lfo.onended = release;
   };
 }
+
+// ---------- record noise under the music (Settings) ----------
+
+const NOISE_LEVELS = [0, 0.45, 0.8, 1.3];
+let bgNoise = null; // { level, stop }
+
+/** Keep the background crackle in step with playback and the chosen level. */
+export function syncVinylNoise(playing) {
+  const level = playing ? NOISE_LEVELS[settings.vinylNoise] || 0 : 0;
+  if (bgNoise && bgNoise.level === level) return;
+  bgNoise?.stop();
+  bgNoise = level ? { level, stop: startSpinNoise(level, true) } : null;
+}
+
+// the first tap of a session unlocks audio for the background noise even if the player is never opened
+document.addEventListener('pointerdown', () => { if (settings.vinylNoise > 0) initSfx(); }, { once: true, capture: true });
 
 /** A hand on the record: noise whose pitch and loudness follow the speed of the finger. */
 export function startScratch() {

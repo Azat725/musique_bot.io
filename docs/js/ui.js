@@ -35,6 +35,7 @@ const ICONS = {
   clock: '<circle cx="12" cy="12" r="8"/>' + P('M12 8v4.5l3 1.5'),
   vinyl: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><circle class="fill" cx="12" cy="12" r=".9"/>',
   close: P('M6 6l12 12M18 6 6 18'),
+  eq: P('M6 4v16M12 4v16M18 4v16') + '<rect class="fill" x="4" y="13" width="4" height="3" rx=".8"/><rect class="fill" x="10" y="7" width="4" height="3" rx=".8"/><rect class="fill" x="16" y="11" width="4" height="3" rx=".8"/>',
   mic: P('M12 3.5a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0v-5a3 3 0 0 1 3-3zM6.5 11a5.5 5.5 0 0 0 11 0M12 16.5V20M9 20h6'),
 };
 
@@ -110,7 +111,7 @@ export function toast(text) {
 
 // ---------- bottom sheet ----------
 
-export function sheet({ title = '', items = [], content = null }) {
+export function sheet({ title = '', items = [], content = null, done = false }) {
   return new Promise((resolve) => {
     const root = h(`<div class="sheet" role="dialog" aria-modal="true">
       <div class="sheet__scrim"></div>
@@ -118,7 +119,7 @@ export function sheet({ title = '', items = [], content = null }) {
         <div class="sheet__grip"></div>
         ${title ? `<div class="sheet__title">${title}</div>` : ''}
         <div class="sheet__body"></div>
-        <button class="sheet__cancel">${esc(t('cancel'))}</button>
+        <button class="sheet__cancel">${esc(t(done ? 'done' : 'cancel'))}</button>
       </div>
     </div>`);
     const body = root.querySelector('.sheet__body');
