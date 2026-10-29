@@ -8,16 +8,17 @@
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&display=swap&subset=cyrillic" rel="stylesheet">
-  <link rel="stylesheet" href="css/tokens.css?v=3">
-  <link rel="stylesheet" href="css/app.css?v=3">
-  <link rel="stylesheet" href="css/player.css?v=3">
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- fonts must never block rendering: if Google is unreachable the system fonts are used -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&display=swap&subset=cyrillic" rel="stylesheet" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="css/tokens.css?v=4">
+  <link rel="stylesheet" href="css/app.css?v=4">
+  <link rel="stylesheet" href="css/player.css?v=4">
+  <script src="https://telegram.org/js/telegram-web-app.js" defer></script>
 </head>
 <body>
-  <main id="main"></main>
+  <main id="main"><div class="boot" style="display:flex;align-items:center;justify-content:center;height:60vh;color:#7B1E2B;font:600 22px Georgia,serif;letter-spacing:.04em">Musique</div></main>
   <div id="mini" class="mini" role="button" aria-label="player"></div>
   <nav id="nav" class="nav"></nav>
-  <script type="module" src="js/app.js?v=4"></script>
+  <script type="module" src="js/app.js?v=5"></script>
 </body>
 </html>

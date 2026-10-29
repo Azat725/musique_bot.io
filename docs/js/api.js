@@ -21,6 +21,7 @@ let streamToken = '';
 async function request(method, path, body) {
   if (!base) throw new Error('no-server');
   const res = await fetch(base + path, {
+    signal: AbortSignal.timeout(path === '/api/me' ? 10000 : 45000), // never hang on a blocked or sleeping server
     method,
     headers: {
       'X-Init-Data': tg?.initData || '',
