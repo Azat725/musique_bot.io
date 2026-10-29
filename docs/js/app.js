@@ -3,6 +3,8 @@ import { setLang, t } from './i18n.js';
 import { player } from './player.js';
 import { loadLikes, onSettings, settings, syncCloudSettings } from './store.js';
 import { EASE_IO, cover, esc, h, haptic, icon, markPlaying, openArtist, reducedMotion, tg, toast } from './ui.js';
+import { initEq } from './eq.js';
+import { syncVinylNoise } from './sfx.js';
 import { closePlayer, initFullPlayer, isPlayerOpen, openPlayer, translate as translatePlayer } from './vinyl.js';
 import * as artist from './views/artist.js';
 import * as home from './views/home.js';
@@ -213,7 +215,8 @@ mini.addEventListener('click', (e) => {
 });
 
 player.addEventListener('track', () => { renderMini(); markPlaying(main); });
-player.addEventListener('state', () => { renderMini(); markPlaying(main); });
+const noiseOn = () => syncVinylNoise(player.playing && !player.loading);
+player.addEventListener('state', () => { renderMini(); markPlaying(main); noiseOn(); });
 player.addEventListener('time', () => {
   if (isPlayerOpen()) return; // the mini player is hidden under the full one
   const bar = mini.firstElementChild; // .mini__progress
@@ -243,6 +246,7 @@ let shownLang = null;
 
 onSettings(() => {
   applyTheme(); // CSS-only, no re-render needed
+  noiseOn();
   if (settings.lang === shownLang) return;
   shownLang = settings.lang;
   setLang(settings.lang);
@@ -270,6 +274,7 @@ async function boot() {
   tg?.onEvent?.('themeChanged', applyTheme);
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', applyTheme);
   initFullPlayer();
+  initEq();
   renderNav();
 
   if (!me) return noServer();
