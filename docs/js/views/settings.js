@@ -2,7 +2,7 @@ import { api } from '../api.js';
 import { t } from '../i18n.js';
 import { settings, updateSettings } from '../store.js';
 import { openEqualizer } from '../eq.js';
-import { brandMark, esc, h, haptic, icon, toast } from '../ui.js';
+import { brandMark, esc, h, haptic, icon, promptName, sheet, tg, toast } from '../ui.js';
 
 function segmented(name, options, value) {
   return `<div class="segmented" role="radiogroup" data-name="${name}">
@@ -13,6 +13,13 @@ function segmented(name, options, value) {
 export async function render() {
   const root = h(`<div class="view">
     <header class="view__head"><h1 class="view__title">${esc(t('nav_settings'))}</h1></header>
+
+    <section class="group">
+      <div class="group__label">${esc(t('settings_profile'))}</div>
+      <button class="group__item" data-name>
+        <span><span class="group__name">${esc(t('settings_name'))}</span><span class="group__hint" data-name-state></span></span>${icon('right', 'group__chev')}
+      </button>
+    </section>
 
     <section class="group">
       <div class="group__label">${esc(t('settings_appearance'))}</div>
@@ -69,6 +76,25 @@ export async function render() {
     haptic('select');
     updateSettings({ sounds: e.target.checked });
   });
+  // optional name for the home greeting: empty means off
+  const nameState = root.querySelector('[data-name-state]');
+  const syncName = () => { nameState.textContent = settings.name ? settings.name : t('settings_name_off'); };
+  syncName();
+  root.querySelector('[data-name]').addEventListener('click', async () => {
+    haptic('light');
+    if (settings.name) {
+      const i = await sheet({ title: esc(settings.name), items: [{ icon: 'edit', label: t('settings_name_edit') }, { icon: 'trash', label: t('settings_name_remove'), danger: true }] });
+      if (i === null) return;
+      if (i === 1) { updateSettings({ name: '' }); syncName(); return; }
+    }
+    const value = settings.name || tg?.initDataUnsafe?.user?.first_name || '';
+    const name = await promptName({ title: t('settings_name'), value, action: t('save'), placeholder: t('settings_name_hint'), max: 24 });
+    if (!name) return;
+    updateSettings({ name: name.trim().slice(0, 24) });
+    haptic('success');
+    syncName();
+  });
+
   const eqState = root.querySelector('[data-eq-state]');
   const syncEqState = () => { eqState.textContent = settings.eq.on ? t('eq_' + settings.eq.preset) : t('eq_off'); };
   syncEqState();

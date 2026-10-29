@@ -1,11 +1,15 @@
 import { api } from '../api.js';
 import { t } from '../i18n.js';
 import { player } from '../player.js';
+import { onSettings, settings } from '../store.js';
 import { brandMark, cover, esc, h, haptic, icon, loader, openArtist, trackList } from '../ui.js';
 
+/** "Good morning", or "Good morning, Azat" when a name is set in Settings. */
 function greeting() {
   const hr = new Date().getHours();
-  return t(hr < 5 ? 'greet_night' : hr < 12 ? 'greet_morning' : hr < 18 ? 'greet_day' : hr < 23 ? 'greet_evening' : 'greet_night');
+  const hello = t(hr < 5 ? 'greet_night' : hr < 12 ? 'greet_morning' : hr < 18 ? 'greet_day' : hr < 23 ? 'greet_evening' : 'greet_night');
+  const name = (settings.name || '').trim().slice(0, 24);
+  return name ? `${hello}, ${name}` : hello;
 }
 
 function cards(tracks) {
@@ -45,6 +49,8 @@ export async function render(_, nav) {
     <div class="home__body"></div>
   </div>`);
   const body = root.querySelector('.home__body');
+  const title = root.querySelector('.hero__title');
+  onSettings(() => { if (title.textContent !== greeting()) title.textContent = greeting(); });
   body.append(h(loader()));
 
   const data = await api.home();
