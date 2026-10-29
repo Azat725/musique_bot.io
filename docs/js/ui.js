@@ -160,12 +160,12 @@ export function sheet({ title = '', items = [], content = null, done = false }) 
   });
 }
 
-export function promptName({ title, value = '', action }) {
+export function promptName({ title, value = '', action, placeholder = t('playlist_name'), max = 64 }) {
   return new Promise((resolve) => {
     const root = h(`<div class="dialog" role="dialog" aria-modal="true">
       <form class="dialog__panel">
         <div class="dialog__title">${esc(title)}</div>
-        <input class="field" maxlength="64" value="${esc(value)}" placeholder="${esc(t('playlist_name'))}" required>
+        <input class="field" maxlength="${max}" value="${esc(value)}" placeholder="${esc(placeholder)}" required>
         <div class="dialog__actions">
           <button type="button" class="btn btn--ghost" data-cancel>${esc(t('cancel'))}</button>
           <button type="submit" class="btn btn--accent">${esc(action)}</button>
