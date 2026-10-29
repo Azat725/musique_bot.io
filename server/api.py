@@ -6,10 +6,11 @@ import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
 
-from . import auth, db, music
+from . import auth, config, db, music
 
 log = logging.getLogger("musique.api")
 
@@ -218,3 +219,8 @@ async def stream(vid: str, request: Request, t: str = ""):
     except Exception:
         log.exception("stream failed for %s", vid)
         raise HTTPException(404, "track unavailable")
+
+
+# Keep last: a mount at /app must not shadow API routes
+if config.SERVE_DOCS:
+    app.mount("/app", StaticFiles(directory=config.ROOT.parent / "docs", html=True), name="docs")

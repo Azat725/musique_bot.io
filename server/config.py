@@ -8,11 +8,14 @@ from urllib.parse import quote
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parent
-load_dotenv(ROOT / ".env")
+# ENV_FILE lets dev.ps1 load a separate env (test bot token) without touching the production .env
+load_dotenv(os.getenv("ENV_FILE") or ROOT / ".env")
 
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 WEBAPP_URL = os.getenv("WEBAPP_URL", "https://azat725.github.io/musique_bot.io/docs/")
 PUBLIC_API_URL = os.getenv("PUBLIC_API_URL", "").rstrip("/")
+# 1 - serve ../docs at /app (dev only: test the branch's frontend without GitHub Pages)
+SERVE_DOCS = os.getenv("SERVE_DOCS", "0") == "1"
 PORT = int(os.getenv("PORT", "8000"))
 HOST = os.getenv("HOST", "127.0.0.1")  # 0.0.0.0 inside Docker
 DEBUG = os.getenv("DEBUG", "0") == "1"

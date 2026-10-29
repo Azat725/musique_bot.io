@@ -9,3 +9,6 @@ tunnel.log
 cache/
 .claude/
 cookies.txt
+.env.dev
+tunnel-dev.log
+server/dev-data/
