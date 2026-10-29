@@ -66,6 +66,7 @@ export function fmt(sec) {
 }
 
 export function haptic(kind = 'light') {
+  if (!tg?.isVersionAtLeast?.('6.1')) return;
   try {
     if (kind === 'success' || kind === 'error') tg?.HapticFeedback?.notificationOccurred(kind);
     else if (kind === 'select') tg?.HapticFeedback?.selectionChanged();

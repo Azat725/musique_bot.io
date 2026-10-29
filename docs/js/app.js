@@ -99,13 +99,15 @@ nav.addEventListener('click', (e) => {
   if (btn) switchTab(btn.dataset.tab);
 });
 
+const hasBackButton = !!tg?.BackButton && !!tg.isVersionAtLeast?.('6.1');
+
 function syncBackButton() {
-  if (!tg?.BackButton) return;
+  if (!hasBackButton) return;
   if (isPlayerOpen() || stacks[tab].length > 1) tg.BackButton.show();
   else tg.BackButton.hide();
 }
 
-tg?.BackButton?.onClick(() => {
+if (hasBackButton) tg.BackButton.onClick(() => {
   if (isPlayerOpen()) closePlayer();
   else navApi.back();
 });

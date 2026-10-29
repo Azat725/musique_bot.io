@@ -10,11 +10,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- fonts must never block rendering: if Google is unreachable the system fonts are used -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&display=swap&subset=cyrillic" rel="stylesheet" media="print" onload="this.media='all'">
-  <link rel="stylesheet" href="css/tokens.css?v=4">
-  <link rel="stylesheet" href="css/app.css?v=4">
-  <link rel="stylesheet" href="css/player.css?v=4">
-  <!-- local copy of https://telegram.org/js/telegram-web-app.js: telegram.org hangs on some networks/VPNs, and the app module waits for this script -->
+  <link rel="stylesheet" href="css/tokens.css?v=5">
+  <link rel="stylesheet" href="css/app.css?v=5">
+  <link rel="stylesheet" href="css/player.css?v=5">
+  <!-- local copy of https://telegram.org/js/telegram-web-app.js?64 (taken 2026-10-29): telegram.org hangs on some networks/VPNs, and the app module waits for this script -->
   <script src="vendor/telegram-web-app.js?v=1"></script>
+  <script>try { window.Telegram.WebApp.ready(); } catch (e) {}</script>
 </head>
 <body>
   <main id="main"><div class="boot" style="display:flex;align-items:center;justify-content:center;height:60vh;color:#7B1E2B;font:600 22px Georgia,serif;letter-spacing:.04em">Musique</div></main>
@@ -38,6 +39,6 @@
       }, 8000);
     })();
   </script>
-  <script type="module" src="js/app.js?v=7" onerror="window.__musiqueNote('не удалось загрузить js/app.js')"></script>
+  <script type="module" src="js/app.js?v=8" onerror="window.__musiqueNote('не удалось загрузить js/app.js')"></script>
 </body>
 </html>

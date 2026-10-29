@@ -33,6 +33,9 @@
   `docker compose cp musique:/data/musique.db ./musique-backup.db`
 - Перенос данных с ноутбука: скопируйте `server/musique.db` на сервер и положите в том командой
   `docker compose cp ./musique.db musique:/data/musique.db` (при остановленном контейнере: `docker compose stop musique`).
+- SDK Telegram лежит локально в `docs/vendor/telegram-web-app.js` (telegram.org недоступен в части сетей).
+  Обновить раз в несколько месяцев: `curl -o docs/vendor/telegram-web-app.js https://telegram.org/js/telegram-web-app.js`,
+  затем повысить `?v=` у этого скрипта в `docs/index.html`.
 
 ## YouTube на сервере
 IP дата-центров YouTube часто блокирует («подтвердите, что вы не бот»). Тогда звук идёт с SoundCloud,
