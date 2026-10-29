@@ -20,18 +20,24 @@ let streamToken = '';
 
 async function request(method, path, body) {
   if (!base) throw new Error('no-server');
-  const res = await fetch(base + path, {
-    signal: AbortSignal.timeout(path === '/api/me' ? 10000 : 45000), // never hang on a blocked or sleeping server
-    method,
-    headers: {
-      'X-Init-Data': tg?.initData || '',
-      'ngrok-skip-browser-warning': '1', // ngrok's free tier otherwise answers browsers with an interstitial page
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!res.ok) throw new Error(`http-${res.status}`);
-  return res.json();
+  const ctrl = new AbortController(); // never hang on a blocked or sleeping server (AbortSignal.timeout is missing in older WebViews)
+  const timer = setTimeout(() => ctrl.abort(), path === '/api/me' ? 10000 : 45000);
+  try {
+    const res = await fetch(base + path, {
+      signal: ctrl.signal,
+      method,
+      headers: {
+        'X-Init-Data': tg?.initData || '',
+        'ngrok-skip-browser-warning': '1', // ngrok's free tier otherwise answers browsers with an interstitial page
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) throw new Error(`http-${res.status}`);
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 const get = (p) => request('GET', p);
