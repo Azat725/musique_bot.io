@@ -2,15 +2,16 @@ import { api } from './api.js';
 import { setLang, t } from './i18n.js';
 import { player } from './player.js';
 import { loadLikes, onSettings, settings, syncCloudSettings } from './store.js';
-import { EASE_IO, cover, esc, h, haptic, icon, markPlaying, reducedMotion, tg, toast } from './ui.js';
+import { EASE_IO, cover, esc, h, haptic, icon, markPlaying, openArtist, reducedMotion, tg, toast } from './ui.js';
 import { closePlayer, initFullPlayer, isPlayerOpen, openPlayer, translate as translatePlayer } from './vinyl.js';
+import * as artist from './views/artist.js';
 import * as home from './views/home.js';
 import * as library from './views/library.js';
 import * as playlist from './views/playlist.js';
 import * as search from './views/search.js';
 import * as settingsView from './views/settings.js';
 
-const VIEWS = { home, search, library, settings: settingsView, playlist };
+const VIEWS = { home, search, library, settings: settingsView, playlist, artist };
 const TABS = [['home', 'home', 'nav_home'], ['search', 'search', 'nav_search'], ['library', 'library', 'nav_library'], ['settings', 'settings', 'nav_settings']];
 const COLORS = { light: '#EFE4CF', dark: '#1A1410' }; // --bg of each theme, for Telegram's header and bars
 
@@ -166,6 +167,12 @@ if (hasBackButton) tg.BackButton.onClick(() => {
   if (isPlayerOpen()) closePlayer();
   else navApi.back();
 });
+document.addEventListener('open-artist', (e) => {
+  const top = stacks[tab][stacks[tab].length - 1];
+  if (isPlayerOpen()) closePlayer();
+  if (top.name === 'artist' && (top.params.id ? top.params.id === e.detail.id : top.params.name === e.detail.name)) return;
+  navApi.push('artist', { ...e.detail });
+});
 document.addEventListener('player-open', (e) => {
   document.body.classList.toggle('player-open', e.detail);
   syncBackButton();
@@ -199,6 +206,7 @@ function renderMini() {
 
 mini.addEventListener('click', (e) => {
   if (e.target.closest('[data-mini-play]')) { haptic('light'); player.toggle(); return; }
+  if (e.target.closest('.mini__artist')) { openArtist(player.current); return; }
   if (e.target.closest('[data-mini-next]')) { haptic('light'); player.next(); return; }
   haptic('light');
   openPlayer();

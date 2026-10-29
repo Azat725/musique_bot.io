@@ -30,6 +30,9 @@ _search_cache: dict[str, tuple[float, list]] = {}
 _home_cache: tuple[float, dict] | None = None
 _url_cache: dict[str, tuple[float, "Source"]] = {}
 _collection_cache: dict[str, tuple[float, list]] = {}
+_artist_cache: dict[str, tuple[float, dict | None]] = {}  # artists, albums and name lookups
+ARTIST_ID_RE = re.compile(r"^[A-Za-z0-9_-]{10,64}$")
+ALBUM_ID_RE = re.compile(r"^MPRE[A-Za-z0-9_-]{5,60}$")
 _locks: dict[str, asyncio.Lock] = {}
 _home_lock = asyncio.Lock()
 # a 2 GB VPS: a burst of prefetches must not run a dozen downloads and encoders at once
@@ -63,12 +66,13 @@ class Source:
 
 # ---------- metadata ----------
 
-def _cover(thumbs: list, size: int = 544) -> str:
+def _cover(thumbs: list, size: int = 544, crop: bool = False) -> str:
     if not thumbs:
         return ""
     url = thumbs[-1]["url"]
     if "googleusercontent.com" in url:
-        return re.sub(r"=w\d+-h\d+.*$", f"=w{size}-h{size}-l90-rj", url)
+        # crop: artist photos are wide banners; -p crops them to a square around the subject
+        return re.sub(r"=w\d+-h\d+.*$", f"=w{size}-h{size}{'-p' if crop else ''}-l90-rj", url)
     if "i.ytimg.com" in url:
         # hq720 has no letterbox bars (hqdefault does); the client falls back to mqdefault
         return re.sub(r"/[a-z0-9_]+\.jpg.*$", "/hq720.jpg", url)
@@ -104,7 +108,8 @@ def normalize(r: dict) -> dict | None:
     vid = r.get("videoId")
     if not vid or not ID_RE.match(vid):
         return None
-    artist = ", ".join(a["name"] for a in (r.get("artists") or []) if a.get("name"))
+    artists = [a for a in (r.get("artists") or []) if a.get("name")]
+    artist = ", ".join(a["name"] for a in artists)
     title, artist = _clean(r.get("title") or "", artist)
     track = {
         "id": vid,
@@ -112,6 +117,8 @@ def normalize(r: dict) -> dict | None:
         "artist": artist or "—",
         "duration": _duration(r),
         "cover": _cover(r.get("thumbnails") or r.get("thumbnail") or []),
+        # the first artist with a channel: the artist card opens from it
+        "artist_id": next((a["id"] for a in artists if a.get("id") and ARTIST_ID_RE.match(a["id"])), ""),
     }
     _meta[vid] = track
     _trim(_meta, 5000)
@@ -239,6 +246,97 @@ async def collection(playlist_id: str) -> list[dict]:
     _collection_cache[playlist_id] = (time.time(), tracks)
     _trim(_collection_cache, 200)
     return tracks
+
+
+# ---------- artists & albums ----------
+
+async def _cached(key: str, build, ttl: int = 3600):
+    hit = _artist_cache.get(key)
+    if hit and time.time() - hit[0] < ttl:
+        return hit[1]
+    try:
+        value = await asyncio.to_thread(build)
+    except Exception as e:
+        log.warning("%s failed: %s", key, str(e)[:160])
+        return None
+    _artist_cache[key] = (time.time(), value)
+    _trim(_artist_cache, 300)
+    return value
+
+
+def _releases(data: dict, key: str) -> list[dict]:
+    return [{"id": x["browseId"], "title": x.get("title") or "", "year": x.get("year") or "",
+             "cover": _cover(x.get("thumbnails") or [], 400)}
+            for x in (data.get(key) or {}).get("results", []) if x.get("browseId")]
+
+
+def _build_artist(artist_id: str) -> dict:
+    a = _yt.get_artist(artist_id)
+    songs = a.get("songs") or {}
+    tracks = [t for t in (normalize(r) for r in songs.get("results", [])) if t]
+    for t in tracks:
+        t["artist_id"] = t["artist_id"] or artist_id
+    related = [{"id": x["browseId"], "name": x.get("title") or "", "cover": _cover(x.get("thumbnails") or [], 300, crop=True)}
+               for x in (a.get("related") or {}).get("results", []) if x.get("browseId")]
+    return {
+        "id": artist_id,
+        "name": a.get("name") or "",
+        "cover": _cover(a.get("thumbnails") or [], 720, crop=True),
+        "description": (a.get("description") or "").strip()[:900],
+        "listeners": a.get("monthlyListeners") or "",
+        "subscribers": a.get("subscribers") or "",
+        "songs_id": songs.get("browseId") or "",  # playlist with all of the artist's songs
+        "tracks": tracks,
+        "albums": _releases(a, "albums"),
+        "singles": _releases(a, "singles"),
+        "related": related,
+    }
+
+
+async def artist(artist_id: str) -> dict | None:
+    if not ARTIST_ID_RE.match(artist_id):
+        return None
+    return await _cached("artist:" + artist_id, lambda: _build_artist(artist_id))
+
+
+async def find_artist(name: str) -> str | None:
+    name = name.strip()[:120]
+    if not name or name == "—":
+        return None
+
+    def lookup() -> str | None:
+        for r in _yt.search(name, filter="artists", limit=3):
+            if r.get("browseId"):
+                return r["browseId"]
+        return None
+
+    return await _cached("find:" + name.lower(), lookup, ttl=24 * 3600)
+
+
+def _build_album(browse_id: str) -> dict:
+    a = _yt.get_album(browse_id)
+    thumbs = a.get("thumbnails") or []
+    tracks = []
+    for r in a.get("tracks", []):
+        if not (r.get("thumbnails") or r.get("thumbnail")):
+            r = {**r, "thumbnails": thumbs}  # album tracks come without their own covers
+        t = normalize(r)
+        if t:
+            tracks.append(t)
+    return {
+        "id": browse_id,
+        "title": a.get("title") or "",
+        "artist": ", ".join(x["name"] for x in a.get("artists") or [] if x.get("name")),
+        "year": a.get("year") or "",
+        "cover": _cover(thumbs),
+        "tracks": tracks,
+    }
+
+
+async def album(browse_id: str) -> dict | None:
+    if not ALBUM_ID_RE.match(browse_id):
+        return None
+    return await _cached("album:" + browse_id, lambda: _build_album(browse_id))
 
 
 # ---------- audio resolution ----------

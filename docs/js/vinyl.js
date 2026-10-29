@@ -1,7 +1,7 @@
 import { t } from './i18n.js';
 import { player } from './player.js';
 import { likes, toggleLike } from './store.js';
-import { EASE_IO, chooseAndAddToPlaylist, esc, fmt, h, haptic, icon, reducedMotion, toast, trackMenu } from './ui.js';
+import { EASE_IO, chooseAndAddToPlaylist, esc, fmt, h, haptic, icon, openArtist, reducedMotion, toast, trackMenu } from './ui.js';
 import { api } from './api.js';
 import { initSfx, playSfx, startScratch, startSpinNoise, whoosh } from './sfx.js';
 
@@ -90,7 +90,7 @@ export function initFullPlayer() {
     </header>
     <div class="fp__stage"><div class="scrub" aria-hidden="true"><b class="scrub__time"></b><span class="scrub__delta"></span></div></div>
     <div class="fp__info">
-      <div class="fp__titles"><div class="fp__title"></div><div class="fp__artist"></div></div>
+      <div class="fp__titles"><div class="fp__title"></div><button class="fp__artist"></button></div>
       <button class="icon-btn fp__like" data-like aria-label="like">${icon('heart')}</button>
     </div>
     <div class="progress">
@@ -117,6 +117,7 @@ export function initFullPlayer() {
 
   const $ = (s) => root.querySelector(s);
   $('[data-close]').addEventListener('click', closePlayer);
+  $('.fp__artist').addEventListener('click', () => openArtist(player.current));
   $('[data-play]').addEventListener('click', () => { haptic('medium'); player.toggle(); });
   $('[data-next]').addEventListener('click', () => { haptic('light'); player.next(); });
   $('[data-prev]').addEventListener('click', () => { haptic('light'); player.prev(); });

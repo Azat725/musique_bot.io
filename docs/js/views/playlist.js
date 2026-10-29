@@ -8,6 +8,11 @@ async function loadTracks(p) {
   switch (p.kind) {
     case 'tracks': return p.tracks;
     case 'yt': return (await api.collection(p.id)).tracks;
+    case 'album': {
+      const data = await api.album(p.id);
+      p.title = data.title || p.title;
+      return data.tracks;
+    }
     case 'likes': return likedList();
     case 'history': return (await api.history()).tracks;
     case 'user': {
@@ -25,7 +30,7 @@ const EMPTY = { likes: 'likes_empty', history: 'history_empty' };
 export async function render(params, nav) {
   const root = h(`<div class="view">
     <header class="view__head view__head--list">
-      <div class="view__kicker">${esc(params.kind === 'user' ? t('lib_playlists') : '')}</div>
+      <div class="view__kicker">${esc(params.kind === 'user' ? t('lib_playlists') : params.kind === 'album' ? t('album_kicker') : '')}</div>
       <h1 class="view__title">${esc(params.title)}</h1>
       <div class="view__sub"></div>
       <div class="list-actions">

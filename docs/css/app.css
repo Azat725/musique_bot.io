@@ -174,6 +174,24 @@ body.player-open .eq i { animation-play-state: paused; } /* hidden under the ful
 .sk--row { height: 56px; }
 @keyframes pulse { 50% { opacity: .5; } }
 
+/* ---------- artist ---------- */
+
+/* artist names open the artist card */
+.track__artist, .card__artist, .mini__artist { cursor: pointer; }
+.track__artist:active, .card__artist:active, .mini__artist:active { text-decoration: underline; text-underline-offset: 3px; }
+
+.artist__head { padding: 12px 0 4px; }
+.artist__photo { display: block; width: 100%; aspect-ratio: 1 / 1; max-height: 320px; object-fit: cover; object-position: 50% 30%;
+  border-radius: var(--r-md); background: var(--surface); margin-bottom: 18px; }
+.artist__photo--empty { display: grid; place-items: center; color: var(--text-3); }
+.artist__photo--empty .ic { width: 64px; height: 64px; stroke-width: 1.2; }
+.card--artist { flex-basis: 116px; text-align: center; }
+.card--artist .card__cover { width: 116px; height: 116px; }
+.card__cover--round { border-radius: 50%; }
+.artist__about { margin: 10px 0 6px; color: var(--text-2); font-size: 14px; line-height: 1.55; white-space: pre-line;
+  display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+.artist__about.is-open { display: block; }
+
 /* ---------- library ---------- */
 
 .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
