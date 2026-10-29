@@ -73,6 +73,8 @@ body.has-mini #main { padding-bottom: calc(var(--nav-h) + var(--mini-h) + var(--
 .section__title { font: 600 20px/1.2 var(--font-serif); margin: 0; }
 .link { display: inline-flex; align-items: center; gap: 2px; font-size: 14px; font-weight: 500; color: var(--accent-text); }
 .link .ic { width: 18px; height: 18px; }
+.section__tools { display: flex; align-items: center; gap: 10px; }
+.link--sort { gap: 4px; color: var(--text-2); font-size: 13px; }
 
 /* horizontal cards */
 .cards { display: flex; gap: 12px; overflow-x: auto; margin: 0 calc(-1 * var(--gutter)); padding: 0 var(--gutter) 4px; scroll-snap-type: x mandatory; scrollbar-width: none; }
