@@ -84,7 +84,7 @@ export const api = {
   preloadHome() { homeRequest = get('/api/home'); homeRequest.catch(() => {}); },
   home() { const r = homeRequest || get('/api/home'); homeRequest = null; return r; },
   recommend: () => get('/api/recommend'),
-  search: (q, signal) => request('GET', '/api/search?q=' + encodeURIComponent(q), null, signal),
+  search: (q, signal, type = 'all') => request('GET', `/api/search?type=${type}&q=${encodeURIComponent(q)}`, null, signal),
   collection: (id) => get('/api/collection/' + encodeURIComponent(id)),
   artist: (id) => get('/api/artist/' + encodeURIComponent(id)),
   findArtist: (name) => get('/api/artist?name=' + encodeURIComponent(name)),

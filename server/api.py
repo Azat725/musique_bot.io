@@ -77,9 +77,15 @@ async def recommend(user=User):
 
 
 @app.get("/api/search")
-async def search(q: str = "", user=User):
-    tracks, more = await asyncio.gather(music.search(q), music.search_more(q))
-    return {"tracks": tracks, "more": more}
+async def search(q: str = "", type: str = "all", user=User):
+    """type: all (artists, tracks and clips, other sources) | tracks (songs, other sources) | artists."""
+    if type == "artists":
+        return {"tracks": [], "more": [], "artists": await music.search_artists(q)}
+    jobs = [music.search(q, videos=type != "tracks"), music.search_more(q)]
+    if type == "all":
+        jobs.append(music.search_artists(q))
+    results = await asyncio.gather(*jobs)
+    return {"tracks": results[0], "more": results[1], "artists": results[2][:4] if type == "all" else []}
 
 
 @app.get("/api/collection/{playlist_id}")

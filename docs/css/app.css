@@ -210,6 +210,23 @@ body.player-open .eq i { animation-play-state: paused; } /* hidden under the ful
   .boot.is-done .vl__slide { animation: none; }
 }
 
+/* ---------- search modes, artist rows ---------- */
+
+.search__modes { margin: 4px 0 10px; background: var(--surface); }
+.search__modes button { transition: background .3s var(--ease-io), color .3s var(--ease-io); }
+.artists { display: flex; flex-direction: column; }
+.artist-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 0; text-align: left; }
+.artist-row + .artist-row { border-top: 1px solid var(--line); }
+.artist-row__photo { width: 56px; height: 56px; border-radius: 50%; flex: none; }
+.artist-row__meta { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.artist-row__name { font: 600 17px/1.25 var(--font-serif); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.artist-row__sub { font-size: 13px; color: var(--text-2); }
+.artist-row__chev { color: var(--text-3); width: 20px; height: 20px; }
+.artist-row:active { opacity: .7; }
+.artists > .artist-row:nth-child(-n+8) { animation: row-in .52s var(--ease-io) both; animation-delay: calc(60ms + var(--i, 0) * 32ms); }
+.artists > :nth-child(2) { --i: 1; } .artists > :nth-child(3) { --i: 2; } .artists > :nth-child(4) { --i: 3; }
+.artists > :nth-child(5) { --i: 4; } .artists > :nth-child(6) { --i: 5; } .artists > :nth-child(7) { --i: 6; } .artists > :nth-child(8) { --i: 7; }
+
 /* ---------- artist ---------- */
 
 /* artist names open the artist card */

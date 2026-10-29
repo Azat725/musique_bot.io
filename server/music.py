@@ -162,22 +162,23 @@ async def track_meta(vid: str) -> dict | None:
 
 # ---------- search & home ----------
 
-async def search(query: str, limit: int = 30) -> list[dict]:
+async def search(query: str, limit: int = 30, videos: bool = True) -> list[dict]:
+    """Songs from YouTube Music, plus music videos unless `videos` is off (the 'Tracks' search mode)."""
     query = query.strip()[:200]
     if not query:
         return []
-    key = query.lower()
+    key = ("" if videos else "songs:") + query.lower()
     cached = _search_cache.get(key)
     if cached and time.time() - cached[0] < 600:
         return cached[1]
 
-    songs, videos = await asyncio.gather(
+    songs, clips = await asyncio.gather(
         asyncio.to_thread(_yt.search, query, filter="songs", limit=limit),
-        asyncio.to_thread(_yt.search, query, filter="videos", limit=15),
+        asyncio.to_thread(_yt.search, query, filter="videos", limit=15) if videos else asyncio.sleep(0, []),
         return_exceptions=True,
     )
     out, seen = [], set()
-    for batch in (songs, videos):
+    for batch in (songs, clips):
         if isinstance(batch, Exception):
             log.warning("search batch failed: %s", batch)
             continue
@@ -186,6 +187,27 @@ async def search(query: str, limit: int = 30) -> list[dict]:
             if t and t["id"] not in seen:
                 seen.add(t["id"])
                 out.append(t)
+    _search_cache[key] = (time.time(), out)
+    _trim(_search_cache, 500)
+    return out
+
+
+async def search_artists(query: str, limit: int = 12) -> list[dict]:
+    query = query.strip()[:200]
+    if not query:
+        return []
+    key = "artists:" + query.lower()
+    cached = _search_cache.get(key)
+    if cached and time.time() - cached[0] < 600:
+        return cached[1]
+    try:
+        found = await asyncio.to_thread(_yt.search, query, filter="artists", limit=limit)
+    except Exception as e:
+        log.warning("artist search failed: %s", str(e)[:160])
+        return []
+    out = [{"id": r["browseId"], "name": r.get("artist") or r.get("title") or "",
+            "cover": _cover(r.get("thumbnails") or [], 300, crop=True), "subscribers": r.get("subscribers") or ""}
+           for r in found if r.get("browseId") and ARTIST_ID_RE.match(r["browseId"])]
     _search_cache[key] = (time.time(), out)
     _trim(_search_cache, 500)
     return out

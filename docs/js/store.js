@@ -17,6 +17,8 @@ export const settings = {
   eq: { on: false, preset: 'flat', gains: [0, 0, 0, 0, 0] },
   vinylNoise: 0, // background record noise while music plays: 0 off, 1-3 louder
   plSort: 'new',
+  searchMode: 'all',
+  name: '', // optional name for the home greeting
   ...load(),
 };
 
