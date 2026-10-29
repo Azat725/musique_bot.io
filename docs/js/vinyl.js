@@ -137,6 +137,7 @@ export function initFullPlayer() {
 
   setupSeek($('.progress__bar'));
   setupGestures();
+  setupIdle();
 
   player.addEventListener('track', (e) => onTrack(e.detail));
   player.addEventListener('state', syncState);
@@ -168,11 +169,13 @@ export function openPlayer() {
   syncState();
   syncTime();
   syncModes();
+  armIdle();
   document.dispatchEvent(new CustomEvent('player-open', { detail: true }));
 }
 
 export function closePlayer() {
   open = false;
+  wake();
   rec?.el.getAnimations().forEach((a) => a.cancel()); // closed mid-flight: measure the record where it really stands
   const toMini = miniCoverRect();
   if (toMini) fly(toMini, false);
@@ -272,6 +275,7 @@ function syncState() {
     el.play.innerHTML = icon(player.playing ? 'pause' : 'play');
   }
   root.classList.toggle('is-loading', player.loading);
+  if (!player.playing || player.loading) wake(); else armIdle();
   if (!rec || rec.el.getAnimations().some((a) => a.playState === 'running' && a !== rec.anim)) return;
   const spinning = player.playing && !player.loading;
   rampTo(rec, spinning ? 1 : 0, spinning ? 900 : 700);
@@ -294,6 +298,60 @@ function syncModes() {
   const rep = root.querySelector('[data-repeat]');
   rep.classList.toggle('is-on', player.repeat !== 'off');
   rep.innerHTML = icon(player.repeat === 'one' ? 'repeat1' : 'repeat');
+}
+
+// ---------- idle: after a while only the spinning record stays, centred ----------
+
+// ?musique_idle=3 shortens the wait to 3 s for testing
+const IDLE_MS = (Number(new URLSearchParams(location.search).get('musique_idle')) || 20) * 1000;
+let idleTimer = 0, idle = false;
+
+function armIdle() {
+  clearTimeout(idleTimer);
+  if (open && !idle && player.playing && !player.loading) idleTimer = setTimeout(enterIdle, IDLE_MS);
+}
+
+function enterIdle() {
+  if (!open || !player.playing || player.loading || dragging) return;
+  // move the stage so the record sits in the middle of the screen, slightly larger
+  const r = stage.getBoundingClientRect();
+  const size = rec?.el.offsetWidth || r.width;
+  root.style.setProperty('--idle-dy', `${Math.round(innerHeight / 2 - (r.top + r.height / 2))}px`);
+  root.style.setProperty('--idle-scale', Math.min(1.16, (innerWidth * 0.94) / size).toFixed(3));
+  idle = true;
+  root.classList.add('is-idle');
+}
+
+function wake() {
+  clearTimeout(idleTimer);
+  if (idle) {
+    idle = false;
+    root.classList.remove('is-idle');
+  }
+  armIdle();
+}
+
+function setupIdle() {
+  // the first touch while idle only brings the interface back: it must not pause or skip
+  let swallowClick = false;
+  root.addEventListener('pointerdown', (e) => {
+    if (idle) {
+      e.stopPropagation();
+      e.preventDefault();
+      swallowClick = true;
+      wake();
+      return;
+    }
+    armIdle();
+  }, true);
+  root.addEventListener('click', (e) => {
+    if (!swallowClick) return;
+    swallowClick = false;
+    e.stopPropagation();
+    e.preventDefault();
+  }, true);
+  root.addEventListener('pointermove', () => { if (!idle) armIdle(); }, { passive: true });
+  document.addEventListener('keydown', () => { if (open) wake(); });
 }
 
 // ---------- seeking ----------
