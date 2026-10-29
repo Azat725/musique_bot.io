@@ -74,6 +74,11 @@ export async function render(_, nav) {
     body.append(sec);
   }
   const byKey = Object.fromEntries((data.sections || []).map((s) => [s.key, s.tracks]));
+  if (byKey.popular?.length) {
+    const s = h('<section class="section"></section>');
+    s.append(sectionHead(t('home_popular'), openList(t('home_popular'), byKey.popular)), trackList(byKey.popular.slice(0, 10), { numbered: true }));
+    body.append(s);
+  }
 
   if (data.genres?.length) {
     const s = h('<section class="section"></section>');
@@ -94,6 +99,14 @@ export async function render(_, nav) {
     const s = h('<section class="section"></section>');
     s.append(sectionHead(t(label), openList(t(label), byKey[key])), cards(byKey[key].slice(0, 15)));
     body.append(s);
+  }
+  if (!body.children.length || [...body.children].every((c) => c.hidden)) {
+    // nothing came back: say so instead of leaving an empty page
+    const empty = h(`<div class="empty">${icon('vinyl', 'empty__icon')}
+      <div class="empty__title">${esc(t('home_empty'))}</div><div class="empty__text">${esc(t('home_empty_text'))}</div>
+      <button class="btn btn--accent">${esc(t('nav_search'))}</button></div>`);
+    empty.querySelector('button').addEventListener('click', () => document.querySelector('[data-tab="search"]')?.click());
+    body.append(empty);
   }
   return root;
 }

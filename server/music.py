@@ -315,7 +315,12 @@ async def home() -> dict:
         data = await asyncio.to_thread(_build_home)
         if data["sections"]:
             _home_cache = (time.time(), data)
-        return data
+            return data
+    # YouTube Music unreachable (blocked network, outage): show what is popular on Zaycev instead
+    tracks = await sources.popular()
+    for t in tracks:
+        _meta[t["id"]] = t
+    return {**data, "sections": [{"key": "popular", "tracks": tracks}] if tracks else []}
 
 
 async def collection(playlist_id: str) -> list[dict]:
