@@ -221,7 +221,7 @@ async function openSleep() {
   if (opts[i]) toast(opts[i] === 'track' ? t('sleep_set_track') : t('sleep_set', { n: opts[i] }));
 }
 
-// ---------- sound: speed and reverb, with "slowed + reverb" in one tap ----------
+// ---------- sound: speed and reverb ----------
 
 const DECK_RPM = { slow: '28', normal: '33', fast: '45' }; // slowed: 33⅓ × 0.85 ≈ 28
 
@@ -243,7 +243,6 @@ function openSound() {
     `<button data-v="${v}"><b>${esc(label)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</button>`).join('')}</div>`;
   const panel = h(`<div class="fx">
     <div class="fx__title">${esc(t('sound_title'))}</div>
-    <button class="fx__preset" data-preset>${icon('speed')}<span>${esc(t('sound_preset'))}</span></button>
     <div class="fx__label">${esc(t('sound_speed'))}</div>
     ${seg('speed', [['slow', t('sound_slow'), '0.85×'], ['normal', '33⅓', t('sound_rpm')], ['fast', '45', t('sound_rpm')]])}
     <div class="fx__label">${esc(t('sound_reverb'))}</div>
@@ -255,7 +254,6 @@ function openSound() {
       b.classList.toggle('is-on', on);
       b.setAttribute('aria-pressed', on);
     }));
-    panel.querySelector('[data-preset]').classList.toggle('is-on', settings.speed === 'slow' && settings.reverb === 'hall');
   };
   const set = (patch) => {
     if (patch.reverb && patch.reverb !== 'off' && !enableFx()) return; // the graph only exists once asked for
@@ -267,10 +265,7 @@ function openSound() {
   panel.addEventListener('click', (e) => {
     const b = e.target.closest('button');
     if (!b) return;
-    if (b.dataset.preset !== undefined) {
-      const on = settings.speed === 'slow' && settings.reverb === 'hall';
-      set(on ? { speed: 'normal', reverb: 'off' } : { speed: 'slow', reverb: 'hall' });
-    } else set({ [b.closest('[data-seg]').dataset.seg]: b.dataset.v });
+    set({ [b.closest('[data-seg]').dataset.seg]: b.dataset.v });
   });
   draw();
   sheet({ content: panel, done: true });

@@ -493,10 +493,7 @@ body.player-open .mini { opacity: 0; pointer-events: none; }
 
 /* sound: speed and reverb */
 .fx__title { font: 600 19px/1 var(--font-serif); font-variant: small-caps; letter-spacing: .06em; margin-bottom: 14px; }
-.fx__label { margin: 18px 0 8px; font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-2); }
-.fx__preset { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 50px; border-radius: var(--r-md);
-  background: var(--surface); border: 1px solid var(--line); font: 600 16px var(--font-sans); transition: background .25s var(--ease-io), color .25s var(--ease-io); }
-.fx__preset.is-on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.fx__label { margin: 14px 0 8px; font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-2); }
 .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .seg button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 52px; padding: 6px 4px;
   border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--bg); color: var(--text-2);
