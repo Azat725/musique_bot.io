@@ -113,6 +113,10 @@
 .pill .ic { width: 18px; height: 18px; }
 .pill:active { background: var(--surface); }
 .pill--icon { width: 38px; padding: 0; justify-content: center; flex: none; }
+.pill[hidden] { display: none; }
+/* four buttons in the row (lyrics found): a little tighter so they fit a 375 px phone */
+.fp__extra:has(> [data-lyrics]:not([hidden])) { gap: 8px; }
+.fp__extra:has(> [data-lyrics]:not([hidden])) .pill:not(.pill--icon) { padding: 0 11px; gap: 6px; }
 
 /* ---------- idle: interface fades away, the record drifts to the centre ---------- */
 

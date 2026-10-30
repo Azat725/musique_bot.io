@@ -58,6 +58,7 @@ const post = (p, b) => request('POST', p, b);
 const del = (p) => request('DELETE', p);
 
 let homeRequest = null;
+const lyricsCache = new Map(); // track id -> Promise of the /api/lyrics answer
 
 // <audio> can't send the header that skips ngrok's interstitial page, so there the audio is fetched explicitly
 const usesBlob = (() => {
@@ -107,4 +108,14 @@ export const api = {
   clearHistory: () => del('/api/history'),
   send: (track) => post('/api/send', { track }),
   prefetch: (track) => post('/api/prefetch', { track }),
+  /** { lyrics: string | null, source }; asked once per track per session. A failed request is forgotten, so it is retried. */
+  lyrics(track) {
+    if (!lyricsCache.has(track.id)) {
+      const q = new URLSearchParams({ title: track.title || '', artist: track.artist || '', duration: String(track.duration || 0) });
+      const p = get(`/api/lyrics/${encodeURIComponent(track.id)}?${q}`);
+      p.catch(() => lyricsCache.delete(track.id));
+      lyricsCache.set(track.id, p);
+    }
+    return lyricsCache.get(track.id);
+  },
 };

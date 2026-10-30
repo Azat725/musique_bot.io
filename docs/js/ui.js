@@ -14,6 +14,7 @@ const ICONS = {
   library: P('M4 6.5h10.5v13H4z') + '<g class="ic__disc">' + P('M14.5 7a6 6 0 0 1 0 12') + P('M14.5 10.6a2.4 2.4 0 0 1 0 4.8') + '</g>',
   settings: '<g class="ic__knob"><circle cx="12" cy="13.5" r="6"/>' + P('M12 13.5 8.6 10.1') + '</g>'
     + P('M4.3 10.7 2.7 10.1M7.3 6.8 6.3 5.4M12 5.3V3.6M16.7 6.8l1-1.4M19.7 10.7l1.6-.6'),
+  lyrics: P('M4 6h10M4 10h10M4 14h6') + P('M18 17.5V8.5l3-1') + '<circle class="fill" cx="16.2" cy="17.6" r="2.1"/>',
   palette: P('M12 3.5a8.5 8.5 0 1 0 0 17c1 0 1.6-.7 1.6-1.5 0-.5-.2-.8-.5-1.1-.3-.3-.5-.7-.5-1.1 0-.9.7-1.6 1.6-1.6h1.9a4.4 4.4 0 0 0 4.4-4.4c0-4-3.8-7.3-8.5-7.3z')
     + '<circle class="fill" cx="7.6" cy="11.2" r="1.2"/><circle class="fill" cx="10.2" cy="7.4" r="1.2"/><circle class="fill" cx="14.6" cy="7.6" r="1.2"/>',
   play: '<path class="fill" d="M8 5.5v13a.8.8 0 0 0 1.2.7l10.4-6.5a.8.8 0 0 0 0-1.4L9.2 4.8A.8.8 0 0 0 8 5.5z"/>',
@@ -131,15 +132,15 @@ export function toast(text) {
 
 // ---------- bottom sheet ----------
 
-export function sheet({ title = '', items = [], content = null, done = false }) {
+export function sheet({ title = '', items = [], content = null, done = false, closeLabel = '', swipe = false, cls = '' }) {
   return new Promise((resolve) => {
-    const root = h(`<div class="sheet" role="dialog" aria-modal="true">
+    const root = h(`<div class="sheet ${cls}" role="dialog" aria-modal="true">
       <div class="sheet__scrim"></div>
       <div class="sheet__panel">
         <div class="sheet__grip"></div>
         ${title ? `<div class="sheet__title">${title}</div>` : ''}
         <div class="sheet__body"></div>
-        <button class="sheet__cancel">${esc(t(done ? 'done' : 'cancel'))}</button>
+        <button class="sheet__cancel">${esc(closeLabel || t(done ? 'done' : 'cancel'))}</button>
       </div>
     </div>`);
     const body = root.querySelector('.sheet__body');
@@ -149,17 +150,69 @@ export function sheet({ title = '', items = [], content = null, done = false }) 
       btn.addEventListener('click', () => close(i));
       body.append(btn);
     });
+    let unbindSwipe = null;
     function close(value) {
+      unbindSwipe?.();
       root.classList.remove('is-open');
       setTimeout(() => root.remove(), 380);
       resolve(value ?? null);
     }
     root.querySelector('.sheet__scrim').addEventListener('click', () => close(null));
     root.querySelector('.sheet__cancel').addEventListener('click', () => close(null));
+    if (swipe) unbindSwipe = swipeToClose(root, () => close(null));
     root.close = close;
     document.body.append(root);
     requestAnimationFrame(() => root.classList.add('is-open'));
   });
+}
+
+/** Drag a sheet down to close it. Only once its content is scrolled to the top (or from the grip and title),
+ *  so reading a long text up and down never closes it by accident. */
+function swipeToClose(root, close) {
+  const panel = root.querySelector('.sheet__panel');
+  const scroller = root.querySelector('.sheet__scroll') || panel;
+  let y0 = null, t0 = 0, dy = 0, dragging = false, fromHead = false;
+  const start = (y, target) => {
+    if (target.closest('button')) return;
+    fromHead = !!target.closest('.sheet__grip, .sheet__title, .sheet__head');
+    y0 = y; t0 = performance.now(); dy = 0; dragging = false;
+  };
+  /** true while the sheet itself follows the finger (the page must not scroll then) */
+  const move = (y) => {
+    if (y0 === null) return false;
+    dy = y - y0;
+    if (!dragging) {
+      if (dy < -6) { y0 = null; return false; } // moving up: an ordinary scroll
+      if (dy < 8) return false;
+      if (!fromHead && scroller.scrollTop > 0) { y0 = null; return false; } // scrolled text: reading, not closing
+      dragging = true;
+      panel.classList.add('is-dragging');
+    }
+    panel.style.transform = `translateY(${Math.max(0, dy)}px)`;
+    return true;
+  };
+  const end = () => {
+    if (y0 === null) return;
+    y0 = null;
+    if (!dragging) return;
+    dragging = false;
+    panel.classList.remove('is-dragging');
+    const fast = dy > 40 && dy / Math.max(1, performance.now() - t0) > 0.6; // a flick closes even if short
+    panel.style.transform = '';
+    if (dy > 90 || fast) { haptic('light'); close(); }
+  };
+  // touch: a vertical drag over scrollable text belongs to the browser unless taken here with preventDefault
+  panel.addEventListener('touchstart', (e) => start(e.touches[0].clientY, e.target), { passive: true });
+  panel.addEventListener('touchmove', (e) => { if (move(e.touches[0].clientY)) e.preventDefault(); }, { passive: false });
+  panel.addEventListener('touchend', end);
+  panel.addEventListener('touchcancel', end);
+  // mouse (desktop Telegram); the window listeners go away with the sheet
+  const onMove = (e) => { if (e.pointerType === 'mouse') move(e.clientY); };
+  const onUp = (e) => { if (e.pointerType === 'mouse') end(); };
+  panel.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse') start(e.clientY, e.target); });
+  addEventListener('pointermove', onMove);
+  addEventListener('pointerup', onUp);
+  return () => { removeEventListener('pointermove', onMove); removeEventListener('pointerup', onUp); };
 }
 
 export function promptName({ title, value = '', action, placeholder = t('playlist_name'), max = 64 }) {

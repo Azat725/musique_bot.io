@@ -1,7 +1,7 @@
 import { t } from './i18n.js';
 import { player } from './player.js';
 import { likes, onSettings, settings, toggleLike } from './store.js';
-import { EASE_IO, chooseAndAddToPlaylist, esc, fitMarquee, fmt, h, haptic, icon, openArtist, reducedMotion, toast, trackMenu } from './ui.js';
+import { EASE_IO, chooseAndAddToPlaylist, esc, fitMarquee, fmt, h, haptic, icon, openArtist, reducedMotion, sheet, toast, trackMenu } from './ui.js';
 import { api } from './api.js';
 import { openEqualizer } from './eq.js';
 import { initSfx, playSfx, startScratch, startSpinNoise, whoosh } from './sfx.js';
@@ -115,6 +115,7 @@ export function initFullPlayer() {
     <div class="fp__extra">
       <button class="pill" data-add>${icon('listPlus')}<span></span></button>
       <button class="pill" data-send>${icon('send')}<span></span></button>
+      <button class="pill" data-lyrics hidden>${icon('lyrics')}<span></span></button>
       <button class="pill pill--icon" data-eq aria-label="equalizer">${icon('eq')}</button>
     </div>
   </div>`);
@@ -139,6 +140,7 @@ export function initFullPlayer() {
     if (!player.current) return;
     try { await api.send(player.current); haptic('success'); toast(t('toast_sending')); } catch { toast(t('toast_error')); }
   });
+  $('[data-lyrics]').addEventListener('click', openLyrics);
   $('[data-like]').addEventListener('click', async () => {
     if (!player.current) return;
     haptic('light');
@@ -172,6 +174,7 @@ export function translate() {
   root.querySelector('.fp__kicker').textContent = t('player_now');
   root.querySelector('[data-add] span').textContent = t('pill_playlist');
   root.querySelector('[data-send] span').textContent = t('pill_send');
+  root.querySelector('[data-lyrics] span').textContent = t('pill_lyrics');
   syncInfo();
 }
 
@@ -190,6 +193,7 @@ export function openPlayer() {
   syncTime();
   syncModes();
   fitMarquee(el.title); // measured now that the player has its real width
+  syncLyrics();
   armIdle();
   document.dispatchEvent(new CustomEvent('player-open', { detail: true }));
 }
@@ -242,6 +246,7 @@ function onTrack({ track, dir }) {
   syncInfo();
   syncLike();
   syncTime();
+  syncLyrics();
   if (!open) { rec = null; clearRecords(); return; } // openPlayer builds the record when it is needed
   if (!rec) { placeRecord(track); return; }
   if (rec.track?.id === track.id) return;
@@ -279,6 +284,35 @@ function swapRecord(track, dir) {
       armLifted = false; // and drops back onto the new one with the needle sound
       syncState();
     }).catch(() => { if (my === swapping) { armLifted = false; syncArm(); } });
+}
+
+// ---------- lyrics: the button shows up only for a track that has some ----------
+
+let lyricsSeq = 0, lyricsFound = null;
+
+function syncLyrics() {
+  const btn = root.querySelector('[data-lyrics]');
+  const tr = player.current;
+  const my = ++lyricsSeq; // an answer for a track already gone must not show the button
+  if (lyricsFound?.track.id !== tr?.id) { btn.hidden = true; lyricsFound = null; }
+  if (!tr || !open) return; // asked again when the player opens
+  api.lyrics(tr).then((r) => {
+    if (my !== lyricsSeq || !r?.lyrics) return;
+    lyricsFound = { track: tr, text: r.lyrics, source: r.source };
+    btn.hidden = false;
+  }).catch(() => {});
+}
+
+function openLyrics() {
+  if (!lyricsFound) return;
+  haptic('light');
+  const { track, text, source } = lyricsFound;
+  const content = h(`<div class="lyrics">
+    <div class="sheet__head"><div class="lyrics__title">${esc(track.title)}</div><div class="lyrics__artist">${esc(track.artist)}</div></div>
+    <div class="sheet__scroll"><p class="lyrics__text">${esc(text)}</p>
+      ${source ? `<p class="lyrics__source">${esc(t('lyrics_source', { s: source }))}</p>` : ''}</div>
+  </div>`);
+  sheet({ content, swipe: true, closeLabel: t('close'), cls: 'sheet--lyrics' });
 }
 
 // ---------- turntable mode: the record lies on a platter, a tonearm plays it ----------

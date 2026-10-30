@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
 
-from . import auth, config, db, music
+from . import auth, config, db, lyrics, music
 
 log = logging.getLogger("musique.api")
 
@@ -245,6 +245,15 @@ async def send(body: TrackBody, user=User):
 async def prefetch(body: TrackBody, user=User):
     _spawn(music.prefetch(_track(body)["id"]))
     return {"ok": True}
+
+
+@app.get("/api/lyrics/{track_id}")
+async def track_lyrics(track_id: str, title: str = "", artist: str = "", duration: int = 0, user=User):
+    """Lyrics of a track, or null: the Mini App shows its Lyrics button only when there are some."""
+    if not music.ID_RE.match(track_id):
+        raise HTTPException(400, "bad id")
+    found = await lyrics.find(track_id, title[:300], artist[:300], max(0, min(duration, 36000)))
+    return {"lyrics": found["text"] if found else None, "source": found["source"] if found else ""}
 
 
 # ---------- audio ----------

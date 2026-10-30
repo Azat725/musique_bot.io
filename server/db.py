@@ -30,6 +30,9 @@ CREATE TABLE IF NOT EXISTS fav_artists (
 CREATE TABLE IF NOT EXISTS sources (
     id TEXT PRIMARY KEY, ref TEXT
 );
+CREATE TABLE IF NOT EXISTS lyrics (
+    track_id TEXT PRIMARY KEY, text TEXT, source TEXT, fetched REAL
+);
 CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id);
 """
 
@@ -85,6 +88,24 @@ async def source_ref(track_id: str) -> str | None:
     async with _db.execute("SELECT ref FROM sources WHERE id = ?", (track_id,)) as cur:
         row = await cur.fetchone()
     return row["ref"] if row else None
+
+
+# ---------- lyrics ----------
+
+async def get_lyrics(track_id: str) -> dict | None:
+    """Cached lyrics lookup: {"text": str | None, "source": str, "fetched": float}; text None means none was found."""
+    async with _db.execute("SELECT text, source, fetched FROM lyrics WHERE track_id = ?", (track_id,)) as cur:
+        row = await cur.fetchone()
+    return {"text": row["text"], "source": row["source"] or "", "fetched": row["fetched"]} if row else None
+
+
+async def save_lyrics(track_id: str, text: str | None, source: str = "") -> None:
+    await _db.execute(
+        "INSERT INTO lyrics (track_id, text, source, fetched) VALUES (?, ?, ?, ?) "
+        "ON CONFLICT(track_id) DO UPDATE SET text = excluded.text, source = excluded.source, fetched = excluded.fetched",
+        (track_id, text, source, time.time()),
+    )
+    await _db.commit()
 
 
 # ---------- favourite artists ----------
