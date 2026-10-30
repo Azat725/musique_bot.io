@@ -1,4 +1,5 @@
 """Telegram bot: /start with the Mini App button, in-chat search, sending tracks as audio."""
+import asyncio
 import logging
 
 import httpx
@@ -7,7 +8,7 @@ from aiogram.filters import Command, CommandStart
 from aiogram.types import (BotCommand, BufferedInputFile, CallbackQuery, FSInputFile, InlineKeyboardButton,
                            InlineKeyboardMarkup, LabeledPrice, MenuButtonWebApp, Message, PreCheckoutQuery, WebAppInfo)
 
-from . import config, db, music
+from . import backup, config, db, music
 
 log = logging.getLogger("musique.bot")
 
@@ -35,6 +36,10 @@ TEXTS = {
         "support_desc": "Добровольная поддержка автора Musique — {n} ⭐. Спасибо!",
         "support_label": "Поддержка автора",
         "support_thanks": "Спасибо за поддержку! {n} ⭐ — это очень приятно и помогает развивать Musique.",
+        "backup_noadmin": "Владелец бота ещё не указан. Ваш Telegram id: <code>{id}</code>. Добавьте строку "
+                          "<code>ADMIN_ID={id}</code> в server/.env и перезапустите бота: резервные копии базы будут приходить сюда.",
+        "backup_making": "Делаю резервную копию…",
+        "backup_failed": "Не удалось сделать резервную копию, подробности в логах сервера.",
     },
     "en": {
         "start": "<b>Musique</b>\n\nAll your music in one place. Open the player with the button below "
@@ -59,6 +64,10 @@ TEXTS = {
         "support_desc": "A voluntary tip for the author of Musique — {n} ⭐. Thank you!",
         "support_label": "Support the author",
         "support_thanks": "Thank you for your support! {n} ⭐ means a lot and helps Musique grow.",
+        "backup_noadmin": "The bot's owner is not set yet. Your Telegram id: <code>{id}</code>. Add the line "
+                          "<code>ADMIN_ID={id}</code> to server/.env and restart the bot: database backups will arrive here.",
+        "backup_making": "Making a backup…",
+        "backup_failed": "The backup failed, see the server logs.",
     },
 }
 
@@ -166,6 +175,40 @@ async def support_custom_amount(message: Message):
         return
     _awaiting_amount.discard(message.from_user.id)
     await _send_support_invoice(message.chat.id, code, int(text))
+
+
+# ---------- database backup (owner only; not in the public command list) ----------
+
+async def send_backup(path, silent: bool = True) -> None:
+    """Send a backup file to the owner. No owner configured, or a file too big for Telegram: only logged."""
+    if not config.ADMIN_ID:
+        log.info("backup %s kept on the server only: ADMIN_ID is not set", path.name)
+        return
+    size = path.stat().st_size
+    if size > backup.SEND_LIMIT:
+        await _bot.send_message(config.ADMIN_ID, f"Backup {path.name} is {size // 1048576} MB: too big to send, it stays on the server.")
+        return
+    await _bot.send_document(
+        config.ADMIN_ID, FSInputFile(path), disable_notification=silent,
+        caption=f"Musique · {path.name.removeprefix('musique-').removesuffix('.db.gz')} · {max(1, size // 1024)} KB",
+    )
+
+
+@router.message(Command("backup"))
+async def backup_command(message: Message):
+    code = message.from_user.language_code
+    if not config.ADMIN_ID:  # the owner has not been named yet: tell whoever asks their own id, to put into .env
+        await message.answer(_t(code, "backup_noadmin").format(id=message.from_user.id))
+        return
+    if message.from_user.id != config.ADMIN_ID:
+        return  # nobody else needs to know the command exists
+    await message.answer(_t(code, "backup_making"))
+    try:
+        path = await asyncio.to_thread(backup.create)
+        await send_backup(path, silent=False)
+    except Exception:
+        log.exception("manual backup failed")
+        await message.answer(_t(code, "backup_failed"))
 
 
 @router.pre_checkout_query()

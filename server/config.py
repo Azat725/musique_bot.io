@@ -30,6 +30,11 @@ JAMENDO_CLIENT_ID = os.getenv("JAMENDO_CLIENT_ID", "")  # free key from devporta
 DATA_DIR = Path(os.getenv("DATA_DIR", ROOT))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH = DATA_DIR / "musique.db"
+# Telegram id of the owner: the daily database backup is sent there, and only this user may ask for /backup.
+# Not set: the bot answers /backup with your id so it can be put here.
+ADMIN_ID = int(os.getenv("ADMIN_ID") or 0)
+BACKUP_DIR = DATA_DIR / "backups"
+BACKUP_KEEP = int(os.getenv("BACKUP_KEEP", "14"))  # how many daily copies stay on the server
 CACHE_DIR = DATA_DIR / "cache"
 CACHE_LIMIT_BYTES = int(os.getenv("CACHE_LIMIT_MB", "1500")) * 1024 * 1024
 # Netscape cookies.txt from a YouTube account — optional, makes YouTube far more reliable

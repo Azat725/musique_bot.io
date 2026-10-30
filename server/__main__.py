@@ -5,7 +5,7 @@ import uvicorn
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 
-from . import api, bot, config, db, tunnel
+from . import api, backup, bot, config, db, tunnel
 
 
 async def main() -> None:
@@ -39,6 +39,7 @@ async def main() -> None:
     api.send_track = bot.send_track
     polling = asyncio.create_task(bot.dp.start_polling(tg, handle_signals=False))
     tasks.add(polling)
+    tasks.add(asyncio.create_task(backup.run_daily(bot.send_backup)))
     logging.info("API on http://127.0.0.1:%s  public: %s", config.PORT, config.PUBLIC_API_URL or "-")
     try:
         await asyncio.wait({web, polling}, return_when=asyncio.FIRST_COMPLETED)

@@ -29,8 +29,21 @@
 - Логи: `docker compose logs -f`
 - Перезапуск: `docker compose restart`
 - Обновление кода: `git pull && docker compose --env-file server/.env up -d --build`
-- Базу (избранное, плейлисты) хранит том `musique-data` (`/data/musique.db`). Копия:
-  `docker compose cp musique:/data/musique.db ./musique-backup.db`
+- **Резервные копии базы** (избранное, плейлисты, история лежат в томе `musique-data`, `/data/musique.db`) делаются сами:
+  раз в сутки бот делает целый снимок базы, сжимает его и хранит 14 последних в `/data/backups` (число меняет `BACKUP_KEEP`).
+  Копия на том же сервере не спасёт при его потере, поэтому каждая ещё и приходит вам в Telegram. Для этого:
+  1. отправьте боту `/backup`: он ответит вашим Telegram id и готовой строкой;
+  2. добавьте её в `server/.env` (`ADMIN_ID=123456789`) и перезапустите: `docker compose --env-file server/.env up -d`;
+  3. снова `/backup` (только владельцу) делает копию сразу и присылает файл. Ежедневные приходят без звука.
+  Файлы на сервере: `docker compose exec musique ls -lh /data/backups`.
+- **Восстановление** из копии `musique-….db.gz` (из Telegram или с сервера):
+  ```
+  gunzip musique-2026-10-30-040000.db.gz
+  docker compose stop musique
+  docker compose cp ./musique-2026-10-30-040000.db musique:/data/musique.db
+  docker compose start musique
+  ```
+  Копию с сервера на свой компьютер: `docker compose cp musique:/data/backups/<имя>.db.gz .`
 - Перенос данных с ноутбука: скопируйте `server/musique.db` на сервер и положите в том командой
   `docker compose cp ./musique.db musique:/data/musique.db` (при остановленном контейнере: `docker compose stop musique`).
 - SDK Telegram лежит локально в `docs/vendor/telegram-web-app.js` (telegram.org недоступен в части сетей).
