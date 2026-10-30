@@ -251,6 +251,12 @@ async def history(user_id: int, limit: int = 50) -> list[dict]:
         return [_track(r) for r in await cur.fetchall()]
 
 
+async def history_ids(user_id: int) -> list[str]:
+    """Every track the user has ever played (each once): the Mini App unsleeves only the new ones."""
+    async with _db.execute("SELECT track_id FROM history WHERE user_id = ?", (user_id,)) as cur:
+        return [r["track_id"] for r in await cur.fetchall()]
+
+
 async def clear_history(user_id: int) -> None:
     await _db.execute("DELETE FROM history WHERE user_id = ?", (user_id,))
     await _db.commit()

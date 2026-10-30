@@ -196,6 +196,28 @@ export function startScratch() {
   };
 }
 
+/** Paper sliding on cardboard: a record drawn out of its sleeve. */
+export function rustle() {
+  if (!hold()) return;
+  const t = ctx.currentTime;
+  const src = noise();
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.Q.value = 0.9;
+  bp.frequency.setValueAtTime(1800, t);
+  bp.frequency.linearRampToValueAtTime(3200, t + 0.5);
+  const hp = ctx.createBiquadFilter();
+  hp.type = 'highpass'; hp.frequency.value = 700;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0, t);
+  gain.gain.linearRampToValueAtTime(0.16, t + 0.08);
+  gain.gain.setValueAtTime(0.16, t + 0.35);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.62);
+  src.connect(bp).connect(hp).connect(gain).connect(ctx.destination);
+  src.onended = release;
+  src.start(t, Math.random());
+  src.stop(t + 0.65);
+}
+
 /** Short rewind whoosh for a jump made with the progress bar. */
 export function whoosh(forward = true) {
   if (!hold()) return;

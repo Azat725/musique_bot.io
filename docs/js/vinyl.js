@@ -1,10 +1,10 @@
 import { t } from './i18n.js';
 import { player } from './player.js';
-import { likes, onSettings, settings, toggleLike } from './store.js';
+import { heard, heardReady, likes, onSettings, settings, toggleLike } from './store.js';
 import { EASE_IO, chooseAndAddToPlaylist, esc, fitMarquee, fmt, h, haptic, icon, openArtist, reducedMotion, sheet, toast, trackMenu } from './ui.js';
 import { api } from './api.js';
 import { openEqualizer } from './eq.js';
-import { initSfx, playSfx, startScratch, startSpinNoise, whoosh } from './sfx.js';
+import { initSfx, playSfx, rustle, startScratch, startSpinNoise, whoosh } from './sfx.js';
 
 const RPM_MS = 1800; // one revolution at 33⅓ rpm
 const SECONDS_PER_TURN = 15; // turning the record by hand: one revolution moves the track by 15 s
@@ -188,7 +188,9 @@ export function openPlayer() {
   root.classList.add('is-open');
   root.setAttribute('aria-hidden', 'false');
   if (!rec || rec.track?.id !== player.current.id) placeRecord(player.current);
-  if (fromMini) fly(fromMini, true).then(syncState);
+  // a first listen opens in its sleeve; otherwise the record flies out of the mini player
+  if (takeSleeve(player.current)) unsleeve(++swapping, 200);
+  else if (fromMini) fly(fromMini, true).then(syncState);
   syncState();
   syncTime();
   syncModes();
@@ -233,7 +235,7 @@ function fly(miniRect, opening) {
 }
 
 function clearRecords() {
-  stage.querySelectorAll('.record').forEach((r) => r.remove());
+  stage.querySelectorAll('.record, .sleeve').forEach((r) => r.remove());
 }
 
 function placeRecord(track) {
@@ -243,20 +245,21 @@ function placeRecord(track) {
 }
 
 function onTrack({ track, dir }) {
+  notePending(track);
   syncInfo();
   syncLike();
   syncTime();
   syncLyrics();
   if (!open) { rec = null; clearRecords(); return; } // openPlayer builds the record when it is needed
-  if (!rec) { placeRecord(track); return; }
+  if (!rec) { placeRecord(track); if (takeSleeve(track)) unsleeve(++swapping); return; }
   if (rec.track?.id === track.id) return;
-  swapRecord(track, dir < 0 ? -1 : 1);
+  swapRecord(track, dir < 0 ? -1 : 1, takeSleeve(track));
 }
 
-function swapRecord(track, dir) {
+function swapRecord(track, dir, sleeved = false) {
   const my = ++swapping;
   // finish any half-done swap immediately
-  stage.querySelectorAll('.record.is-leaving').forEach((el) => el.remove());
+  stage.querySelectorAll('.record.is-leaving, .sleeve').forEach((el) => el.remove());
 
   const old = rec;
   armLifted = true; // the arm swings off before the record is taken away
@@ -274,6 +277,7 @@ function swapRecord(track, dir) {
 
   rec = makeRecord(track);
   stage.append(rec.el);
+  if (sleeved) { unsleeve(my, 220); return; } // a new record comes out of its sleeve instead of sliding in
   rec.el.animate([
     { transform: `translateX(${dir * 125}%) rotate(${dir * 40}deg) scale(.86)`, opacity: 0 },
     { transform: 'translateX(0) rotate(0deg) scale(1)', opacity: 1 },
@@ -284,6 +288,71 @@ function swapRecord(track, dir) {
       armLifted = false; // and drops back onto the new one with the needle sound
       syncState();
     }).catch(() => { if (my === swapping) { armLifted = false; syncArm(); } });
+}
+
+// ---------- sleeve: a track heard for the first time comes out of its sleeve ----------
+
+const pendingSleeve = new Set(); // the current track, if it is new and its sleeve has not been opened yet
+
+function notePending(track) {
+  pendingSleeve.clear(); // a sleeve nobody opened before the next track simply stays closed
+  if (settings.sleeve && heardReady && track && !heard.has(track.id) && !reducedMotion()) pendingSleeve.add(track.id);
+}
+
+function takeSleeve(track) {
+  if (!track || !pendingSleeve.has(track.id)) return false;
+  pendingSleeve.delete(track.id);
+  return true;
+}
+
+const SLEEVE_MS = 1900;
+const IO = 'cubic-bezier(.65, 0, .35, 1)';
+
+/** The sleeve rises with the cover on it, the record is drawn out of its open side, the sleeve is put away. */
+function unsleeve(my, delay = 0) {
+  const r = rec;
+  if (!r) return;
+  stage.querySelectorAll('.sleeve').forEach((s) => s.remove());
+  const tr = r.track;
+  const sleeve = h(`<div class="sleeve" aria-hidden="true">
+    ${tr?.cover ? `<img src="${esc(tr.cover)}" alt="" referrerpolicy="no-referrer">` : '<span class="sleeve__brand">Musique</span>'}
+    <span class="sleeve__slot"></span>
+  </div>`);
+  stage.append(sleeve); // after the record, so it covers it
+  armLifted = true; // the arm waits until the record lies on the platter
+  syncArm();
+  const kicker = root.querySelector('.fp__kicker');
+  kicker.textContent = t('player_new');
+  const opts = { duration: SLEEVE_MS, delay, fill: 'both' };
+  sleeve.animate([
+    { offset: 0, transform: 'translateY(55%) scale(.88) rotate(5deg)', opacity: 0, easing: IO },
+    { offset: 0.24, transform: 'translateY(0) scale(.88) rotate(0deg)', opacity: 1 },
+    { offset: 0.32, transform: 'translateY(0) scale(.88) rotate(0deg)', opacity: 1, easing: IO },
+    { offset: 0.62, transform: 'translateX(-10%) scale(.88) rotate(-3deg)', opacity: 1, easing: 'cubic-bezier(.55, 0, .8, .3)' },
+    { offset: 1, transform: 'translate(-70%, 30%) scale(.88) rotate(-14deg)', opacity: 0 },
+  ], opts);
+  // the record waits hidden behind the sleeve, slides half out to the right, then settles in the middle
+  const anim = r.el.animate([
+    { offset: 0, transform: 'translateX(0) scale(.84)', opacity: 0 },
+    { offset: 0.2, transform: 'translateX(0) scale(.84)', opacity: 0 },
+    { offset: 0.21, transform: 'translateX(0) scale(.84)', opacity: 1 },
+    { offset: 0.32, transform: 'translateX(0) scale(.84) rotate(0deg)', opacity: 1, easing: IO },
+    { offset: 0.62, transform: 'translateX(44%) scale(.84) rotate(70deg)', opacity: 1, easing: IO },
+    { offset: 1, transform: 'translateX(0) scale(1) rotate(0deg)', opacity: 1 },
+  ], { ...opts, fill: 'backwards' });
+  setTimeout(() => { if (my === swapping) rustle(); }, delay + SLEEVE_MS * 0.3);
+  anim.finished.then(() => {
+    sleeve.remove();
+    if (my !== swapping) return;
+    kicker.textContent = t('player_now');
+    playSfx('needle', 0.6);
+    armLifted = false;
+    syncState();
+  }).catch(() => {
+    sleeve.remove();
+    kicker.textContent = t('player_now');
+    if (my === swapping) { armLifted = false; syncArm(); }
+  });
 }
 
 // ---------- lyrics: the button shows up only for a track that has some ----------

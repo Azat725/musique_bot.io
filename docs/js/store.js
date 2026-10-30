@@ -24,6 +24,7 @@ export const settings = {
   recordColor: 'black',
   idleDelay: 20, // seconds before the player's interface fades away; 0 never
   hapticSeek: true, // a tick under the finger while seeking
+  sleeve: true, // a track heard for the first time comes out of its sleeve
   ...load(),
 };
 
@@ -88,6 +89,18 @@ export async function toggleLike(track) {
   likedTracks = [track, ...likedTracks];
   await api.like(track);
   return true;
+}
+
+// ---------- tracks already heard (the sleeve is only for a first listen) ----------
+
+export const heard = new Set();
+export let heardReady = false; // until the list arrives nobody is sure what is new: no sleeve then
+
+export async function loadHeard() {
+  const { ids } = await api.heardIds();
+  heard.clear();
+  ids.forEach((id) => heard.add(id));
+  heardReady = true;
 }
 
 // ---------- favourite artists ----------

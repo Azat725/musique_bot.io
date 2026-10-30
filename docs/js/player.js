@@ -1,4 +1,5 @@
 import { api } from './api.js';
+import { heard } from './store.js';
 
 /** Audio engine: queue, shuffle/repeat, Media Session. UI listens to events on `player`. */
 class Player extends EventTarget {
@@ -29,6 +30,7 @@ class Player extends EventTarget {
       const tr = this.current;
       if (tr && this._logged !== tr.id) {
         this._logged = tr.id;
+        heard.add(tr.id);
         api.addHistory(tr).catch(() => {});
         const upcoming = this.queue[this.index + 1];
         if (upcoming) {

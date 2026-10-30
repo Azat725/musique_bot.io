@@ -1,6 +1,6 @@
 import { api } from '../api.js';
 import { t } from '../i18n.js';
-import { settings, updateSettings } from '../store.js';
+import { heard, settings, updateSettings } from '../store.js';
 import { openEqualizer } from '../eq.js';
 import { showStories } from '../stories.js';
 import { CLASSIC_SWATCH, RECORD_COLORS, THEMES } from '../themes.js';
@@ -89,6 +89,10 @@ export async function render() {
         <span><span class="group__name">${esc(t('custom_haptic'))}</span><span class="group__hint">${esc(t('custom_haptic_hint'))}</span></span>
         <input type="checkbox" class="switch" data-haptic-seek ${settings.hapticSeek ? 'checked' : ''}>
       </label>
+      <label class="group__item">
+        <span><span class="group__name">${esc(t('custom_sleeve'))}</span><span class="group__hint">${esc(t('custom_sleeve_hint'))}</span></span>
+        <input type="checkbox" class="switch" data-sleeve ${settings.sleeve ? 'checked' : ''}>
+      </label>
     </section>
 
     <section class="group">
@@ -136,6 +140,10 @@ export async function render() {
   root.querySelector('[data-sounds]').addEventListener('change', (e) => {
     haptic('select');
     updateSettings({ sounds: e.target.checked });
+  });
+  root.querySelector('[data-sleeve]').addEventListener('change', (e) => {
+    haptic('select');
+    updateSettings({ sleeve: e.target.checked });
   });
   root.querySelector('[data-haptic-seek]').addEventListener('change', (e) => {
     updateSettings({ hapticSeek: e.target.checked });
@@ -193,6 +201,7 @@ export async function render() {
   root.querySelector('[data-stories]').addEventListener('click', () => { haptic('light'); showStories(); });
   root.querySelector('[data-clear]').addEventListener('click', async () => {
     await api.clearHistory();
+    heard.clear(); // with the history gone every track is new again: each comes out of its sleeve once more
     haptic('success');
     toast(t('settings_cleared'));
   });

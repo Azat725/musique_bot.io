@@ -104,6 +104,7 @@ export const api = {
   addToPlaylist: (id, track) => post(`/api/playlists/${id}/tracks`, { track }),
   removeFromPlaylist: (id, trackId) => del(`/api/playlists/${id}/tracks/${trackId}`),
   history: () => get('/api/history'),
+  heardIds: () => get('/api/history/ids'),
   addHistory: (track) => post('/api/history', { track }),
   clearHistory: () => del('/api/history'),
   send: (track) => post('/api/send', { track }),

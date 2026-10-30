@@ -215,6 +215,12 @@ async def history(user=User):
     return {"tracks": await db.history(user["id"])}
 
 
+@app.get("/api/history/ids")
+async def history_ids(user=User):
+    """Ids of every track ever played, so the Mini App knows which one is heard for the first time."""
+    return {"ids": await db.history_ids(user["id"])}
+
+
 @app.post("/api/history")
 async def add_history(body: TrackBody, user=User):
     await db.add_history(user["id"], _track(body))

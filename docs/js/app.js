@@ -1,7 +1,7 @@
 import { api } from './api.js';
 import { setLang, t } from './i18n.js';
 import { player } from './player.js';
-import { likes, loadLikes, onSettings, settings, syncCloudSettings, toggleLike } from './store.js';
+import { likes, loadHeard, loadLikes, onSettings, settings, syncCloudSettings, toggleLike } from './store.js';
 import { EASE_IO, cover, esc, fitMarquee, h, haptic, icon, loader, markPlaying, openArtist, reducedMotion, tg, toast } from './ui.js';
 import { initEq } from './eq.js';
 import { syncVinylNoise } from './sfx.js';
@@ -323,6 +323,7 @@ async function boot() {
   try {
     await me;
     loadLikes().catch(() => {});
+    loadHeard().catch(() => {});
   } catch {
     return noServer();
   }
