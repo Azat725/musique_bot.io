@@ -50,6 +50,13 @@ const ICONS = {
   micFav: P('M10 4.5a2.8 2.8 0 0 1 2.8 2.8v4.4a2.8 2.8 0 0 1-5.6 0V7.3A2.8 2.8 0 0 1 10 4.5zM4.8 11.3a5.2 5.2 0 0 0 10.4 0M10 16.5V20M7.2 20h5.6')
     + '<path class="fill" d="M18.4 9.6s-2.9-1.7-2.9-3.7a1.5 1.5 0 0 1 2.9-.8 1.5 1.5 0 0 1 2.9.8c0 2-2.9 3.7-2.9 3.7z"/>',
   mic: P('M12 3.5a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0v-5a3 3 0 0 1 3-3zM6.5 11a5.5 5.5 0 0 0 11 0M12 16.5V20M9 20h6'),
+  // up next: a short stack of lines with the current one marked
+  queue: P('M9 6.5h11M9 12h11M9 17.5h11') + '<path class="fill" d="M3.5 4.2v4.6l3.8-2.3z"/>' + P('M4 12h1.5M4 17.5h1.5'),
+  grip: '<g class="fill">' + [8.5, 15.5].map((x) => [6, 12, 18].map((y) => `<circle cx="${x}" cy="${y}" r="1.5"/>`).join('')).join('') + '</g>',
+  moon: P('M19.5 14.5A7.5 7.5 0 0 1 9.5 4.5a7.5 7.5 0 1 0 10 10z'),
+  // the 33 / 45 speed selector of a turntable
+  speed: '<circle cx="12" cy="13" r="7.5"/>' + P('M12 13l3.6-3.6M7.5 5.2 6.4 3.7M16.5 5.2l1.1-1.5'),
+  import: P('M12 4v10m0 0-4-4m4 4 4-4M5 15v3.5a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5V15'),
 };
 
 export const EASE_IO = 'cubic-bezier(.65, 0, .35, 1)';
@@ -400,6 +407,11 @@ export async function trackMenu(track, context = null) {
     { icon: 'mic', label: t('menu_artist'), run: 'artist' },
     { icon: 'send', label: t('menu_send'), run: 'send' },
   ];
+  // the full player's menu: the track already plays, and the turntable's own switches join in
+  if (context?.player) {
+    actions.splice(2, 1);
+    actions.push({ icon: 'moon', label: context.player.sleep, run: 'sleep' }, { icon: 'speed', label: context.player.speed, run: 'speed' });
+  }
   if (context?.playlistId) actions.push({ icon: 'trash', label: t('menu_remove'), run: 'remove', danger: true });
   const head = h(`<div class="sheet__track">${cover(track.cover)}<div><div class="track__title">${esc(track.title)}</div><div class="track__artist">${esc(track.artist)}</div></div></div>`);
   const i = await sheet({ content: head, items: actions });
@@ -418,6 +430,7 @@ export async function trackMenu(track, context = null) {
       case 'next': player.playNext(track); toast(t('toast_next')); break;
       case 'artist': await openArtist(track); break;
       case 'send': await api.send(track); haptic('success'); toast(t('toast_sending')); break;
+      case 'sleep': case 'speed': return actions[i].run; // the player handles its own switches
       case 'remove':
         await api.removeFromPlaylist(context.playlistId, track.id);
         invalidatePlaylists();

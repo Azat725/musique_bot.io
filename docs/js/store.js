@@ -33,6 +33,7 @@ export const settings = {
   idleDelay: 20, // seconds before the player's interface fades away; 0 never
   hapticSeek: true, // a tick under the finger while seeking
   sleeve: true, // a track heard for the first time comes out of its sleeve
+  rpm45: false, // 45 rpm: the record spins and plays 1.35× faster, higher in pitch
   ...load(),
 };
 migrate();

@@ -30,10 +30,10 @@ function resolveBase() {
 const base = resolveBase();
 let streamToken = '';
 
-async function request(method, path, body, signal) {
+async function request(method, path, body, signal, timeout = 0) {
   if (!base) throw new Error('no-server');
   const ctrl = new AbortController(); // never hang on a blocked or sleeping server (AbortSignal.timeout is missing in older WebViews)
-  const timer = setTimeout(() => ctrl.abort(), path === '/api/me' ? 15000 : 45000);
+  const timer = setTimeout(() => ctrl.abort(), timeout || (path === '/api/me' ? 15000 : 45000));
   signal?.addEventListener('abort', () => ctrl.abort());
   try {
     const res = await fetch(base + path, {
@@ -46,7 +46,11 @@ async function request(method, path, body, signal) {
       },
       body: body ? JSON.stringify(body) : undefined,
     });
-    if (!res.ok) throw new Error(`http-${res.status}`);
+    if (!res.ok) {
+      const err = new Error(`http-${res.status}`);
+      err.code = await res.json().then((j) => j.detail, () => ''); // a reason the app can explain, e.g. an import that failed
+      throw err;
+    }
     return await res.json();
   } finally {
     clearTimeout(timer);
@@ -99,6 +103,8 @@ export const api = {
   playlists: () => get('/api/playlists'),
   playlist: (id) => get('/api/playlists/' + id),
   createPlaylist: (name) => post('/api/playlists', { name }),
+  /** A playlist from another app or a pasted list: each track is looked up, which takes a while. */
+  importPlaylist: (source) => request('POST', '/api/import', { source }, null, 180000),
   renamePlaylist: (id, name) => request('PATCH', '/api/playlists/' + id, { name }),
   deletePlaylist: (id) => del('/api/playlists/' + id),
   addToPlaylist: (id, track) => post(`/api/playlists/${id}/tracks`, { track }),

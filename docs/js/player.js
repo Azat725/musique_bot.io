@@ -1,5 +1,7 @@
 import { api } from './api.js';
-import { heard } from './store.js';
+import { heard, onSettings, settings } from './store.js';
+
+export const RPM45 = 45 / (100 / 3); // 1.35: a 45 rpm record played at 45 instead of 33⅓
 
 /** Audio engine: queue, shuffle/repeat, Media Session. UI listens to events on `player`. */
 class Player extends EventTarget {
@@ -21,6 +23,7 @@ class Player extends EventTarget {
     this._blobs = new Map(); // track id -> Promise<object URL>
     this._errTimer = 0;
     this._lastState = '';
+    this.stopAfter = false; // sleep timer "end of track": stop instead of moving on
 
     const a = this.audio;
     a.addEventListener('playing', () => {
@@ -45,6 +48,7 @@ class Player extends EventTarget {
     a.addEventListener('timeupdate', () => this._emit('time'));
     a.addEventListener('durationchange', () => this._emit('time'));
     a.addEventListener('ended', () => {
+      if (this.stopAfter) { this.stopAfter = false; this._emit('stopped'); this._state(); return; }
       if (this.repeat === 'one') { a.currentTime = 0; a.play(); return; }
       this.next(true);
     });
@@ -60,6 +64,8 @@ class Player extends EventTarget {
     // is not cut by the mute switch or the lock screen. Unsupported browsers simply skip it.
     try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
     this._mediaSession();
+    this._applyRate();
+    onSettings(() => this._applyRate());
   }
 
   get current() { return this.queue[this.index] || null; }
@@ -92,12 +98,62 @@ class Player extends EventTarget {
     }
     if (this.shuffle) this._shuffleRest();
     this._load(0);
+    this._emit('queue');
   }
 
   playNext(track) {
     if (!this.current) return this.playQueue([track], 0);
     this.queue.splice(this.index + 1, 0, track);
     this.original?.push(track);
+    this._emit('queue');
+  }
+
+  /** Play a track already in the queue right now. */
+  jumpTo(i) {
+    if (i < 0 || i >= this.queue.length || i === this.index) return;
+    const dir = i > this.index ? 1 : -1;
+    this.index = i;
+    this._load(dir);
+    this._emit('queue');
+  }
+
+  /** Take an upcoming track out of the queue (and out of the order shuffle would restore). */
+  removeAt(i) {
+    if (i <= this.index || i >= this.queue.length) return;
+    const [tr] = this.queue.splice(i, 1);
+    if (this.original) {
+      const j = this.original.indexOf(tr);
+      if (j >= 0) this.original.splice(j, 1);
+    }
+    this._emit('queue');
+  }
+
+  /** Reorder upcoming tracks: both positions are queue indexes after the current track. */
+  move(from, to) {
+    const n = this.queue.length;
+    if (from === to || from <= this.index || to <= this.index || from >= n || to >= n) return;
+    const [tr] = this.queue.splice(from, 1);
+    this.queue.splice(to, 0, tr);
+    this._emit('queue');
+  }
+
+  clearUpcoming() {
+    const kept = this.queue.slice(0, this.index + 1);
+    if (kept.length === this.queue.length) return;
+    this.queue = kept;
+    if (this.original) this.original = this.original.filter((t) => kept.includes(t));
+    this._emit('queue');
+  }
+
+  get rate() { return settings.rpm45 ? RPM45 : 1; }
+
+  /** 33⅓ or 45: pitch follows speed, as on a turntable (a new src resets playbackRate to the default one). */
+  _applyRate() {
+    const a = this.audio, rate = this.rate;
+    if (a.playbackRate === rate && a.defaultPlaybackRate === rate) return;
+    a.preservesPitch = a.webkitPreservesPitch = a.mozPreservesPitch = rate === 1;
+    a.defaultPlaybackRate = rate;
+    a.playbackRate = rate;
   }
 
   toggle() {
@@ -135,6 +191,7 @@ class Player extends EventTarget {
       this.original = null;
     }
     this._emit('modes');
+    this._emit('queue');
   }
 
   cycleRepeat() {
@@ -163,6 +220,7 @@ class Player extends EventTarget {
     this._audioUrl(tr.id).then((url) => {
       if (seq !== this._seq) return; // the user already moved on
       this.audio.src = url;
+      this._applyRate();
       this.audio.play().catch(() => {});
     }).catch(() => {
       if (seq === this._seq) this.audio.dispatchEvent(new Event('error'));

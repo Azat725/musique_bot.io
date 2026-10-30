@@ -1,10 +1,12 @@
 import { t } from './i18n.js';
 import { player } from './player.js';
-import { heard, heardReady, likes, onSettings, settings, toggleLike } from './store.js';
+import { heard, heardReady, likes, onSettings, settings, toggleLike, updateSettings } from './store.js';
 import { EASE_IO, chooseAndAddToPlaylist, esc, fitMarquee, fmt, h, haptic, icon, openArtist, reducedMotion, sheet, toast, trackMenu } from './ui.js';
 import { api } from './api.js';
 import { openEqualizer } from './eq.js';
 import { initSfx, playSfx, rustle, startScratch, startSpinNoise, whoosh } from './sfx.js';
+import { openQueue } from './queue.js';
+import { SLEEP_OPTIONS, setSleep, sleepLeft, sleepMode, sleepTimer } from './sleep.js';
 
 const RPM_MS = 1800; // one revolution at 33⅓ rpm
 const SECONDS_PER_TURN = 15; // turning the record by hand: one revolution moves the track by 15 s
@@ -86,8 +88,11 @@ export function initFullPlayer() {
   root = h(`<div class="fp" aria-hidden="true">
     <header class="fp__top">
       <button class="icon-btn" data-close aria-label="close">${icon('down')}</button>
-      <div class="fp__kicker"></div>
-      <button class="icon-btn" data-more aria-label="more">${icon('more')}</button>
+      <div class="fp__head"><div class="fp__kicker"></div><button class="fp__marker" hidden></button></div>
+      <div class="fp__end">
+        <button class="icon-btn" data-queue aria-label="queue">${icon('queue')}</button>
+        <button class="icon-btn" data-more aria-label="more">${icon('more')}</button>
+      </div>
     </header>
     <div class="fp__stage">
       <div class="deck" aria-hidden="true">
@@ -133,7 +138,16 @@ export function initFullPlayer() {
   $('[data-prev]').addEventListener('click', () => { haptic('light'); player.prev(); });
   $('[data-shuffle]').addEventListener('click', () => { haptic('select'); player.toggleShuffle(); });
   $('[data-repeat]').addEventListener('click', () => { haptic('select'); player.cycleRepeat(); });
-  $('[data-more]').addEventListener('click', () => player.current && trackMenu(player.current).then(syncLike));
+  $('[data-more]').addEventListener('click', () => {
+    if (!player.current) return;
+    trackMenu(player.current, { player: { sleep: sleepLabel(), speed: t(settings.rpm45 ? 'speed_to33' : 'speed_to45') } }).then((r) => {
+      if (r === 'sleep') openSleep();
+      else if (r === 'speed') toggleSpeed();
+      syncLike();
+    });
+  });
+  $('[data-queue]').addEventListener('click', openQueue);
+  $('.fp__marker').addEventListener('click', () => (sleepMode() ? openSleep() : toggleSpeed()));
   $('[data-eq]').addEventListener('click', () => { haptic('light'); openEqualizer(); });
   $('[data-add]').addEventListener('click', () => player.current && chooseAndAddToPlaylist(player.current).catch(() => toast(t('toast_error'))));
   $('[data-send]').addEventListener('click', async () => {
@@ -158,6 +172,7 @@ export function initFullPlayer() {
   let idleSeen = settings.idleDelay;
   onSettings(() => {
     applyMode();
+    syncSpeed();
     if (settings.idleDelay !== idleSeen) { idleSeen = settings.idleDelay; wake(); }
   });
 
@@ -166,7 +181,10 @@ export function initFullPlayer() {
   player.addEventListener('time', syncTime);
   player.addEventListener('modes', syncModes);
   document.addEventListener('likes-changed', syncLike);
+  sleepTimer.addEventListener('change', syncMarker);
+  sleepTimer.addEventListener('tick', syncMarker);
   translate();
+  syncSpeed();
 }
 
 export function translate() {
@@ -176,6 +194,55 @@ export function translate() {
   root.querySelector('[data-send] span').textContent = t('pill_send');
   root.querySelector('[data-lyrics] span').textContent = t('pill_lyrics');
   syncInfo();
+  syncMarker();
+}
+
+// ---------- sleep timer and 33 / 45: menu items, and a marker under "Now playing" while either is on ----------
+
+function sleepLabel() {
+  const m = sleepMode();
+  if (!m) return t('sleep_menu_off');
+  return t('sleep_menu_on', { v: m === 'track' ? t('sleep_track_short') : fmt(sleepLeft()) });
+}
+
+async function openSleep() {
+  const m = sleepMode();
+  const opts = [...SLEEP_OPTIONS, ...(m ? [null] : [])];
+  const items = opts.map((o) => ({
+    icon: o === null ? 'close' : o === m ? 'check' : o === 'track' ? 'vinyl' : 'clock',
+    label: o === null ? t('sleep_off') : o === 'track' ? t('sleep_track') : t('sleep_min', { n: o }),
+    danger: o === null,
+  }));
+  const i = await sheet({ title: esc(t('sleep_title')), items });
+  if (i === null) return;
+  haptic('select');
+  setSleep(opts[i]);
+  if (opts[i]) toast(opts[i] === 'track' ? t('sleep_set_track') : t('sleep_set', { n: opts[i] }));
+}
+
+function toggleSpeed() {
+  haptic('medium');
+  updateSettings({ rpm45: !settings.rpm45 });
+  toast(t(settings.rpm45 ? 'speed_now45' : 'speed_now33'));
+}
+
+function syncSpeed() {
+  if (!root) return;
+  root.querySelector('.deck__speed').textContent = settings.rpm45 ? '45' : '33';
+  syncMarker();
+  syncState(); // the record speeds up or slows down to the new rate
+}
+
+function syncMarker() {
+  const btn = root?.querySelector('.fp__marker');
+  if (!btn) return;
+  const m = sleepMode();
+  const parts = [];
+  if (m) parts.push(`${icon('moon')}<span>${esc(m === 'track' ? t('sleep_track_short') : fmt(sleepLeft()))}</span>`);
+  if (settings.rpm45) parts.push(`<span>${esc(t('speed_marker'))}</span>`);
+  btn.hidden = !parts.length;
+  const html = parts.join('<i>·</i>');
+  if (btn.innerHTML !== html) btn.innerHTML = html;
 }
 
 export function openPlayer() {
@@ -367,7 +434,7 @@ function syncLyrics() {
   if (!tr || !open) return; // asked again when the player opens
   api.lyrics(tr).then((r) => {
     if (my !== lyricsSeq || !r?.lyrics) return;
-    lyricsFound = { track: tr, text: r.lyrics, source: r.source };
+    lyricsFound = { track: tr, text: r.lyrics, source: r.source, synced: r.synced?.length ? r.synced : null };
     btn.hidden = false;
   }).catch(() => {});
 }
@@ -375,13 +442,62 @@ function syncLyrics() {
 function openLyrics() {
   if (!lyricsFound) return;
   haptic('light');
-  const { track, text, source } = lyricsFound;
-  const content = h(`<div class="lyrics">
+  const { track, text, source, synced } = lyricsFound;
+  const body = synced
+    ? `<div class="lyrics__lines">${synced.map(([, line], i) => (line
+      ? `<p class="lyrics__line" data-i="${i}">${esc(line)}</p>` : '<p class="lyrics__gap"></p>')).join('')}</div>`
+    : `<p class="lyrics__text">${esc(text)}</p>`;
+  const content = h(`<div class="lyrics ${synced ? 'lyrics--synced' : ''}">
     <div class="sheet__head"><div class="lyrics__title">${esc(track.title)}</div><div class="lyrics__artist">${esc(track.artist)}</div></div>
-    <div class="sheet__scroll"><p class="lyrics__text">${esc(text)}</p>
+    <div class="sheet__scroll">${body}
       ${source ? `<p class="lyrics__source">${esc(t('lyrics_source', { s: source }))}</p>` : ''}</div>
   </div>`);
-  sheet({ content, swipe: true, closeLabel: t('close'), cls: 'sheet--lyrics' });
+  const stop = synced ? followLyrics(content, track, synced) : null;
+  sheet({ content, swipe: true, closeLabel: t('close'), cls: 'sheet--lyrics' }).then(() => stop?.());
+}
+
+const LYRICS_LEAD_MS = 250; // a line lights up a moment early: it reads as on time
+const LYRICS_HANDS_OFF_MS = 4000; // after the reader scrolls, the text stays where they left it this long
+
+/** Light up the line being sung and keep it in the middle; tap a line to jump there. Returns the cleanup. */
+function followLyrics(content, track, synced) {
+  const scroller = content.querySelector('.sheet__scroll');
+  const lines = [...content.querySelectorAll('.lyrics__line')];
+  const starts = lines.map((p) => synced[Number(p.dataset.i)][0]);
+  let active = -1, handsOffUntil = 0, first = true;
+  const hands = () => { handsOffUntil = performance.now() + LYRICS_HANDS_OFF_MS; };
+  scroller.addEventListener('touchstart', hands, { passive: true });
+  scroller.addEventListener('wheel', hands, { passive: true });
+  scroller.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse') hands(); });
+  scroller.addEventListener('click', (e) => {
+    const p = e.target.closest('.lyrics__line');
+    if (!p || player.current?.id !== track.id) return;
+    haptic('select');
+    handsOffUntil = 0;
+    player.seek(starts[lines.indexOf(p)] / 1000);
+    if (!player.playing) player.toggle();
+  });
+  const sync = () => {
+    const ms = player.current?.id === track.id ? player.time * 1000 + LYRICS_LEAD_MS : -1;
+    let lo = 0, hi = starts.length - 1, at = -1; // the last line that has started
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (starts[mid] <= ms) { at = mid; lo = mid + 1; } else hi = mid - 1;
+    }
+    if (at === active) return;
+    lines[active]?.classList.remove('is-active');
+    active = at;
+    const p = lines[at];
+    if (!p) return;
+    p.classList.add('is-active');
+    if (performance.now() < handsOffUntil) return;
+    const top = p.offsetTop - scroller.clientHeight / 2 + p.offsetHeight / 2;
+    scroller.scrollTo({ top: Math.max(0, top), behavior: first || reducedMotion() ? 'auto' : 'smooth' });
+    first = false;
+  };
+  requestAnimationFrame(sync); // once the sheet has its size
+  player.addEventListener('time', sync);
+  return () => player.removeEventListener('time', sync);
 }
 
 // ---------- turntable mode: the record lies on a platter, a tonearm plays it ----------
@@ -451,7 +567,7 @@ function syncState() {
   if (!player.playing || player.loading) wake(); else armIdle();
   if (!rec || rec.el.getAnimations().some((a) => a.playState === 'running' && a !== rec.anim)) return;
   const spinning = player.playing && !player.loading;
-  rampTo(rec, spinning ? 1 : player.loading ? 0.3 : 0, spinning ? 900 : 700); // turns slowly while loading
+  rampTo(rec, spinning ? player.rate : player.loading ? 0.3 : 0, spinning ? 900 : 700); // turns slowly while loading
 }
 
 function setText(node, text) {

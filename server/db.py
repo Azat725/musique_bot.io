@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS sources (
     id TEXT PRIMARY KEY, ref TEXT
 );
 CREATE TABLE IF NOT EXISTS lyrics (
-    track_id TEXT PRIMARY KEY, text TEXT, source TEXT, fetched REAL
+    track_id TEXT PRIMARY KEY, text TEXT, source TEXT, fetched REAL, synced TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id);
 """
@@ -49,6 +49,10 @@ async def init() -> None:
         columns = {r["name"] for r in await cur.fetchall()}
     if "artist_id" not in columns:
         await _db.execute("ALTER TABLE tracks ADD COLUMN artist_id TEXT DEFAULT ''")
+    # lyrics cached before timed lines: synced NULL means "not looked for yet", '' means "there are none"
+    async with _db.execute("PRAGMA table_info(lyrics)") as cur:
+        if "synced" not in {r["name"] for r in await cur.fetchall()}:
+            await _db.execute("ALTER TABLE lyrics ADD COLUMN synced TEXT")
     await _db.commit()
 
 
@@ -93,17 +97,19 @@ async def source_ref(track_id: str) -> str | None:
 # ---------- lyrics ----------
 
 async def get_lyrics(track_id: str) -> dict | None:
-    """Cached lyrics lookup: {"text": str | None, "source": str, "fetched": float}; text None means none was found."""
-    async with _db.execute("SELECT text, source, fetched FROM lyrics WHERE track_id = ?", (track_id,)) as cur:
+    """Cached lyrics lookup: {"text": str | None, "source": str, "fetched": float, "synced": str | None}.
+    text None means none was found; synced is JSON of timed lines, '' when there are none, None if never looked for."""
+    async with _db.execute("SELECT text, source, fetched, synced FROM lyrics WHERE track_id = ?", (track_id,)) as cur:
         row = await cur.fetchone()
-    return {"text": row["text"], "source": row["source"] or "", "fetched": row["fetched"]} if row else None
+    return {"text": row["text"], "source": row["source"] or "", "fetched": row["fetched"], "synced": row["synced"]} if row else None
 
 
-async def save_lyrics(track_id: str, text: str | None, source: str = "") -> None:
+async def save_lyrics(track_id: str, text: str | None, source: str = "", synced: str | None = "") -> None:
     await _db.execute(
-        "INSERT INTO lyrics (track_id, text, source, fetched) VALUES (?, ?, ?, ?) "
-        "ON CONFLICT(track_id) DO UPDATE SET text = excluded.text, source = excluded.source, fetched = excluded.fetched",
-        (track_id, text, source, time.time()),
+        "INSERT INTO lyrics (track_id, text, source, fetched, synced) VALUES (?, ?, ?, ?, ?) "
+        "ON CONFLICT(track_id) DO UPDATE SET text = excluded.text, source = excluded.source, "
+        "fetched = excluded.fetched, synced = excluded.synced",
+        (track_id, text, source, time.time(), synced),
     )
     await _db.commit()
 
@@ -221,6 +227,15 @@ async def add_to_playlist(user_id: int, playlist_id: int, t: dict) -> bool:
     await _db.execute("INSERT OR IGNORE INTO playlist_tracks VALUES (?, ?, ?)", (playlist_id, t["id"], time.time()))
     await _db.commit()
     return True
+
+
+async def fill_playlist(playlist_id: int, tracks: list[dict]) -> None:
+    """Many tracks at once, in order (an import); the caller has just created the playlist."""
+    now = time.time()
+    for i, t in enumerate(tracks):
+        await save_track(t)
+        await _db.execute("INSERT OR IGNORE INTO playlist_tracks VALUES (?, ?, ?)", (playlist_id, t["id"], now + i / 1000))
+    await _db.commit()
 
 
 async def remove_from_playlist(user_id: int, playlist_id: int, track_id: str) -> bool:

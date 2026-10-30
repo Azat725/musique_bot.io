@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
 
-from . import auth, config, db, lyrics, music
+from . import auth, config, db, importer, lyrics, music
 
 log = logging.getLogger("musique.api")
 
@@ -174,6 +174,19 @@ async def create_playlist(body: NameBody, user=User):
     return {"id": await db.create_playlist(user["id"], body.name.strip())}
 
 
+class ImportBody(BaseModel):
+    source: str = Field(min_length=1, max_length=20000)
+
+
+@app.post("/api/import")
+async def import_playlist(body: ImportBody, user=User):
+    """A playlist from another app (a link) or a pasted list of tracks, into a new playlist."""
+    try:
+        return await importer.run(user["id"], body.source, user.get("language_code") or "en")
+    except importer.ImportFailed as e:
+        raise HTTPException(422, e.code)
+
+
 @app.get("/api/playlists/{pid}")
 async def get_playlist(pid: int, user=User):
     p = await db.playlist(user["id"], pid)
@@ -259,7 +272,8 @@ async def track_lyrics(track_id: str, title: str = "", artist: str = "", duratio
     if not music.ID_RE.match(track_id):
         raise HTTPException(400, "bad id")
     found = await lyrics.find(track_id, title[:300], artist[:300], max(0, min(duration, 36000)))
-    return {"lyrics": found["text"] if found else None, "source": found["source"] if found else ""}
+    return {"lyrics": found["text"] if found else None, "source": found["source"] if found else "",
+            "synced": found["synced"] if found else None}
 
 
 # ---------- audio ----------

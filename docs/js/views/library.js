@@ -1,7 +1,7 @@
 import { api } from '../api.js';
 import { plural, t } from '../i18n.js';
 import { favArtists, getPlaylists, invalidatePlaylists, likes, loadFavArtists, settings, updateSettings } from '../store.js';
-import { EASE_IO, esc, h, haptic, icon, loader, promptName, reducedMotion, sheet, thumb } from '../ui.js';
+import { EASE_IO, esc, h, haptic, icon, loader, promptName, reducedMotion, sheet, thumb, toast } from '../ui.js';
 
 // playlist ids grow with creation time, so the id stands in for the date added
 const SORTS = {
@@ -93,6 +93,9 @@ export async function render(_, nav) {
   });
 
   root.querySelector('[data-create]').addEventListener('click', async () => {
+    const choice = await sheet({ items: [{ icon: 'plus', label: t('lib_new_playlist') }, { icon: 'import', label: t('import_menu') }] });
+    if (choice === 1) { importPlaylist(nav); return; }
+    if (choice !== 0) return;
     const name = await promptName({ title: t('lib_new_playlist'), action: t('create') });
     if (!name) return;
     const { id } = await api.createPlaylist(name);
@@ -107,4 +110,70 @@ export async function render(_, nav) {
     root.querySelector('[data-go="likes"] .tile__sub').textContent = plural(likes.size);
   };
   return root;
+}
+
+// ---------- import a playlist from another app (a link) or a pasted list of tracks ----------
+
+const IMPORT_ERRORS = ['unrecognized', 'youtube', 'spotify', 'yandex', 'empty'];
+
+function importPlaylist(nav) {
+  const root = h(`<div class="dialog" role="dialog" aria-modal="true">
+    <form class="dialog__panel import">
+      <div class="dialog__title">${esc(t('import_title'))}</div>
+      <p class="import__hint">${esc(t('import_hint'))}</p>
+      <textarea class="field import__field" rows="5" maxlength="20000" placeholder="${esc(t('import_placeholder'))}" required></textarea>
+      <p class="import__error" hidden></p>
+      <div class="import__busy" hidden>${loader()}<span>${esc(t('import_busy'))}</span></div>
+      <div class="dialog__actions">
+        <button type="button" class="btn btn--ghost" data-cancel>${esc(t('cancel'))}</button>
+        <button type="submit" class="btn btn--accent">${esc(t('import_go'))}</button>
+      </div>
+    </form>
+  </div>`);
+  const form = root.querySelector('form');
+  const field = root.querySelector('textarea');
+  const error = root.querySelector('.import__error');
+  let busy = false, gone = false;
+  const close = () => { gone = true; root.remove(); };
+  root.querySelector('[data-cancel]').addEventListener('click', close);
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const source = field.value.trim();
+    if (!source || busy) return;
+    busy = true;
+    error.hidden = true;
+    form.classList.add('is-busy');
+    root.querySelector('.import__busy').hidden = false;
+    form.querySelectorAll('button[type=submit], textarea').forEach((x) => { x.disabled = true; });
+    try {
+      const r = await api.importPlaylist(source);
+      invalidatePlaylists();
+      if (gone) { toast(t('import_done', { n: r.added, m: r.total })); return; } // closed while waiting: just say so
+      close();
+      haptic('success');
+      toast(t('import_done', { n: r.added, m: r.total }));
+      if (r.missing?.length) await showMissing(r);
+      nav.push('playlist', { kind: 'user', id: r.id, title: r.name });
+    } catch (err) {
+      haptic('error');
+      error.textContent = t(IMPORT_ERRORS.includes(err.code) ? 'import_err_' + err.code : 'import_err_network');
+      error.hidden = false;
+    } finally {
+      busy = false;
+      form.classList.remove('is-busy');
+      root.querySelector('.import__busy').hidden = true;
+      form.querySelectorAll('button[type=submit], textarea').forEach((x) => { x.disabled = false; });
+    }
+  });
+  document.body.append(root);
+  setTimeout(() => field.focus(), 50);
+}
+
+function showMissing(r) {
+  const more = r.total - r.added - r.missing.length; // the server lists the first 20; duplicates count as found
+  const content = h(`<div class="import-missing">
+    <p class="import-missing__lead">${esc(t('import_missing', { n: r.total - r.added }))}</p>
+    <ul>${r.missing.map((m) => `<li>${esc(m)}</li>`).join('')}${more > 0 ? `<li class="import-missing__more">${esc(t('import_missing_more', { n: more }))}</li>` : ''}</ul>
+  </div>`);
+  return sheet({ title: esc(r.name), content, closeLabel: t('import_open') });
 }
