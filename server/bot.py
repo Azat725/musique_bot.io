@@ -14,8 +14,10 @@ log = logging.getLogger("musique.bot")
 
 TEXTS = {
     "ru": {
-        "start": "<b>Musique</b>\n\nВся музыка в одном месте. Открой плеер кнопкой ниже "
-                 "или просто напиши название трека или исполнителя — пришлю аудио прямо сюда.",
+        "start": "Привет! Это Musique — ламповое приложение для музыки 🎶\n\n"
+                 "Здесь играет винил, а любимые песни всегда рядом. Жми кнопку ниже и доставай пластинку. "
+                 "А если хочется чего-то конкретного — напиши название или исполнителя, и трек придёт сюда.\n\n"
+                 "Здесь точно кайф ✨",
         "open": "Открыть Musique",
         "searching": "Ищу…",
         "nothing": "Ничего не нашлось. Попробуй иначе сформулировать запрос.",
@@ -26,24 +28,28 @@ TEXTS = {
         "short": "Вся музыка в Telegram. Поиск, плейлисты, винил.",
         "support": "⭐ Поддержать автора",
         "support_cmd": "Поддержать автора",
-        "support_prompt": "Спасибо, что хотите поддержать Musique! Выберите, сколько звёзд отправить, или укажите свою сумму.",
+        "support_prompt": "Автор Musique работает на энтузиазме и чае ☕\n\n"
+                          "Если приложение скрасило вам вечер, можно угостить чашечкой: любая сумма.",
+        "support_tbank": "☕ Угостить чаем в Т-Банке",
         "support_custom": "Своя сумма",
         "support_ask": "Напишите, сколько звёзд отправить — целое число от 1 до {max}.",
         "support_bad": "Нужно целое число от 1 до {max}. Попробуйте ещё раз или нажмите «Отмена».",
         "support_cancel": "Отмена",
         "support_cancelled": "Хорошо, в другой раз 🙂",
-        "support_title": "Поддержка Musique",
-        "support_desc": "Добровольная поддержка автора Musique — {n} ⭐. Спасибо!",
+        "support_title": "Чай для автора Musique",
+        "support_desc": "Добровольная поддержка автора — {n} ⭐. Спасибо!",
         "support_label": "Поддержка автора",
-        "support_thanks": "Спасибо за поддержку! {n} ⭐ — это очень приятно и помогает развивать Musique.",
+        "support_thanks": "Спасибо за чай! {n} ⭐ — это очень тепло 🤍",
         "backup_noadmin": "Владелец бота ещё не указан. Ваш Telegram id: <code>{id}</code>. Добавьте строку "
                           "<code>ADMIN_ID={id}</code> в server/.env и перезапустите бота: резервные копии базы будут приходить сюда.",
         "backup_making": "Делаю резервную копию…",
         "backup_failed": "Не удалось сделать резервную копию, подробности в логах сервера.",
     },
     "en": {
-        "start": "<b>Musique</b>\n\nAll your music in one place. Open the player with the button below "
-                 "or just send me a track or artist name — I'll reply with the audio.",
+        "start": "Hi! This is Musique — a cosy little app for music 🎶\n\n"
+                 "A vinyl record plays here, and your favourite songs are always close. Tap the button below and take out a record. "
+                 "Or if you want something specific, just send me a song or artist name and the track will arrive right here.\n\n"
+                 "It just feels good here ✨",
         "open": "Open Musique",
         "searching": "Searching…",
         "nothing": "Nothing found. Try rephrasing your query.",
@@ -54,16 +60,18 @@ TEXTS = {
         "short": "All music in Telegram. Search, playlists, vinyl.",
         "support": "⭐ Support the author",
         "support_cmd": "Support the author",
-        "support_prompt": "Thank you for wanting to support Musique! Choose how many Stars to send, or enter your own amount.",
+        "support_prompt": "The author of Musique runs on enthusiasm and tea ☕\n\n"
+                          "If the app brightened your evening, you can treat them to a cup: any amount.",
+        "support_tbank": "☕ Treat to tea (T-Bank)",
         "support_custom": "Other amount",
         "support_ask": "Send me the number of Stars — a whole number from 1 to {max}.",
         "support_bad": "That needs to be a whole number from 1 to {max}. Try again or tap “Cancel”.",
         "support_cancel": "Cancel",
         "support_cancelled": "No problem, maybe another time 🙂",
-        "support_title": "Support Musique",
-        "support_desc": "A voluntary tip for the author of Musique — {n} ⭐. Thank you!",
+        "support_title": "Tea for the author of Musique",
+        "support_desc": "A voluntary tip for the author — {n} ⭐. Thank you!",
         "support_label": "Support the author",
-        "support_thanks": "Thank you for your support! {n} ⭐ means a lot and helps Musique grow.",
+        "support_thanks": "Thanks for the tea! {n} ⭐ means a lot, it's really warm 🤍",
         "backup_noadmin": "The bot's owner is not set yet. Your Telegram id: <code>{id}</code>. Add the line "
                           "<code>ADMIN_ID={id}</code> to server/.env and restart the bot: database backups will arrive here.",
         "backup_making": "Making a backup…",
@@ -112,10 +120,12 @@ _awaiting_amount: set[int] = set()  # users asked to type their own amount; kept
 
 def _support_keyboard(code: str | None) -> InlineKeyboardMarkup:
     stars = [InlineKeyboardButton(text=f"{n} ⭐", callback_data=f"stars:{n}") for n in SUPPORT_PRESETS]
-    return InlineKeyboardMarkup(inline_keyboard=[
-        stars[:2], stars[2:],
-        [InlineKeyboardButton(text=_t(code, "support_custom"), callback_data="stars:custom")],
-    ])
+    rows = [stars[:2], stars[2:], [InlineKeyboardButton(text=_t(code, "support_custom"), callback_data="stars:custom")]]
+    # a transfer to the author's bank account: only for those whose Telegram language is Russian (a Russian bank
+    # is of no use to anyone else); everybody keeps the Stars
+    if config.SUPPORT_URL and (code or "").lower().startswith("ru"):
+        rows.append([InlineKeyboardButton(text=_t(code, "support_tbank"), url=config.SUPPORT_URL)])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def _cancel_keyboard(code: str | None) -> InlineKeyboardMarkup:

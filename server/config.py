@@ -33,6 +33,9 @@ DB_PATH = DATA_DIR / "musique.db"
 # Telegram id of the owner: the daily database backup is sent there, and only this user may ask for /backup.
 # Not set: the bot answers /backup with your id so it can be put here.
 ADMIN_ID = int(os.getenv("ADMIN_ID") or 0)
+# A payment link (a bank transfer to the author) offered next to Telegram Stars in "Support the author", for
+# Russian-speaking users. Kept in server/.env, never in the repository: it is public. Empty: no such button.
+SUPPORT_URL = (os.getenv("SUPPORT_URL") or "").strip()
 BACKUP_DIR = DATA_DIR / "backups"
 BACKUP_KEEP = int(os.getenv("BACKUP_KEEP", "14"))  # how many daily copies stay on the server
 CACHE_DIR = DATA_DIR / "cache"
