@@ -139,7 +139,8 @@ export function startSpinNoise(volume = 1, background = false) {
 
 // ---------- record noise under the music (Settings) ----------
 
-const NOISE_LEVELS = [0, 0.45, 0.8, 1.3];
+// indices are what Settings store; 4 ("whisper", 35 % of low) came later, so it is appended rather than inserted
+const NOISE_LEVELS = [0, 0.45, 0.8, 1.3, 0.16];
 let bgNoise = null; // { level, stop }
 
 /** Keep the background crackle in step with playback and the chosen level. */

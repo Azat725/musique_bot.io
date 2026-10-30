@@ -28,6 +28,8 @@
   --groove: rgba(255, 255, 255, 0.05);
   --groove-strong: rgba(255, 255, 255, 0.11);
   --sheen: rgba(255, 255, 255, 0.07);
+  --seg-on: #14213D;        /* the chosen option of a segmented control */
+  --on-seg-on: #FFFFFF;
 
   --font-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
   --font-sans: 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -68,4 +70,84 @@
   --groove: rgba(255, 240, 220, 0.045);
   --groove-strong: rgba(255, 240, 220, 0.1);
   --sheen: rgba(255, 240, 220, 0.06);
+  --seg-on: #A8394A;
+  --on-seg-on: #FFFFFF;
 }
+
+/* ---------- colour themes (Settings → Customization). data-mode tells light from dark for component rules ---------- */
+
+/* Navy Blue: deep navy, cream text, bordeaux accent, brown tiles */
+:root[data-theme="navy"] {
+  --bg: #0F1A2E; --surface: #16243D; --surface-2: #1E2F4D;
+  --text: #F1E6D2; --text-2: #C2B49C; --text-3: #8C8370; --line: #2A3A58;
+  --accent: #A8394A; --accent-text: #DE7883; --accent-press: #8E2E3D; --accent-soft: #3A2430; --on-accent: #FFFFFF;
+  --tile-navy: #6B4A32; --mini: #1E2F4D; --on-mini: #F1E6D2; --toast: #F1E6D2; --on-toast: #0F1A2E;
+  --scrim: rgba(0, 0, 0, 0.6); --shade: rgba(5, 10, 20, 0.6); --shadow: rgba(0, 0, 0, 0.55);
+  --vinyl: #0A0806; --groove: rgba(255, 240, 220, 0.045); --groove-strong: rgba(255, 240, 220, 0.1); --sheen: rgba(255, 240, 220, 0.06);
+  --seg-on: #A8394A; --on-seg-on: #FFFFFF;
+}
+
+/* Noir: graphite and black, white text, bordeaux accent */
+:root[data-theme="noir"] {
+  --bg: #121212; --surface: #1C1C1C; --surface-2: #262626;
+  --text: #F5F5F5; --text-2: #B5B5B5; --text-3: #7E7E7E; --line: #2E2E2E;
+  --accent: #9E2B3C; --accent-text: #E0707E; --accent-press: #82222F; --accent-soft: #33191D; --on-accent: #FFFFFF;
+  --tile-navy: #3A3A3A; --mini: #262626; --on-mini: #F5F5F5; --toast: #F5F5F5; --on-toast: #121212;
+  --scrim: rgba(0, 0, 0, 0.65); --shade: rgba(0, 0, 0, 0.6); --shadow: rgba(0, 0, 0, 0.6);
+  --vinyl: #050505; --groove: rgba(255, 255, 255, 0.05); --groove-strong: rgba(255, 255, 255, 0.11); --sheen: rgba(255, 255, 255, 0.06);
+  --seg-on: #F5F5F5; --on-seg-on: #121212;
+}
+
+/* Bordo: bordeaux all over, cream fills, navy and brown tiles */
+:root[data-theme="bordo"] {
+  --bg: #4A121C; --surface: #5A1A26; --surface-2: #6A2330;
+  --text: #F3E7D3; --text-2: #DCC6A8; --text-3: #B59A80; --line: #742B38;
+  --accent: #F3E7D3; --accent-text: #EBC793; --accent-press: #DFD0B8; --accent-soft: #6E2A36; --on-accent: #4A121C;
+  --tile-navy: #1F2E4D; --mini: #2C1B13; --on-mini: #F3E7D3; --toast: #F3E7D3; --on-toast: #4A121C;
+  --scrim: rgba(20, 4, 8, 0.6); --shade: rgba(20, 4, 8, 0.6); --shadow: rgba(15, 2, 5, 0.55);
+  --vinyl: #120707; --groove: rgba(255, 240, 220, 0.05); --groove-strong: rgba(255, 240, 220, 0.11); --sheen: rgba(255, 240, 220, 0.06);
+  --seg-on: #F3E7D3; --on-seg-on: #4A121C;
+}
+
+/* Sky: sky blue paper, beige cards, brown text, bordeaux accent */
+:root[data-theme="sky"] {
+  --bg: #D6E7F3; --surface: #F4EEE2; --surface-2: #C4DAEA;
+  --text: #3B2A20; --text-2: #5E4D40; --text-3: #7F6C5A; --line: #B7CFE1;
+  --accent: #7B1E2B; --accent-text: #7B1E2B; --accent-press: #63161F; --accent-soft: #EAD3CF; --on-accent: #FFFFFF;
+  --tile-navy: #6B4A32; --mini: #3B2A20; --on-mini: #F4EEE2; --toast: #3B2A20; --on-toast: #F4EEE2;
+  --scrim: rgba(30, 40, 55, 0.4); --shade: rgba(30, 40, 55, 0.5); --shadow: rgba(40, 60, 80, 0.25);
+  --vinyl: #101218; --groove: rgba(255, 255, 255, 0.05); --groove-strong: rgba(255, 255, 255, 0.11); --sheen: rgba(255, 255, 255, 0.07);
+  --seg-on: #3B2A20; --on-seg-on: #F4EEE2;
+}
+
+/* British Green: racing green, cream text, bordeaux accent, brown tiles */
+:root[data-theme="green"] {
+  --bg: #12261D; --surface: #183126; --surface-2: #1F3D30;
+  --text: #EFE4CF; --text-2: #C3B597; --text-3: #8E8670; --line: #29463A;
+  --accent: #9A2E3D; --accent-text: #DA7680; --accent-press: #7E2532; --accent-soft: #3A2A27; --on-accent: #FFFFFF;
+  --tile-navy: #5C3F2A; --mini: #1F3D30; --on-mini: #EFE4CF; --toast: #EFE4CF; --on-toast: #12261D;
+  --scrim: rgba(0, 0, 0, 0.6); --shade: rgba(4, 12, 8, 0.6); --shadow: rgba(0, 0, 0, 0.55);
+  --vinyl: #070B09; --groove: rgba(255, 240, 220, 0.045); --groove-strong: rgba(255, 240, 220, 0.1); --sheen: rgba(255, 240, 220, 0.06);
+  --seg-on: #9A2E3D; --on-seg-on: #FFFFFF;
+}
+
+/* Old Money: ivory, forest green, old gold, a touch of bordeaux */
+:root[data-theme="oldmoney"] {
+  --bg: #F4EFE3; --surface: #FBF8F1; --surface-2: #E9E1CF;
+  --text: #1F3A2E; --text-2: #5A5244; --text-3: #847965; --line: #DDD3BF;
+  --accent: #2F4B3C; --accent-text: #8A6A2F; --accent-press: #243B2F; --accent-soft: #E2E5D6; --on-accent: #F4EFE3;
+  --tile-navy: #2F4B3C; --mini: #2F4B3C; --on-mini: #F4EFE3; --toast: #1F3A2E; --on-toast: #FBF8F1;
+  --scrim: rgba(25, 32, 25, 0.4); --shade: rgba(25, 32, 25, 0.5); --shadow: rgba(60, 50, 30, 0.22);
+  --vinyl: #101218; --groove: rgba(255, 255, 255, 0.05); --groove-strong: rgba(255, 255, 255, 0.11); --sheen: rgba(255, 255, 255, 0.07);
+  --seg-on: #2F4B3C; --on-seg-on: #F4EFE3;
+}
+
+/* ---------- record colour (Settings → Customization); after the themes so it wins over their --vinyl ---------- */
+:root[data-vinyl="bordeaux"] { --vinyl: #5A1420; --groove: rgba(255, 220, 220, 0.06); --groove-strong: rgba(255, 220, 220, 0.13); --sheen: rgba(255, 230, 230, 0.08); }
+:root[data-vinyl="brown"] { --vinyl: #4A2E1E; --groove: rgba(255, 235, 210, 0.06); --groove-strong: rgba(255, 235, 210, 0.13); --sheen: rgba(255, 235, 210, 0.08); }
+:root[data-vinyl="beige"] { --vinyl: #D5BF9B; --groove: rgba(70, 45, 20, 0.08); --groove-strong: rgba(70, 45, 20, 0.16); --sheen: rgba(255, 255, 255, 0.2); }
+:root[data-vinyl="navy"] { --vinyl: #16243F; --groove: rgba(220, 230, 255, 0.06); --groove-strong: rgba(220, 230, 255, 0.13); --sheen: rgba(220, 230, 255, 0.08); }
+:root[data-vinyl="green"] { --vinyl: #1E3A2C; --groove: rgba(220, 255, 235, 0.06); --groove-strong: rgba(220, 255, 235, 0.13); --sheen: rgba(220, 255, 235, 0.08); }
+:root[data-vinyl="grey"] { --vinyl: #55565B; --groove: rgba(255, 255, 255, 0.07); --groove-strong: rgba(255, 255, 255, 0.15); --sheen: rgba(255, 255, 255, 0.1); }
+:root[data-vinyl="ivory"] { --vinyl: #ECE4D4; --groove: rgba(60, 45, 25, 0.07); --groove-strong: rgba(60, 45, 25, 0.15); --sheen: rgba(255, 255, 255, 0.35); }
+:root[data-vinyl="gold"] { --vinyl: #B08D57; --groove: rgba(60, 40, 10, 0.08); --groove-strong: rgba(60, 40, 10, 0.17); --sheen: rgba(255, 245, 220, 0.22); }

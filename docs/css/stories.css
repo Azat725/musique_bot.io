@@ -93,6 +93,20 @@
 @keyframes st-fader { 50% { top: var(--b); } }
 .sx-f small { font-size: 11px; opacity: .7; font-variant-numeric: tabular-nums; }
 
+/* customization: records in five colours and the seven themes */
+.sx-custom { display: grid; justify-items: center; gap: 34px; }
+.sx-discs { display: flex; }
+.sx-disc { position: relative; width: min(24vw, 96px); aspect-ratio: 1; margin-left: max(-9vw, -36px); border-radius: 50%; background: var(--c);
+  box-shadow: 0 0 0 1px rgba(255, 240, 220, .14), 0 8px 18px rgba(0, 0, 0, .45); }
+.sx-disc:first-child { margin-left: 0; }
+.sx-disc::before { content: ""; position: absolute; inset: 14%; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(127, 127, 127, .3); }
+.sx-disc::after { content: ""; position: absolute; inset: 36%; border-radius: 50%; background: var(--bordeaux); box-shadow: 0 0 0 2px rgba(255, 255, 255, .2); }
+.sx-themes { display: flex; justify-content: center; gap: 8px; }
+.sx-theme { display: grid; grid-template-columns: 1fr 1fr; width: min(9vw, 36px); height: min(9vw, 36px); border-radius: var(--r-sm); overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255, 240, 220, .18); }
+.story.is-active .sx-disc { animation: st-up .5s var(--ease) both; animation-delay: var(--d); }
+.story.is-active .sx-theme { animation: st-pop .45s var(--ease) both; animation-delay: var(--d); }
+
 /* chat */
 .sx-chat { width: min(84vw, 340px); display: grid; gap: 12px; text-align: left; }
 .sx-msg { justify-self: end; max-width: 80%; padding: 10px 14px; border-radius: 16px 16px 4px 16px; background: #F8F1E3; color: var(--bordeaux); font-weight: 600; }

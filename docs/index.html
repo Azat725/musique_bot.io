@@ -10,10 +10,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- fonts must never block rendering: if Google is unreachable the system fonts are used -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-  <link rel="stylesheet" href="css/tokens.css?v=28">
-  <link rel="stylesheet" href="css/app.css?v=29">
-  <link rel="stylesheet" href="css/player.css?v=28">
-  <link rel="stylesheet" href="css/stories.css?v=1">
+  <link rel="stylesheet" href="css/tokens.css?v=29">
+  <link rel="stylesheet" href="css/app.css?v=30">
+  <link rel="stylesheet" href="css/player.css?v=29">
+  <link rel="stylesheet" href="css/stories.css?v=3">
   <!-- local copy of https://telegram.org/js/telegram-web-app.js?64 (taken 2026-10-29, its two per-event console.log calls removed): telegram.org hangs on some networks/VPNs, and the app module waits for this script -->
   <script src="vendor/telegram-web-app.js?v=2"></script>
   <script>
@@ -23,31 +23,39 @@
       var s = {};
       try { s = JSON.parse(localStorage.getItem('musique.settings')) || {}; } catch (e) {}
       var w = window.Telegram && window.Telegram.WebApp;
-      var theme = s.theme && s.theme !== 'system' ? s.theme
+      // custom colour themes: [mode, background] — the same table as THEMES in js/themes.js
+      var custom = { navy: ['dark', '#0F1A2E'], noir: ['dark', '#121212'], bordo: ['dark', '#4A121C'],
+        sky: ['light', '#D6E7F3'], green: ['dark', '#12261D'], oldmoney: ['light', '#F4EFE3'] }[s.colorTheme];
+      var theme = custom ? s.colorTheme : s.theme && s.theme !== 'system' ? s.theme
         : (w && w.colorScheme) || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-      document.documentElement.dataset.theme = theme;
-      if (theme === 'dark') document.querySelector('meta[name="theme-color"]').content = '#1A1410';
+      var root = document.documentElement;
+      root.dataset.theme = theme;
+      root.dataset.mode = custom ? custom[0] : theme;
+      if (s.recordColor && s.recordColor !== 'black') root.dataset.vinyl = s.recordColor;
+      var bg = custom ? custom[1] : theme === 'dark' ? '#1A1410' : '';
+      if (bg) document.querySelector('meta[name="theme-color"]').content = bg;
     })();
   </script>
   <!-- one version for every module: imports inside the modules are bare, and iOS caches them separately -->
   <script type="importmap">
   { "imports": {
-    "./js/api.js": "./js/api.js?v=28", "./js/i18n.js": "./js/i18n.js?v=28", "./js/player.js": "./js/player.js?v=28",
-    "./js/store.js": "./js/store.js?v=28", "./js/ui.js": "./js/ui.js?v=28", "./js/vinyl.js": "./js/vinyl.js?v=28",
-    "./js/sfx.js": "./js/sfx.js?v=28", "./js/eq.js": "./js/eq.js?v=28",
-    "./js/views/artist.js": "./js/views/artist.js?v=28", "./js/views/artists.js": "./js/views/artists.js?v=28", "./js/views/home.js": "./js/views/home.js?v=28", "./js/views/library.js": "./js/views/library.js?v=28",
-    "./js/views/playlist.js": "./js/views/playlist.js?v=28", "./js/views/search.js": "./js/views/search.js?v=28",
-    "./js/views/settings.js": "./js/views/settings.js?v=28"
+    "./js/api.js": "./js/api.js?v=29", "./js/i18n.js": "./js/i18n.js?v=29", "./js/player.js": "./js/player.js?v=29",
+    "./js/store.js": "./js/store.js?v=29", "./js/ui.js": "./js/ui.js?v=29", "./js/vinyl.js": "./js/vinyl.js?v=29",
+    "./js/sfx.js": "./js/sfx.js?v=29", "./js/eq.js": "./js/eq.js?v=29",
+    "./js/views/artist.js": "./js/views/artist.js?v=29", "./js/views/artists.js": "./js/views/artists.js?v=29", "./js/views/home.js": "./js/views/home.js?v=29", "./js/views/library.js": "./js/views/library.js?v=29",
+    "./js/views/playlist.js": "./js/views/playlist.js?v=29", "./js/views/search.js": "./js/views/search.js?v=29",
+    "./js/views/settings.js": "./js/views/settings.js?v=29",
+    "./js/stories.js": "./js/stories.js?v=29", "./js/themes.js": "./js/themes.js?v=29"
   } }
   </script>
-  <link rel="modulepreload" href="js/app.js?v=31">
-  <link rel="modulepreload" href="js/api.js?v=28">
-  <link rel="modulepreload" href="js/player.js?v=28">
-  <link rel="modulepreload" href="js/ui.js?v=28">
-  <link rel="modulepreload" href="js/vinyl.js?v=28">
-  <link rel="modulepreload" href="js/store.js?v=28">
-  <link rel="modulepreload" href="js/i18n.js?v=28">
-  <link rel="modulepreload" href="js/views/home.js?v=28">
+  <link rel="modulepreload" href="js/app.js?v=32">
+  <link rel="modulepreload" href="js/api.js?v=29">
+  <link rel="modulepreload" href="js/player.js?v=29">
+  <link rel="modulepreload" href="js/ui.js?v=29">
+  <link rel="modulepreload" href="js/vinyl.js?v=29">
+  <link rel="modulepreload" href="js/store.js?v=29">
+  <link rel="modulepreload" href="js/i18n.js?v=29">
+  <link rel="modulepreload" href="js/views/home.js?v=29">
 </head>
 <body>
   <!-- launch screen: a record slides out of its sleeve and spins; app.js puts it back and fades it out -->
@@ -92,6 +100,6 @@
       }, 25000);
     })();
   </script>
-  <script type="module" src="js/app.js?v=31" onerror="window.__musiqueNote('не удалось загрузить js/app.js')"></script>
+  <script type="module" src="js/app.js?v=32" onerror="window.__musiqueNote('не удалось загрузить js/app.js')"></script>
 </body>
 </html>

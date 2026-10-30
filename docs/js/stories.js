@@ -1,6 +1,7 @@
 import { api } from './api.js';
 import { t } from './i18n.js';
 import { settings, updateSettings } from './store.js';
+import { CLASSIC_SWATCH, THEMES } from './themes.js';
 import { EASE_IO, brandMark, esc, h, haptic, icon } from './ui.js';
 
 /** The product intro shown on the very first launch, as stories: tap the right side for the next one,
@@ -46,11 +47,20 @@ const SLIDES = [
       .map(([label, a, b], i) => `<div class="sx-f" style="--a:${a};--b:${b};--d:${i * -0.35}s"><span><b></b></span><small>${label}</small></div>`).join('')}</div>`,
   },
   {
+    tone: 'vinyl',
+    art: () => `<div class="sx-custom">
+      <div class="sx-discs">${['#101218', '#5A1420', '#D5BF9B', '#1E3A2C', '#B08D57']
+        .map((c, i) => `<span class="sx-disc" style="--c:${c};--d:${i * 0.09}s"></span>`).join('')}</div>
+      <div class="sx-themes">${[CLASSIC_SWATCH, ...Object.values(THEMES).filter(Boolean).map((th) => th.swatch)]
+        .map((sw, i) => `<span class="sx-theme" style="--d:${0.5 + i * 0.07}s">${sw.map((c) => `<i style="background:${c}"></i>`).join('')}</span>`).join('')}</div>
+    </div>`,
+  },
+  {
     tone: 'bordeaux',
     art: () => `<div class="sx-chat">
-      <div class="sx-msg">${esc(t('st6_query'))}</div>
+      <div class="sx-msg">${esc(t('st7_query'))}</div>
       <div class="sx-audio"><span class="sx-play">${icon('play')}</span>
-        <span class="sx-audio__meta"><b>${esc(t('st6_track'))}</b>
+        <span class="sx-audio__meta"><b>${esc(t('st7_track'))}</b>
           <span class="sx-wave">${[5, 9, 14, 8, 12, 16, 10, 6, 13, 9, 15, 7, 11, 14, 8, 5, 10, 13, 7, 9].map((v) => `<i style="height:${v}px"></i>`).join('')}</span>
         </span></div>
     </div>`,

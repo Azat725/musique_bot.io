@@ -1,11 +1,12 @@
 import { api } from './api.js';
 import { setLang, t } from './i18n.js';
 import { player } from './player.js';
-import { loadLikes, onSettings, settings, syncCloudSettings } from './store.js';
-import { EASE_IO, cover, esc, h, haptic, icon, loader, markPlaying, openArtist, reducedMotion, tg, toast } from './ui.js';
+import { likes, loadLikes, onSettings, settings, syncCloudSettings, toggleLike } from './store.js';
+import { EASE_IO, cover, esc, fitMarquee, h, haptic, icon, loader, markPlaying, openArtist, reducedMotion, tg, toast } from './ui.js';
 import { initEq } from './eq.js';
 import { syncVinylNoise } from './sfx.js';
 import { maybeShowStories } from './stories.js';
+import { CLASSIC_BG, THEMES } from './themes.js';
 import { closePlayer, initFullPlayer, isPlayerOpen, openPlayer, translate as translatePlayer } from './vinyl.js';
 import * as artist from './views/artist.js';
 import * as artists from './views/artists.js';
@@ -17,7 +18,7 @@ import * as settingsView from './views/settings.js';
 
 const VIEWS = { home, search, library, settings: settingsView, playlist, artist, artists };
 const TABS = [['home', 'home', 'nav_home'], ['search', 'search', 'nav_search'], ['library', 'library', 'nav_library'], ['settings', 'settings', 'nav_settings']];
-const COLORS = { light: '#EFE4CF', dark: '#1A1410' }; // --bg of each theme, for Telegram's header and bars
+const COLORS = CLASSIC_BG; // --bg of each classic theme, for Telegram's header and bars
 
 const main = document.getElementById('main');
 const nav = document.getElementById('nav');
@@ -34,9 +35,16 @@ function resolvedTheme() {
 }
 
 function applyTheme() {
-  const theme = resolvedTheme();
-  document.documentElement.dataset.theme = theme;
-  const color = COLORS[theme];
+  const custom = THEMES[settings.colorTheme];
+  // data-theme picks the palette, data-mode tells components whether it is light or dark
+  const theme = custom ? settings.colorTheme : resolvedTheme();
+  const mode = custom ? custom.mode : theme;
+  const doc = document.documentElement;
+  doc.dataset.theme = theme;
+  doc.dataset.mode = mode;
+  if (settings.recordColor && settings.recordColor !== 'black') doc.dataset.vinyl = settings.recordColor;
+  else delete doc.dataset.vinyl;
+  const color = custom ? custom.bg : COLORS[theme];
   try {
     if (tg?.isVersionAtLeast?.('6.1')) { tg.setHeaderColor(color); tg.setBackgroundColor(color); }
     if (tg?.isVersionAtLeast?.('7.10')) tg.setBottomBarColor(color);
@@ -200,9 +208,18 @@ function renderMini() {
     mini.dataset.id = tr.id;
     mini.innerHTML = `<div class="mini__progress"></div>
       ${cover(tr.cover, 'mini__cover')}
-      <div class="mini__meta"><div class="mini__title">${esc(tr.title)}</div><div class="mini__artist">${esc(tr.artist)}</div></div>
+      <div class="mini__meta"><div class="mini__title"><span class="marquee">${esc(tr.title)}</span></div><div class="mini__artist">${esc(tr.artist)}</div></div>
+      <button class="icon-btn mini__like" data-mini-like aria-label="like"></button>
       <button class="icon-btn" data-mini-play aria-label="play"></button>
       <button class="icon-btn" data-mini-next aria-label="next">${icon('next')}</button>`;
+    fitMarquee(mini.querySelector('.mini__title'));
+  }
+  const liked = likes.has(tr.id);
+  const like = mini.querySelector('[data-mini-like]');
+  if (like.dataset.on !== String(liked)) {
+    like.dataset.on = String(liked);
+    like.classList.toggle('is-on', liked);
+    like.innerHTML = icon(liked ? 'heartFill' : 'heart');
   }
   mini.querySelector('[data-mini-play]').innerHTML = icon(player.playing ? 'pause' : 'play');
   mini.classList.toggle('is-loading', player.loading);
@@ -210,6 +227,12 @@ function renderMini() {
 
 mini.addEventListener('click', (e) => {
   if (e.target.closest('[data-mini-play]')) { haptic('light'); player.toggle(); return; }
+  if (e.target.closest('[data-mini-like]')) {
+    haptic('light');
+    toggleLike(player.current).then(() => document.dispatchEvent(new CustomEvent('likes-changed')), () => toast(t('toast_error')));
+    renderMini();
+    return;
+  }
   if (e.target.closest('.mini__artist')) { openArtist(player.current); return; }
   if (e.target.closest('[data-mini-next]')) { haptic('light'); player.next(); return; }
   haptic('light');
@@ -217,6 +240,7 @@ mini.addEventListener('click', (e) => {
 });
 
 player.addEventListener('track', () => { renderMini(); markPlaying(main); });
+document.addEventListener('likes-changed', renderMini);
 const noiseOn = () => syncVinylNoise(player.playing && !player.loading);
 player.addEventListener('state', () => { renderMini(); markPlaying(main); noiseOn(); });
 player.addEventListener('time', () => {

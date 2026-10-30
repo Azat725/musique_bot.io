@@ -14,6 +14,8 @@ const ICONS = {
   library: P('M4 6.5h10.5v13H4z') + '<g class="ic__disc">' + P('M14.5 7a6 6 0 0 1 0 12') + P('M14.5 10.6a2.4 2.4 0 0 1 0 4.8') + '</g>',
   settings: '<g class="ic__knob"><circle cx="12" cy="13.5" r="6"/>' + P('M12 13.5 8.6 10.1') + '</g>'
     + P('M4.3 10.7 2.7 10.1M7.3 6.8 6.3 5.4M12 5.3V3.6M16.7 6.8l1-1.4M19.7 10.7l1.6-.6'),
+  palette: P('M12 3.5a8.5 8.5 0 1 0 0 17c1 0 1.6-.7 1.6-1.5 0-.5-.2-.8-.5-1.1-.3-.3-.5-.7-.5-1.1 0-.9.7-1.6 1.6-1.6h1.9a4.4 4.4 0 0 0 4.4-4.4c0-4-3.8-7.3-8.5-7.3z')
+    + '<circle class="fill" cx="7.6" cy="11.2" r="1.2"/><circle class="fill" cx="10.2" cy="7.4" r="1.2"/><circle class="fill" cx="14.6" cy="7.6" r="1.2"/>',
   play: '<path class="fill" d="M8 5.5v13a.8.8 0 0 0 1.2.7l10.4-6.5a.8.8 0 0 0 0-1.4L9.2 4.8A.8.8 0 0 0 8 5.5z"/>',
   pause: '<rect class="fill" x="6.5" y="5" width="3.8" height="14" rx="1"/><rect class="fill" x="13.7" y="5" width="3.8" height="14" rx="1"/>',
   next: '<path class="fill" d="M5 6.2v11.6a.7.7 0 0 0 1.1.6l8.4-5.8a.7.7 0 0 0 0-1.2L6.1 5.6a.7.7 0 0 0-1.1.6z"/>' + P('M18.5 5.5v13'),
@@ -195,6 +197,7 @@ export function confirmDialog(text) {
 // ---------- track list ----------
 
 export function trackRow(track, { index = null } = {}) {
+  const liked = likes.has(track.id);
   const row = h(`<div class="track" data-id="${esc(track.id)}" role="button" tabindex="0">
     ${index !== null ? `<span class="track__num">${index + 1}</span>` : ''}
     <div class="track__art">${cover(track.cover)}<span class="eq"><i></i><i></i><i></i></span></div>
@@ -203,10 +206,40 @@ export function trackRow(track, { index = null } = {}) {
       <div class="track__artist">${esc(track.artist)}</div>
     </div>
     <span class="track__time">${track.duration ? fmt(track.duration) : ''}</span>
+    <button class="icon-btn track__like ${liked ? 'is-on' : ''}" aria-label="like" aria-pressed="${liked}">${icon(liked ? 'heartFill' : 'heart')}</button>
     <button class="icon-btn track__more" aria-label="more">${icon('more')}</button>
   </div>`);
   return row;
 }
+
+/** A title too long for its box glides to its end and back, with a pause at both ends; a short one stays put.
+ *  `box` holds one `.marquee` span. Call again whenever the text or the box width may have changed. */
+export function fitMarquee(box) {
+  const span = box?.querySelector('.marquee');
+  if (!span) return;
+  box.dataset.marquee = '';
+  requestAnimationFrame(() => {
+    box.classList.remove('is-marquee');
+    const over = span.scrollWidth - box.clientWidth;
+    if (!box.clientWidth || over <= 2) return; // fits (or is hidden right now: measured again next time)
+    box.style.setProperty('--dist', `${-(over + 2)}px`);
+    box.style.setProperty('--dur', `${Math.max(7, 4.5 + over / 22).toFixed(1)}s`); // about 22 px/s, plus the pauses
+    box.classList.add('is-marquee');
+  });
+}
+addEventListener('resize', () => document.querySelectorAll('[data-marquee]').forEach(fitMarquee));
+
+/** Hearts in every list follow the likes, wherever a track was liked (row, menu, player). */
+export function syncHearts(root = document) {
+  root.querySelectorAll('.track__like').forEach((btn) => {
+    const liked = likes.has(btn.closest('.track')?.dataset.id);
+    if (btn.classList.contains('is-on') === liked) return;
+    btn.classList.toggle('is-on', liked);
+    btn.setAttribute('aria-pressed', liked);
+    btn.innerHTML = icon(liked ? 'heartFill' : 'heart');
+  });
+}
+document.addEventListener('likes-changed', () => syncHearts());
 
 /** Render a playable list; clicking a row plays the list starting at it. */
 export function trackList(tracks, { numbered = false, context = null, onChange = null } = {}) {
@@ -217,6 +250,17 @@ export function trackList(tracks, { numbered = false, context = null, onChange =
     if (!row) return;
     const i = [...list.children].indexOf(row);
     if (e.target.closest('.track__artist')) { e.stopPropagation(); openArtist(tracks[i]); return; }
+    if (e.target.closest('.track__like')) {
+      // like right from the list: the track keeps playing (or not) as it was
+      e.stopPropagation();
+      haptic('light');
+      try {
+        const now = await toggleLike(tracks[i]);
+        document.dispatchEvent(new CustomEvent('likes-changed'));
+        if (!now && context?.likes) { tracks.splice(i, 1); row.remove(); onChange?.(); }
+      } catch { toast(t('toast_error')); }
+      return;
+    }
     if (e.target.closest('.track__more')) {
       e.stopPropagation();
       const changed = await trackMenu(tracks[i], context);

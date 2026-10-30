@@ -3,9 +3,9 @@ import logging
 
 import httpx
 from aiogram import Bot, Dispatcher, F, Router
-from aiogram.filters import CommandStart
+from aiogram.filters import Command, CommandStart
 from aiogram.types import (BotCommand, BufferedInputFile, CallbackQuery, FSInputFile, InlineKeyboardButton,
-                           InlineKeyboardMarkup, MenuButtonWebApp, Message, WebAppInfo)
+                           InlineKeyboardMarkup, LabeledPrice, MenuButtonWebApp, Message, PreCheckoutQuery, WebAppInfo)
 
 from . import config, db, music
 
@@ -23,6 +23,18 @@ TEXTS = {
         "failed": "Не удалось загрузить этот трек. Попробуй другой вариант.",
         "description": "Слушай любую музыку прямо в Telegram: поиск, плейлисты, избранное и виниловый плеер.",
         "short": "Вся музыка в Telegram. Поиск, плейлисты, винил.",
+        "support": "⭐ Поддержать автора",
+        "support_cmd": "Поддержать автора",
+        "support_prompt": "Спасибо, что хотите поддержать Musique! Выберите, сколько звёзд отправить, или укажите свою сумму.",
+        "support_custom": "Своя сумма",
+        "support_ask": "Напишите, сколько звёзд отправить — целое число от 1 до {max}.",
+        "support_bad": "Нужно целое число от 1 до {max}. Попробуйте ещё раз или нажмите «Отмена».",
+        "support_cancel": "Отмена",
+        "support_cancelled": "Хорошо, в другой раз 🙂",
+        "support_title": "Поддержка Musique",
+        "support_desc": "Добровольная поддержка автора Musique — {n} ⭐. Спасибо!",
+        "support_label": "Поддержка автора",
+        "support_thanks": "Спасибо за поддержку! {n} ⭐ — это очень приятно и помогает развивать Musique.",
     },
     "en": {
         "start": "<b>Musique</b>\n\nAll your music in one place. Open the player with the button below "
@@ -35,6 +47,18 @@ TEXTS = {
         "failed": "Couldn't load this track. Try another one.",
         "description": "Listen to any music right in Telegram: search, playlists, favourites and a vinyl player.",
         "short": "All music in Telegram. Search, playlists, vinyl.",
+        "support": "⭐ Support the author",
+        "support_cmd": "Support the author",
+        "support_prompt": "Thank you for wanting to support Musique! Choose how many Stars to send, or enter your own amount.",
+        "support_custom": "Other amount",
+        "support_ask": "Send me the number of Stars — a whole number from 1 to {max}.",
+        "support_bad": "That needs to be a whole number from 1 to {max}. Try again or tap “Cancel”.",
+        "support_cancel": "Cancel",
+        "support_cancelled": "No problem, maybe another time 🙂",
+        "support_title": "Support Musique",
+        "support_desc": "A voluntary tip for the author of Musique — {n} ⭐. Thank you!",
+        "support_label": "Support the author",
+        "support_thanks": "Thank you for your support! {n} ⭐ means a lot and helps Musique grow.",
     },
 }
 
@@ -57,15 +81,104 @@ def _fmt(sec: int) -> str:
 
 
 def _open_keyboard(code: str | None) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[[
-        InlineKeyboardButton(text=_t(code, "open"), web_app=WebAppInfo(url=config.webapp_url()))
-    ]])
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=_t(code, "open"), web_app=WebAppInfo(url=config.webapp_url()))],
+        [InlineKeyboardButton(text=_t(code, "support"), callback_data="support")],
+    ])
 
 
 @router.message(CommandStart())
 async def start(message: Message):
+    _awaiting_amount.discard(message.from_user.id)
     await message.answer(_t(message.from_user.language_code, "start"),
                          reply_markup=_open_keyboard(message.from_user.language_code))
+
+
+# ---------- support the author with Telegram Stars (bot only: the Mini App never takes payments) ----------
+
+SUPPORT_PRESETS = (50, 100, 250, 500)
+SUPPORT_MAX = 10_000
+_awaiting_amount: set[int] = set()  # users asked to type their own amount; kept in memory, a restart just forgets it
+
+
+def _support_keyboard(code: str | None) -> InlineKeyboardMarkup:
+    stars = [InlineKeyboardButton(text=f"{n} ⭐", callback_data=f"stars:{n}") for n in SUPPORT_PRESETS]
+    return InlineKeyboardMarkup(inline_keyboard=[
+        stars[:2], stars[2:],
+        [InlineKeyboardButton(text=_t(code, "support_custom"), callback_data="stars:custom")],
+    ])
+
+
+def _cancel_keyboard(code: str | None) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=_t(code, "support_cancel"), callback_data="stars:cancel")]])
+
+
+async def _send_support_invoice(chat_id: int, code: str | None, amount: int) -> None:
+    await _bot.send_invoice(
+        chat_id=chat_id,
+        title=_t(code, "support_title"),
+        description=_t(code, "support_desc").format(n=amount),
+        payload=f"support:{amount}",
+        currency="XTR",  # Telegram Stars: no payment provider, the amount is a number of Stars
+        prices=[LabeledPrice(label=_t(code, "support_label"), amount=amount)],
+        provider_token="",
+    )
+
+
+@router.message(Command("support"))
+async def support_command(message: Message):
+    code = message.from_user.language_code
+    await message.answer(_t(code, "support_prompt"), reply_markup=_support_keyboard(code))
+
+
+@router.callback_query(F.data == "support")
+async def support_button(cb: CallbackQuery):
+    await cb.answer()
+    code = cb.from_user.language_code
+    await _bot.send_message(cb.from_user.id, _t(code, "support_prompt"), reply_markup=_support_keyboard(code))
+
+
+@router.callback_query(F.data.startswith("stars:"))
+async def support_amount(cb: CallbackQuery):
+    await cb.answer()
+    code, choice = cb.from_user.language_code, cb.data.split(":", 1)[1]
+    if choice == "cancel":
+        _awaiting_amount.discard(cb.from_user.id)
+        await _bot.send_message(cb.from_user.id, _t(code, "support_cancelled"))
+    elif choice == "custom":
+        _awaiting_amount.add(cb.from_user.id)
+        await _bot.send_message(cb.from_user.id, _t(code, "support_ask").format(max=SUPPORT_MAX), reply_markup=_cancel_keyboard(code))
+    elif choice.isdigit() and int(choice) in SUPPORT_PRESETS:
+        _awaiting_amount.discard(cb.from_user.id)
+        await _send_support_invoice(cb.from_user.id, code, int(choice))
+
+
+# registered before text_search: while an amount is awaited, the next message is that amount, not a search
+@router.message(F.text, lambda m: m.from_user and m.from_user.id in _awaiting_amount)
+async def support_custom_amount(message: Message):
+    code = message.from_user.language_code
+    text = message.text.strip().replace(" ", "").rstrip("⭐")
+    if text.startswith("/"):  # a command: stop waiting and let it through next time
+        _awaiting_amount.discard(message.from_user.id)
+        return
+    if not text.isdigit() or not 1 <= int(text) <= SUPPORT_MAX:
+        await message.answer(_t(code, "support_bad").format(max=SUPPORT_MAX), reply_markup=_cancel_keyboard(code))
+        return
+    _awaiting_amount.discard(message.from_user.id)
+    await _send_support_invoice(message.chat.id, code, int(text))
+
+
+@router.pre_checkout_query()
+async def support_precheckout(query: PreCheckoutQuery):
+    ok = query.currency == "XTR" and query.invoice_payload.startswith("support:")
+    await query.answer(ok=ok, error_message=None if ok else "Unknown payment")
+
+
+@router.message(F.successful_payment)
+async def support_paid(message: Message):
+    pay = message.successful_payment
+    log.info("support received: %s XTR from %s (charge %s)", pay.total_amount, message.from_user.id, pay.telegram_payment_charge_id)
+    await message.answer(_t(message.from_user.language_code, "support_thanks").format(n=pay.total_amount))
 
 
 @router.message(F.text & ~F.text.startswith("/"))
@@ -157,7 +270,8 @@ async def setup(bot: Bot) -> None:
     for code in ("ru", "en"):
         lang = None if code == "en" else code
         try:
-            await bot.set_my_commands([BotCommand(command="start", description=TEXTS[code]["open"])], language_code=lang)
+            await bot.set_my_commands([BotCommand(command="start", description=TEXTS[code]["open"]),
+                                       BotCommand(command="support", description=TEXTS[code]["support_cmd"])], language_code=lang)
             await bot.set_my_description(TEXTS[code]["description"], language_code=lang)
             await bot.set_my_short_description(TEXTS[code]["short"], language_code=lang)
         except Exception as e:

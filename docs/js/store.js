@@ -19,6 +19,11 @@ export const settings = {
   plSort: 'new',
   searchMode: 'all',
   name: '', // optional name for the home greeting
+  colorTheme: 'classic', // themes.js; 'classic' follows `theme` (auto / light / dark)
+  playerMode: 'record', // 'record' alone or 'turntable'
+  recordColor: 'black',
+  idleDelay: 20, // seconds before the player's interface fades away; 0 never
+  hapticSeek: true, // a tick under the finger while seeking
   ...load(),
 };
 

@@ -1,7 +1,7 @@
 import { t } from './i18n.js';
 import { player } from './player.js';
-import { likes, toggleLike } from './store.js';
-import { EASE_IO, chooseAndAddToPlaylist, esc, fmt, h, haptic, icon, openArtist, reducedMotion, toast, trackMenu } from './ui.js';
+import { likes, onSettings, settings, toggleLike } from './store.js';
+import { EASE_IO, chooseAndAddToPlaylist, esc, fitMarquee, fmt, h, haptic, icon, openArtist, reducedMotion, toast, trackMenu } from './ui.js';
 import { api } from './api.js';
 import { openEqualizer } from './eq.js';
 import { initSfx, playSfx, startScratch, startSpinNoise, whoosh } from './sfx.js';
@@ -89,7 +89,14 @@ export function initFullPlayer() {
       <div class="fp__kicker"></div>
       <button class="icon-btn" data-more aria-label="more">${icon('more')}</button>
     </header>
-    <div class="fp__stage"><div class="scrub" aria-hidden="true"><b class="scrub__time"></b><span class="scrub__delta"></span></div></div>
+    <div class="fp__stage">
+      <div class="deck" aria-hidden="true">
+        <div class="deck__plinth"><span class="deck__light"></span><span class="deck__knob"></span><span class="deck__speed">33</span></div>
+        <div class="deck__platter"></div>
+        <div class="deck__arm"><span class="arm__weight"></span><span class="arm__tube"></span><span class="arm__head"></span><span class="arm__base"></span></div>
+      </div>
+      <div class="scrub" aria-hidden="true"><b class="scrub__time"></b><span class="scrub__delta"></span></div>
+    </div>
     <div class="fp__info">
       <div class="fp__titles"><div class="fp__title"></div><button class="fp__artist"></button></div>
       <button class="icon-btn fp__like" data-like aria-label="like">${icon('heart')}</button>
@@ -145,6 +152,12 @@ export function initFullPlayer() {
   setupSeek($('.progress__bar'));
   setupGestures();
   setupIdle();
+  applyMode();
+  let idleSeen = settings.idleDelay;
+  onSettings(() => {
+    applyMode();
+    if (settings.idleDelay !== idleSeen) { idleSeen = settings.idleDelay; wake(); }
+  });
 
   player.addEventListener('track', (e) => onTrack(e.detail));
   player.addEventListener('state', syncState);
@@ -176,12 +189,14 @@ export function openPlayer() {
   syncState();
   syncTime();
   syncModes();
+  fitMarquee(el.title); // measured now that the player has its real width
   armIdle();
   document.dispatchEvent(new CustomEvent('player-open', { detail: true }));
 }
 
 export function closePlayer() {
   open = false;
+  armLifted = false;
   wake();
   syncSpinNoise();
   rec?.el.getAnimations().forEach((a) => a.cancel()); // closed mid-flight: measure the record where it really stands
@@ -239,6 +254,8 @@ function swapRecord(track, dir) {
   stage.querySelectorAll('.record.is-leaving').forEach((el) => el.remove());
 
   const old = rec;
+  armLifted = true; // the arm swings off before the record is taken away
+  syncArm();
   old.el.classList.add('is-leaving');
   const from = old.el.style.transform || 'translateX(0) rotate(0deg)';
   old.el.style.transform = '';
@@ -259,16 +276,48 @@ function swapRecord(track, dir) {
     .then(() => {
       if (my !== swapping) return;
       playSfx('needle', 0.6);
+      armLifted = false; // and drops back onto the new one with the needle sound
       syncState();
-    }).catch(() => {});
+    }).catch(() => { if (my === swapping) { armLifted = false; syncArm(); } });
+}
+
+// ---------- turntable mode: the record lies on a platter, a tonearm plays it ----------
+
+const ARM_REST = 8, ARM_START = 34, ARM_END = 46; // degrees: off the record, outer groove, inner groove
+let armLifted = false, armShown = '';
+
+function turntable() { return settings.playerMode === 'turntable'; }
+
+function applyMode() {
+  if (!root) return;
+  const on = turntable();
+  if (root.classList.contains('is-turntable') === on) return;
+  root.classList.toggle('is-turntable', on);
+  armShown = '';
+  syncArm();
+  fitMarquee(el.title);
+}
+
+/** The arm rests beside the record unless the music really plays; on the record it creeps inwards with the track. */
+function syncArm() {
+  if (!root || !turntable()) return;
+  const down = open && player.playing && !player.loading && !scrubbing && !armLifted;
+  const p = player.duration ? Math.min(1, player.time / player.duration) : 0;
+  const angle = down ? ARM_START + (ARM_END - ARM_START) * p : ARM_REST;
+  const value = `${angle.toFixed(1)}deg`;
+  if (value === armShown) return;
+  armShown = value;
+  root.style.setProperty('--arm', value);
+  root.classList.toggle('is-arm-down', down);
 }
 
 // ---------- sync ----------
 
 function syncInfo() {
   const tr = player.current;
-  el.title.textContent = tr?.title || t('player_nothing');
+  el.title.innerHTML = `<span class="marquee">${esc(tr?.title || t('player_nothing'))}</span>`;
   el.artist.textContent = tr?.artist || '';
+  fitMarquee(el.title);
 }
 
 function syncLike() {
@@ -288,6 +337,7 @@ function syncSpinNoise() {
 }
 
 function syncState() {
+  syncArm();
   if (!open || scrubbing) return; // while scrubbing the hand, not the player, drives the record
   syncSpinNoise();
   if (shownPlaying !== player.playing) {
@@ -311,6 +361,7 @@ function syncTime() {
   if (!dragging) el.bar.style.setProperty('--p', d ? Math.min(1, c / d) : 0);
   setText(el.cur, fmt(dragging ? dragValue * d : c));
   setText(el.dur, fmt(d));
+  syncArm();
 }
 
 function syncModes() {
@@ -322,20 +373,26 @@ function syncModes() {
 
 // ---------- idle: after a while only the spinning record stays, centred ----------
 
-// ?musique_idle=3 shortens the wait to 3 s for testing
-const IDLE_MS = (Number(new URLSearchParams(location.search).get('musique_idle')) || 20) * 1000;
+// the wait is a setting (0 = never); ?musique_idle=3 shortens it to 3 s for testing
+const IDLE_TEST = Number(new URLSearchParams(location.search).get('musique_idle')) || 0;
+const idleMs = () => (IDLE_TEST || Number(settings.idleDelay) || 0) * 1000;
 let idleTimer = 0, idle = false;
 
 function armIdle() {
   clearTimeout(idleTimer);
-  if (open && !idle && player.playing && !player.loading) idleTimer = setTimeout(enterIdle, IDLE_MS);
+  if (open && !idle && idleMs() && player.playing && !player.loading) idleTimer = setTimeout(enterIdle, idleMs());
+}
+
+/** Seeking ticks, unless switched off in Settings → Customization. */
+function seekHaptic(kind) {
+  if (settings.hapticSeek) haptic(kind);
 }
 
 function enterIdle() {
   if (!open || !player.playing || player.loading || dragging) return;
   // move the stage so the record sits in the middle of the screen, slightly larger
   const r = stage.getBoundingClientRect();
-  const size = rec?.el.offsetWidth || r.width;
+  const size = (rec?.el.offsetWidth || r.width) * (turntable() ? 1.5 : 1); // the whole turntable must fit
   root.style.setProperty('--idle-dy', `${Math.round(innerHeight / 2 - (r.top + r.height / 2))}px`);
   root.style.setProperty('--idle-scale', Math.min(1.16, (innerWidth * 0.94) / size).toFixed(3));
   idle = true;
@@ -378,15 +435,30 @@ function setupIdle() {
 
 let dragging = false, dragValue = 0;
 
+const SEEK_STEPS = 40; // a tick every 2.5 % of the bar
+
 function setupSeek(bar) {
   const progress = bar.parentElement;
   let rect = null; // measured once per drag: reading layout on every move forces a reflow
+  let step = 0, lastTick = 0;
   const valueAt = (e) => Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+  // detents along the bar, a firmer one at both ends; never more often than every 40 ms
+  const tick = () => {
+    const s = Math.round(dragValue * SEEK_STEPS);
+    if (s === step) return;
+    step = s;
+    const now = performance.now();
+    if (now - lastTick < 40) return;
+    lastTick = now;
+    seekHaptic(s === 0 || s === SEEK_STEPS ? 'medium' : 'select');
+  };
   bar.addEventListener('pointerdown', (e) => {
     dragging = true;
     rect = bar.getBoundingClientRect();
     bar.setPointerCapture(e.pointerId);
     dragValue = valueAt(e);
+    step = Math.round(dragValue * SEEK_STEPS);
+    seekHaptic('light');
     progress.classList.add('is-drag');
     bar.style.setProperty('--p', dragValue);
     syncTime();
@@ -394,6 +466,7 @@ function setupSeek(bar) {
   bar.addEventListener('pointermove', (e) => {
     if (!dragging) return;
     dragValue = valueAt(e);
+    tick();
     bar.style.setProperty('--p', dragValue);
     syncTime();
   });
@@ -426,6 +499,7 @@ function beginScrub(x, y) {
     step: Math.floor(player.time / 5), quiet: 0, sound: startScratch() };
   scrub.last = angleAt(x, y);
   scrubbing = true;
+  syncArm(); // the arm lifts off while the record is turned by hand
   cancelAnimationFrame(rec.raf); // the record stops under the hand
   rec.rate = 0;
   rec.anim.pause();
@@ -452,7 +526,7 @@ function moveScrub(e) {
   rec.anim.currentTime = (((scrub.anim0 + scrub.turns * RPM_MS) % RPM_MS) + RPM_MS) % RPM_MS; // the record follows the finger
   scrub.target = Math.min(Math.max(0, scrub.start + scrub.turns * SECONDS_PER_TURN), Math.max(0, player.duration - 1));
   const step = Math.floor(scrub.target / 5);
-  if (step !== scrub.step) { scrub.step = step; haptic('select'); }
+  if (step !== scrub.step) { scrub.step = step; seekHaptic('select'); }
   showBubble();
 }
 
