@@ -1,7 +1,7 @@
 import { api } from './api.js';
 import { heard, onSettings, settings } from './store.js';
 
-export const RPM45 = 45 / (100 / 3); // 1.35: a 45 rpm record played at 45 instead of 33⅓
+export const RATES = { slow: 0.85, normal: 1, fast: 45 / (100 / 3) }; // fast = 1.35: a 45 rpm record played at 45 instead of 33⅓
 
 /** Audio engine: queue, shuffle/repeat, Media Session. UI listens to events on `player`. */
 class Player extends EventTarget {
@@ -145,7 +145,7 @@ class Player extends EventTarget {
     this._emit('queue');
   }
 
-  get rate() { return settings.rpm45 ? RPM45 : 1; }
+  get rate() { return RATES[settings.speed] || 1; }
 
   /** 33⅓ or 45: pitch follows speed, as on a turntable (a new src resets playbackRate to the default one). */
   _applyRate() {

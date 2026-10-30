@@ -15,6 +15,9 @@ const RENAMED_THEMES = { oldmoney: 'richesse', sky: 'classic' };
 function migrate() {
   const next = RENAMED_THEMES[settings.colorTheme];
   if (next) settings.colorTheme = next;
+  // the 33 / 45 switch grew into a speed with a slowed setting
+  if (settings.rpm45 && settings.speed === 'normal') settings.speed = 'fast';
+  delete settings.rpm45;
 }
 
 export const settings = {
@@ -33,7 +36,8 @@ export const settings = {
   idleDelay: 20, // seconds before the player's interface fades away; 0 never
   hapticSeek: true, // a tick under the finger while seeking
   sleeve: true, // a track heard for the first time comes out of its sleeve
-  rpm45: false, // 45 rpm: the record spins and plays 1.35× faster, higher in pitch
+  speed: 'normal', // 'slow' 0.85×, 'normal' 33⅓ rpm, 'fast' 45 rpm 1.35×: the record spins and plays at that pace, pitch following
+  reverb: 'off', // 'room' | 'hall'; with a slowed record this is the slowed + reverb sound
   ...load(),
 };
 migrate();

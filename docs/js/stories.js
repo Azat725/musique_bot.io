@@ -47,6 +47,14 @@ const SLIDES = [
       .map(([label, a, b], i) => `<div class="sx-f" style="--a:${a};--b:${b};--d:${i * -0.35}s"><span><b></b></span><small>${label}</small></div>`).join('')}</div>`,
   },
   {
+    tone: 'bordeaux',
+    art: () => `<div class="sx-sound">
+      <div class="sx-rings"><i></i><i></i><i></i>${record('sx-slow')}</div>
+      <div class="sx-chips">${['0.85×', '33⅓', '45'].map((c, i) => `<span class="sx-chip${i ? '' : ' is-on'}">${c}</span>`).join('')}</div>
+      <span class="sx-pill">${esc(t('sound_slowrev'))}</span>
+    </div>`,
+  },
+  {
     tone: 'vinyl',
     art: () => `<div class="sx-custom">
       <div class="sx-discs">${['#101218', '#5A1420', '#D5BF9B', '#1E3A2C', '#B08D57']
@@ -58,9 +66,9 @@ const SLIDES = [
   {
     tone: 'bordeaux',
     art: () => `<div class="sx-chat">
-      <div class="sx-msg">${esc(t('st7_query'))}</div>
+      <div class="sx-msg">${esc(t('st8_query'))}</div>
       <div class="sx-audio"><span class="sx-play">${icon('play')}</span>
-        <span class="sx-audio__meta"><b>${esc(t('st7_track'))}</b>
+        <span class="sx-audio__meta"><b>${esc(t('st8_track'))}</b>
           <span class="sx-wave">${[5, 9, 14, 8, 12, 16, 10, 6, 13, 9, 15, 7, 11, 14, 8, 5, 10, 13, 7, 9].map((v) => `<i style="height:${v}px"></i>`).join('')}</span>
         </span></div>
     </div>`,

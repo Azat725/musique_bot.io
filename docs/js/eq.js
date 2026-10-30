@@ -1,19 +1,11 @@
 import { t } from './i18n.js';
-import { player } from './player.js';
+import { BANDS, applyFx, enableFx } from './graph.js';
 import { settings, updateSettings } from './store.js';
-import { esc, h, haptic, sheet, toast } from './ui.js';
+import { esc, h, haptic, sheet } from './ui.js';
 
-/** Five-band equalizer. The music goes through Web Audio only once the user has turned the EQ on:
- *  on iPhone a routed <audio> can stop in the background, so nobody pays that price unasked.
- *  A media element cannot be un-routed, so turning it off flattens the bands until the next launch. */
+/** Five-band equalizer. Its filters live in the shared audio graph (graph.js); this is the panel and the presets. */
 
-export const BANDS = [
-  { f: 60, type: 'lowshelf', label: '60' },
-  { f: 230, type: 'peaking', label: '230' },
-  { f: 910, type: 'peaking', label: '910' },
-  { f: 3600, type: 'peaking', label: '3.6k' },
-  { f: 14000, type: 'highshelf', label: '14k' },
-];
+export { BANDS };
 const MAX_DB = 12;
 export const PRESETS = {
   flat: [0, 0, 0, 0, 0],
@@ -25,62 +17,11 @@ export const PRESETS = {
   electro: [6, 3, -1, 2, 5],
 };
 
-let ctx = null, filters = null;
-
-function connect() {
-  if (filters) return true;
-  const Ctx = window.AudioContext || window.webkitAudioContext;
-  if (!Ctx) return false;
-  try {
-    ctx = new Ctx();
-    const src = ctx.createMediaElementSource(player.audio);
-    filters = BANDS.map((b) => {
-      const f = ctx.createBiquadFilter();
-      f.type = b.type;
-      f.frequency.value = b.f;
-      if (b.type === 'peaking') f.Q.value = 1.1;
-      return f;
-    });
-    filters.reduce((prev, f) => prev.connect(f), src).connect(ctx.destination);
-  } catch {
-    filters = null;
-    return false;
-  }
-  // a running context with a routed element is what keeps the music audible; let it sleep on pause
-  player.addEventListener('state', syncContext);
-  syncContext();
-  return true;
-}
-
-/** For diagnostics: whether the music is routed through the filters and the context is running. */
-export const eqStatus = () => ({ routed: !!filters, state: ctx?.state || 'none' });
-
-function syncContext() {
-  if (!ctx) return;
-  if (player.playing) ctx.resume().catch(() => {});
-  else ctx.suspend().catch(() => {});
-}
-
-function apply() {
-  if (!filters) return;
-  const { on, gains } = settings.eq;
-  filters.forEach((f, i) => f.gain.setTargetAtTime(on ? gains[i] : 0, ctx.currentTime, 0.04));
-}
-
-/** On launch with the EQ left on: route on the first tap (iOS only starts audio inside a gesture). */
-export function initEq() {
-  if (settings.eq.on) document.addEventListener('pointerdown', () => { if (connect()) apply(); }, { once: true, capture: true });
-}
-
 function setEq(patch) {
   const eq = { ...settings.eq, ...patch };
-  if (eq.on && !filters) {
-    if (!connect()) { toast(t('toast_error')); return; }
-    if (!settings.eqNoted) { toast(t('eq_note')); updateSettings({ eqNoted: true }); }
-  }
+  if (eq.on && !enableFx()) return;
   updateSettings({ eq });
-  ctx?.resume().catch(() => {});
-  apply();
+  applyFx();
 }
 
 // ---------- panel ----------

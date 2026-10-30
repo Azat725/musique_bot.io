@@ -6,6 +6,7 @@ import { api } from './api.js';
 import { openEqualizer } from './eq.js';
 import { initSfx, playSfx, rustle, startScratch, startSpinNoise, whoosh } from './sfx.js';
 import { openQueue } from './queue.js';
+import { applyFx, enableFx } from './graph.js';
 import { SLEEP_OPTIONS, setSleep, sleepLeft, sleepMode, sleepTimer } from './sleep.js';
 
 const RPM_MS = 1800; // one revolution at 33⅓ rpm
@@ -140,14 +141,14 @@ export function initFullPlayer() {
   $('[data-repeat]').addEventListener('click', () => { haptic('select'); player.cycleRepeat(); });
   $('[data-more]').addEventListener('click', () => {
     if (!player.current) return;
-    trackMenu(player.current, { player: { sleep: sleepLabel(), speed: t(settings.rpm45 ? 'speed_to33' : 'speed_to45') } }).then((r) => {
+    trackMenu(player.current, { player: { sleep: sleepLabel(), sound: soundLabel() } }).then((r) => {
       if (r === 'sleep') openSleep();
-      else if (r === 'speed') toggleSpeed();
+      else if (r === 'sound') openSound();
       syncLike();
     });
   });
   $('[data-queue]').addEventListener('click', openQueue);
-  $('.fp__marker').addEventListener('click', () => (sleepMode() ? openSleep() : toggleSpeed()));
+  $('.fp__marker').addEventListener('click', () => (sleepMode() ? openSleep() : openSound()));
   $('[data-eq]').addEventListener('click', () => { haptic('light'); openEqualizer(); });
   $('[data-add]').addEventListener('click', () => player.current && chooseAndAddToPlaylist(player.current).catch(() => toast(t('toast_error'))));
   $('[data-send]').addEventListener('click', async () => {
@@ -220,15 +221,64 @@ async function openSleep() {
   if (opts[i]) toast(opts[i] === 'track' ? t('sleep_set_track') : t('sleep_set', { n: opts[i] }));
 }
 
-function toggleSpeed() {
-  haptic('medium');
-  updateSettings({ rpm45: !settings.rpm45 });
-  toast(t(settings.rpm45 ? 'speed_now45' : 'speed_now33'));
+// ---------- sound: speed and reverb, with "slowed + reverb" in one tap ----------
+
+const DECK_RPM = { slow: '28', normal: '33', fast: '45' }; // slowed: 33⅓ × 0.85 ≈ 28
+
+/** What the current sound is called: "slowed + reverb", "45 rpm", "reverb"… or '' when it is plain. */
+function soundTag() {
+  const slow = settings.speed === 'slow', reverb = settings.reverb !== 'off';
+  if (slow && reverb) return t('sound_slowrev');
+  return [slow ? t('sound_slow_tag') : settings.speed === 'fast' ? t('sound_fast_tag') : '', reverb ? t('sound_reverb_tag') : '']
+    .filter(Boolean).join(' · ');
+}
+
+function soundLabel() {
+  const tag = soundTag();
+  return tag ? t('sound_menu_on', { v: tag }) : t('sound_menu');
+}
+
+function openSound() {
+  const seg = (name, opts) => `<div class="seg" role="group" data-seg="${name}">${opts.map(([v, label, sub]) =>
+    `<button data-v="${v}"><b>${esc(label)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</button>`).join('')}</div>`;
+  const panel = h(`<div class="fx">
+    <div class="fx__title">${esc(t('sound_title'))}</div>
+    <button class="fx__preset" data-preset>${icon('speed')}<span>${esc(t('sound_preset'))}</span></button>
+    <div class="fx__label">${esc(t('sound_speed'))}</div>
+    ${seg('speed', [['slow', t('sound_slow'), '0.85×'], ['normal', '33⅓', t('sound_rpm')], ['fast', '45', t('sound_rpm')]])}
+    <div class="fx__label">${esc(t('sound_reverb'))}</div>
+    ${seg('reverb', [['off', t('sound_off')], ['room', t('sound_room')], ['hall', t('sound_hall')]])}
+  </div>`);
+  const draw = () => {
+    panel.querySelectorAll('[data-seg]').forEach((g) => g.querySelectorAll('button').forEach((b) => {
+      const on = b.dataset.v === settings[g.dataset.seg];
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-pressed', on);
+    }));
+    panel.querySelector('[data-preset]').classList.toggle('is-on', settings.speed === 'slow' && settings.reverb === 'hall');
+  };
+  const set = (patch) => {
+    if (patch.reverb && patch.reverb !== 'off' && !enableFx()) return; // the graph only exists once asked for
+    haptic('select');
+    updateSettings(patch);
+    applyFx();
+    draw();
+  };
+  panel.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.dataset.preset !== undefined) {
+      const on = settings.speed === 'slow' && settings.reverb === 'hall';
+      set(on ? { speed: 'normal', reverb: 'off' } : { speed: 'slow', reverb: 'hall' });
+    } else set({ [b.closest('[data-seg]').dataset.seg]: b.dataset.v });
+  });
+  draw();
+  sheet({ content: panel, done: true });
 }
 
 function syncSpeed() {
   if (!root) return;
-  root.querySelector('.deck__speed').textContent = settings.rpm45 ? '45' : '33';
+  root.querySelector('.deck__speed').textContent = DECK_RPM[settings.speed] || '33';
   syncMarker();
   syncState(); // the record speeds up or slows down to the new rate
 }
@@ -239,7 +289,8 @@ function syncMarker() {
   const m = sleepMode();
   const parts = [];
   if (m) parts.push(`${icon('moon')}<span>${esc(m === 'track' ? t('sleep_track_short') : fmt(sleepLeft()))}</span>`);
-  if (settings.rpm45) parts.push(`<span>${esc(t('speed_marker'))}</span>`);
+  const tag = soundTag();
+  if (tag) parts.push(`<span>${esc(tag)}</span>`);
   btn.hidden = !parts.length;
   const html = parts.join('<i>·</i>');
   if (btn.innerHTML !== html) btn.innerHTML = html;
