@@ -1,0 +1,8 @@
+# HTTPS in front of the API. Caddy gets and renews the certificate for API_DOMAIN by itself
+# (Let's Encrypt, ZeroSSL as a spare) and redirects http to https.
+{$API_DOMAIN} {
+	# music is streamed: bytes go through at once without buffering, Range requests reach the app unchanged
+	reverse_proxy musique:8000 {
+		flush_interval -1
+	}
+}

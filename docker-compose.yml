@@ -1,20 +1,39 @@
-# Musique on a VPS: bot + API and a static ngrok domain in front of it.
-#   1. cp server/.env.example server/.env  and fill BOT_TOKEN, NGROK_AUTHTOKEN, NGROK_DOMAIN
-#   2. docker compose --env-file server/.env up -d --build   (the flag lets compose read NGROK_DOMAIN)
+# Musique on a VPS: bot + API behind Caddy, which serves it over HTTPS at its own address (no tunnel, no traffic cap).
+#   1. cp server/.env.example server/.env  and fill BOT_TOKEN and API_DOMAIN (e.g. 109-66-243-195.sslip.io for the IP 109.66.243.195)
+#   2. open ports 80 and 443 in the hosting firewall (Caddy gets its certificate through them)
+#   3. docker compose --env-file server/.env up -d --build   (the flag lets compose read API_DOMAIN)
+# ngrok is kept as a spare (its free plan caps traffic per month): docker compose --env-file server/.env --profile ngrok up -d
 services:
   musique:
     build: .
     restart: unless-stopped
     env_file: server/.env
     environment:
-      PUBLIC_API_URL: https://${NGROK_DOMAIN}
+      # the public address of this server; ngrok's domain is used while API_DOMAIN is not set
+      PUBLIC_API_URL: https://${API_DOMAIN:-${NGROK_DOMAIN}}
     volumes:
       - musique-data:/data
       # optional YouTube cookies (see README): uncomment after creating server/cookies.txt
       # - ./server/cookies.txt:/app/server/cookies.txt:ro
 
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [musique]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      API_DOMAIN: ${API_DOMAIN:-localhost}  # "localhost" while unset: a harmless local certificate, nothing is requested
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data  # certificates: keep them, Let's Encrypt limits how many can be issued
+      - caddy-config:/config
+
   ngrok:
     image: ngrok/ngrok:latest
+    profiles: ["ngrok"]
     restart: unless-stopped
     depends_on: [musique]
     environment:
@@ -23,3 +42,5 @@ services:
 
 volumes:
   musique-data:
+  caddy-data:
+  caddy-config:
