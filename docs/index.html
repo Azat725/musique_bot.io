@@ -11,7 +11,7 @@
   <!-- fonts must never block rendering: if Google is unreachable the system fonts are used -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
   <link rel="stylesheet" href="css/tokens.css?v=31">
-  <link rel="stylesheet" href="css/app.css?v=36">
+  <link rel="stylesheet" href="css/app.css?v=38">
   <link rel="stylesheet" href="css/player.css?v=33">
   <link rel="stylesheet" href="css/stories.css?v=5">
   <!-- local copy of https://telegram.org/js/telegram-web-app.js?64 (taken 2026-10-29, its two per-event console.log calls removed): telegram.org hangs on some networks/VPNs, and the app module waits for this script -->
@@ -41,24 +41,24 @@
   <!-- one version for every module: imports inside the modules are bare, and iOS caches them separately -->
   <script type="importmap">
   { "imports": {
-    "./js/api.js": "./js/api.js?v=38", "./js/i18n.js": "./js/i18n.js?v=38", "./js/player.js": "./js/player.js?v=38",
-    "./js/store.js": "./js/store.js?v=38", "./js/ui.js": "./js/ui.js?v=38", "./js/vinyl.js": "./js/vinyl.js?v=38",
-    "./js/sfx.js": "./js/sfx.js?v=38", "./js/eq.js": "./js/eq.js?v=38",
-    "./js/views/artist.js": "./js/views/artist.js?v=38", "./js/views/artists.js": "./js/views/artists.js?v=38", "./js/views/home.js": "./js/views/home.js?v=38", "./js/views/library.js": "./js/views/library.js?v=38",
-    "./js/views/playlist.js": "./js/views/playlist.js?v=38", "./js/views/search.js": "./js/views/search.js?v=38",
-    "./js/views/settings.js": "./js/views/settings.js?v=38",
-    "./js/stories.js": "./js/stories.js?v=38", "./js/themes.js": "./js/themes.js?v=38",
-    "./js/queue.js": "./js/queue.js?v=38", "./js/graph.js": "./js/graph.js?v=38", "./js/sleep.js": "./js/sleep.js?v=38"
+    "./js/api.js": "./js/api.js?v=40", "./js/i18n.js": "./js/i18n.js?v=40", "./js/player.js": "./js/player.js?v=40",
+    "./js/store.js": "./js/store.js?v=40", "./js/ui.js": "./js/ui.js?v=40", "./js/vinyl.js": "./js/vinyl.js?v=40",
+    "./js/sfx.js": "./js/sfx.js?v=40", "./js/eq.js": "./js/eq.js?v=40",
+    "./js/views/artist.js": "./js/views/artist.js?v=40", "./js/views/artists.js": "./js/views/artists.js?v=40", "./js/views/home.js": "./js/views/home.js?v=40", "./js/views/library.js": "./js/views/library.js?v=40",
+    "./js/views/playlist.js": "./js/views/playlist.js?v=40", "./js/views/search.js": "./js/views/search.js?v=40",
+    "./js/views/settings.js": "./js/views/settings.js?v=40",
+    "./js/stories.js": "./js/stories.js?v=40", "./js/themes.js": "./js/themes.js?v=40",
+    "./js/queue.js": "./js/queue.js?v=40", "./js/graph.js": "./js/graph.js?v=40", "./js/sleep.js": "./js/sleep.js?v=40"
   } }
   </script>
-  <link rel="modulepreload" href="js/app.js?v=41">
-  <link rel="modulepreload" href="js/api.js?v=38">
-  <link rel="modulepreload" href="js/player.js?v=38">
-  <link rel="modulepreload" href="js/ui.js?v=38">
-  <link rel="modulepreload" href="js/vinyl.js?v=38">
-  <link rel="modulepreload" href="js/store.js?v=38">
-  <link rel="modulepreload" href="js/i18n.js?v=38">
-  <link rel="modulepreload" href="js/views/home.js?v=38">
+  <link rel="modulepreload" href="js/app.js?v=42">
+  <link rel="modulepreload" href="js/api.js?v=40">
+  <link rel="modulepreload" href="js/player.js?v=40">
+  <link rel="modulepreload" href="js/ui.js?v=40">
+  <link rel="modulepreload" href="js/vinyl.js?v=40">
+  <link rel="modulepreload" href="js/store.js?v=40">
+  <link rel="modulepreload" href="js/i18n.js?v=40">
+  <link rel="modulepreload" href="js/views/home.js?v=40">
 </head>
 <body>
   <!-- launch screen: a record slides out of its sleeve and spins; app.js puts it back and fades it out -->
@@ -103,6 +103,6 @@
       }, 25000);
     })();
   </script>
-  <script type="module" src="js/app.js?v=41" onerror="window.__musiqueNote('не удалось загрузить js/app.js')"></script>
+  <script type="module" src="js/app.js?v=42" onerror="window.__musiqueNote('не удалось загрузить js/app.js')"></script>
 </body>
 </html>

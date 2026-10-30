@@ -1,12 +1,15 @@
 import { t } from './i18n.js';
 import { BANDS, applyFx, enableFx } from './graph.js';
 import { settings, updateSettings } from './store.js';
+import { initSfx } from './sfx.js';
 import { esc, h, haptic, sheet } from './ui.js';
 
 /** Five-band equalizer. Its filters live in the shared audio graph (graph.js); this is the panel and the presets. */
 
 export { BANDS };
 const MAX_DB = 12;
+// the record noise under the music, quietest first (the numbers are what Settings stores; 4 came later)
+const NOISE = [['0', 'noise_off'], ['4', 'noise_vlow'], ['1', 'noise_low'], ['2', 'noise_mid'], ['3', 'noise_high']];
 export const PRESETS = {
   flat: [0, 0, 0, 0, 0],
   bass: [7, 4, 0, -1, 0],
@@ -77,6 +80,10 @@ export function openEqualizer() {
       </div>`).join('')}
     </div>
     <div class="eqp__presets">${Object.keys(PRESETS).map((k) => `<button class="eqp__preset" data-p="${k}">${esc(t('eq_' + k))}</button>`).join('')}</div>
+    <div class="eqp__noise">
+      <div class="eqp__noise-label"><span>${esc(t('settings_noise'))}</span><small>${esc(t('settings_noise_hint'))}</small></div>
+      <div class="seg seg--5" role="group">${NOISE.map(([v, key]) => `<button data-n="${v}"><b>${esc(t(key))}</b></button>`).join('')}</div>
+    </div>
   </div>`);
   const power = panel.querySelector('input');
   const line = panel.querySelector('.eqp__line');
@@ -94,6 +101,20 @@ export function openEqualizer() {
     });
     panel.querySelectorAll('.eqp__preset').forEach((b) => b.classList.toggle('is-on', b.dataset.p === preset));
   }
+
+  const drawNoise = () => panel.querySelectorAll('[data-n]').forEach((b) => {
+    const on = b.dataset.n === String(settings.vinylNoise || 0);
+    b.classList.toggle('is-on', on);
+    b.setAttribute('aria-pressed', on);
+  });
+  panel.querySelector('.eqp__noise').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-n]');
+    if (!b) return;
+    haptic('select');
+    initSfx(); // opened by a tap: the one moment iOS lets audio start
+    updateSettings({ vinylNoise: Number(b.dataset.n) }); // the app picks the change up and restarts the crackle
+    drawNoise();
+  });
 
   power.addEventListener('change', () => { haptic('select'); setEq({ on: power.checked }); draw(); });
   panel.querySelector('.eqp__presets').addEventListener('click', (e) => {
@@ -134,5 +155,6 @@ export function openEqualizer() {
   });
 
   draw();
+  drawNoise();
   return sheet({ content: panel, done: true });
 }

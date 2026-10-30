@@ -422,6 +422,12 @@ body.player-open .mini { opacity: 0; pointer-events: none; }
 .eqp__presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .eqp__preset { height: 32px; padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--bg);
   font: 600 13px/1 var(--font-serif); font-variant: small-caps; letter-spacing: .04em; color: var(--text-2); transition: background .25s var(--ease-io), color .25s var(--ease-io); }
+.eqp__noise { margin-top: 18px; }
+.eqp__noise-label { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; font: 600 13px/1.2 var(--font-serif); font-variant: small-caps; letter-spacing: .06em; color: var(--text-2); }
+.eqp__noise-label small { font: 400 12px/1.3 var(--font-sans); font-variant: normal; letter-spacing: 0; color: var(--text-3); }
+.seg.seg--5 { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.seg.seg--5 button { min-height: 40px; padding: 4px 2px; }
+.seg.seg--5 b { font-size: 12.5px; }
 .eqp__preset.is-on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 
 /* ---------- sheet & dialog ---------- */

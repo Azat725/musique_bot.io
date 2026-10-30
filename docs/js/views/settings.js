@@ -221,7 +221,13 @@ export async function render() {
   const eqState = root.querySelector('[data-eq-state]');
   const syncEqState = () => { eqState.textContent = settings.eq.on ? t('eq_' + settings.eq.preset) : t('eq_off'); };
   syncEqState();
-  root.querySelector('[data-eq]').addEventListener('click', async () => { haptic('light'); await openEqualizer(); syncEqState(); });
+  // the equalizer panel also sets the record noise: show what it left
+  const syncNoise = () => root.querySelectorAll('[data-name="vinylNoise"] button').forEach((b) => {
+    const on = b.dataset.value === String(settings.vinylNoise || 0);
+    b.classList.toggle('is-on', on);
+    b.setAttribute('aria-checked', on);
+  });
+  root.querySelector('[data-eq]').addEventListener('click', async () => { haptic('light'); await openEqualizer(); syncEqState(); syncNoise(); });
   root.querySelector('[data-stories]').addEventListener('click', () => { haptic('light'); showStories(); });
   root.querySelector('[data-clear]').addEventListener('click', async () => {
     await api.clearHistory();
