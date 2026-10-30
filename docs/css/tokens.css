@@ -30,6 +30,7 @@
   --sheen: rgba(255, 255, 255, 0.07);
   --seg-on: #14213D;        /* the chosen option of a segmented control */
   --on-seg-on: #FFFFFF;
+  --heading: var(--text);   /* titles in the serif face; a theme may give them a colour of their own */
 
   --font-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
   --font-sans: 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -109,17 +110,6 @@
   --seg-on: #F3E7D3; --on-seg-on: #4A121C;
 }
 
-/* Sky: sky blue paper, beige cards, brown text, bordeaux accent */
-:root[data-theme="sky"] {
-  --bg: #D6E7F3; --surface: #F4EEE2; --surface-2: #C4DAEA;
-  --text: #3B2A20; --text-2: #5E4D40; --text-3: #7F6C5A; --line: #B7CFE1;
-  --accent: #7B1E2B; --accent-text: #7B1E2B; --accent-press: #63161F; --accent-soft: #EAD3CF; --on-accent: #FFFFFF;
-  --tile-navy: #6B4A32; --mini: #3B2A20; --on-mini: #F4EEE2; --toast: #3B2A20; --on-toast: #F4EEE2;
-  --scrim: rgba(30, 40, 55, 0.4); --shade: rgba(30, 40, 55, 0.5); --shadow: rgba(40, 60, 80, 0.25);
-  --vinyl: #101218; --groove: rgba(255, 255, 255, 0.05); --groove-strong: rgba(255, 255, 255, 0.11); --sheen: rgba(255, 255, 255, 0.07);
-  --seg-on: #3B2A20; --on-seg-on: #F4EEE2;
-}
-
 /* British Green: racing green, cream text, bordeaux accent, brown tiles */
 :root[data-theme="green"] {
   --bg: #12261D; --surface: #183126; --surface-2: #1F3D30;
@@ -131,8 +121,8 @@
   --seg-on: #9A2E3D; --on-seg-on: #FFFFFF;
 }
 
-/* Old Money: ivory, forest green, old gold, a touch of bordeaux */
-:root[data-theme="oldmoney"] {
+/* Richesse: ivory, forest green, old gold, a touch of bordeaux */
+:root[data-theme="richesse"] {
   --bg: #F4EFE3; --surface: #FBF8F1; --surface-2: #E9E1CF;
   --text: #1F3A2E; --text-2: #5A5244; --text-3: #847965; --line: #DDD3BF;
   --accent: #2F4B3C; --accent-text: #8A6A2F; --accent-press: #243B2F; --accent-soft: #E2E5D6; --on-accent: #F4EFE3;
@@ -140,6 +130,40 @@
   --scrim: rgba(25, 32, 25, 0.4); --shade: rgba(25, 32, 25, 0.5); --shadow: rgba(60, 50, 30, 0.22);
   --vinyl: #101218; --groove: rgba(255, 255, 255, 0.05); --groove-strong: rgba(255, 255, 255, 0.11); --sheen: rgba(255, 255, 255, 0.07);
   --seg-on: #2F4B3C; --on-seg-on: #F4EFE3;
+}
+
+/* Obsidian: near-black with cold emerald accents, like dark glass */
+:root[data-theme="obsidian"] {
+  --bg: #0D1110; --surface: #19211E; --surface-2: #232D29;
+  --text: #E6ECE7; --text-2: #82948A; --text-3: #6A7B72; --line: #27322D;
+  --accent: #548C75; --accent-text: #6FAA90; --accent-press: #437260; --accent-soft: #1B2B25; --on-accent: #0D1110;
+  --tile-navy: #1F3B30; --mini: #232D29; --on-mini: #E6ECE7; --toast: #E6ECE7; --on-toast: #0D1110;
+  --scrim: rgba(0, 0, 0, 0.65); --shade: rgba(0, 4, 2, 0.6); --shadow: rgba(0, 0, 0, 0.6);
+  --vinyl: #060908; --groove: rgba(220, 255, 240, 0.045); --groove-strong: rgba(220, 255, 240, 0.1); --sheen: rgba(220, 255, 240, 0.06);
+  --seg-on: #548C75; --on-seg-on: #0D1110;
+}
+
+/* Terracotta: earth and clay, red-brown tones */
+:root[data-theme="terracotta"] {
+  --bg: #211714; --surface: #35231E; --surface-2: #432C25;
+  --text: #F0E1D2; --text-2: #C6AE9C; --text-3: #967F70; --line: #4B332B;
+  --accent: #C4775E; --accent-text: #DB8F76; --accent-press: #AB6049; --accent-soft: #3E2620; --on-accent: #211714;
+  --tile-navy: #8E493D; --mini: #432C25; --on-mini: #F0E1D2; --toast: #F0E1D2; --on-toast: #211714;
+  --scrim: rgba(12, 6, 4, 0.62); --shade: rgba(12, 6, 4, 0.6); --shadow: rgba(0, 0, 0, 0.55);
+  --vinyl: #0E0908; --groove: rgba(255, 235, 215, 0.045); --groove-strong: rgba(255, 235, 215, 0.1); --sheen: rgba(255, 235, 215, 0.06);
+  --seg-on: #C4775E; --on-seg-on: #211714;
+}
+
+/* Tuscan: warm Mediterranean, terracotta and olive on sand */
+:root[data-theme="tuscan"] {
+  --bg: #F2E8D6; --surface: #E8D8BE; --surface-2: #DCC9A8;
+  --text: #514238; --text-2: #75665A; --text-3: #7F6F62; --line: #D5C3A4;
+  --heading: #344638;
+  --accent: #A65F43; --accent-text: #94503A; --accent-press: #8D4C33; --accent-soft: #EAD0C0; --on-accent: #FFFFFF;
+  --tile-navy: #344638; --mini: #344638; --on-mini: #F2E8D6; --toast: #344638; --on-toast: #F2E8D6;
+  --scrim: rgba(40, 32, 20, 0.4); --shade: rgba(40, 32, 20, 0.5); --shadow: rgba(70, 50, 25, 0.24);
+  --vinyl: #14120F; --groove: rgba(255, 255, 255, 0.05); --groove-strong: rgba(255, 255, 255, 0.11); --sheen: rgba(255, 255, 255, 0.07);
+  --seg-on: #344638; --on-seg-on: #F2E8D6;
 }
 
 /* ---------- record colour (Settings → Customization); after the themes so it wins over their --vinyl ---------- */
@@ -151,3 +175,8 @@
 :root[data-vinyl="grey"] { --vinyl: #55565B; --groove: rgba(255, 255, 255, 0.07); --groove-strong: rgba(255, 255, 255, 0.15); --sheen: rgba(255, 255, 255, 0.1); }
 :root[data-vinyl="ivory"] { --vinyl: #ECE4D4; --groove: rgba(60, 45, 25, 0.07); --groove-strong: rgba(60, 45, 25, 0.15); --sheen: rgba(255, 255, 255, 0.35); }
 :root[data-vinyl="gold"] { --vinyl: #B08D57; --groove: rgba(60, 40, 10, 0.08); --groove-strong: rgba(60, 40, 10, 0.17); --sheen: rgba(255, 245, 220, 0.22); }
+:root[data-vinyl="emerald"] { --vinyl: #1D5944; --groove: rgba(220, 255, 235, 0.07); --groove-strong: rgba(220, 255, 235, 0.14); --sheen: rgba(220, 255, 235, 0.09); }
+:root[data-vinyl="terracotta"] { --vinyl: #A15A45; --groove: rgba(255, 235, 220, 0.07); --groove-strong: rgba(255, 235, 220, 0.15); --sheen: rgba(255, 235, 220, 0.12); }
+:root[data-vinyl="plum"] { --vinyl: #4A2748; --groove: rgba(255, 225, 255, 0.06); --groove-strong: rgba(255, 225, 255, 0.13); --sheen: rgba(255, 225, 255, 0.08); }
+:root[data-vinyl="red"] { --vinyl: #A12331; --groove: rgba(255, 220, 220, 0.08); --groove-strong: rgba(255, 220, 220, 0.16); --sheen: rgba(255, 230, 230, 0.12); }
+:root[data-vinyl="sky"] { --vinyl: #9FBCD4; --groove: rgba(20, 40, 60, 0.09); --groove-strong: rgba(20, 40, 60, 0.17); --sheen: rgba(255, 255, 255, 0.3); }

@@ -10,6 +10,13 @@ function load() {
 
 const tgLang = tg?.initDataUnsafe?.user?.language_code || navigator.language || 'en';
 
+// themes that were renamed or removed: whoever had them is moved to the new name (or to the classic look)
+const RENAMED_THEMES = { oldmoney: 'richesse', sky: 'classic' };
+function migrate() {
+  const next = RENAMED_THEMES[settings.colorTheme];
+  if (next) settings.colorTheme = next;
+}
+
 export const settings = {
   theme: 'system',
   lang: /^(ru|uk|be|kk)/i.test(tgLang) ? 'ru' : 'en',
@@ -27,6 +34,7 @@ export const settings = {
   sleeve: true, // a track heard for the first time comes out of its sleeve
   ...load(),
 };
+migrate();
 
 export function updateSettings(patch) {
   Object.assign(settings, patch);
@@ -49,6 +57,7 @@ export function syncCloudSettings() {
       if (err || !value) return resolve(false);
       try {
         Object.assign(settings, JSON.parse(value));
+        migrate();
         try { localStorage.setItem(KEY, value); } catch {}
         resolve(true);
       } catch { resolve(false); }
