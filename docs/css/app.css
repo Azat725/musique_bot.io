@@ -327,6 +327,11 @@ body.player-open .eq i { animation-play-state: paused; } /* hidden under the ful
 /* the label in the middle makes it read as a record */
 .swatch::after { content: ''; position: absolute; inset: 36%; border-radius: 50%; background: var(--bordeaux); box-shadow: 0 0 0 1px rgba(255, 255, 255, .25); }
 .swatch.is-on { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent-text); }
+/* turntable colourways: a plinth with its plate, not a record */
+.swatches--deck { grid-template-columns: repeat(8, minmax(0, 34px)); }
+.swatch--deck { border-radius: 8px; aspect-ratio: 1.15; }
+.swatch--deck::after { inset: 22%; border-radius: 4px; background: var(--c2); box-shadow: none; }
+.group__item.is-muted .swatches { opacity: .5; }
 .themes { display: grid; gap: 8px; padding-bottom: 6px; }
 .theme-card { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 8px 12px 8px 8px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); text-align: left; }
 .theme-card__name { flex: 1; min-width: 0; font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

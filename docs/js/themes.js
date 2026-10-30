@@ -22,3 +22,9 @@ export const RECORD_COLORS = {
   navy: '#16243F', green: '#1E3A2C', grey: '#55565B', ivory: '#ECE4D4', gold: '#B08D57',
   emerald: '#1D5944', terracotta: '#A15A45', plum: '#4A2748', red: '#A12331', sky: '#9FBCD4',
 };
+
+/** Turntable colourways: [plinth, plate], for the swatches; the whole set of colours is in css/tokens.css. */
+export const DECK_COLORS = {
+  walnut: ['#4A3426', '#2A2320'], oak: ['#BF9A6B', '#A67C4F'], cherry: ['#6A2B20', '#47190F'], black: ['#1C1C1E', '#121213'],
+  silver: ['#B5B8BD', '#979BA2'], white: ['#ECE8DF', '#D7D2C5'], red: ['#A8242B', '#7B1A20'], cream: ['#E3D1A5', '#C9B685'],
+};

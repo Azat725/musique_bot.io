@@ -3,7 +3,7 @@ import { t } from '../i18n.js';
 import { heard, settings, updateSettings } from '../store.js';
 import { openEqualizer } from '../eq.js';
 import { showStories } from '../stories.js';
-import { CLASSIC_SWATCH, RECORD_COLORS, THEMES } from '../themes.js';
+import { CLASSIC_SWATCH, DECK_COLORS, RECORD_COLORS, THEMES } from '../themes.js';
 import { brandMark, esc, h, haptic, icon, promptName, sheet, tg, toast } from '../ui.js';
 
 const NUMERIC = new Set(['vinylNoise', 'idleDelay']); // segmented controls that store numbers
@@ -81,6 +81,13 @@ export async function render() {
             aria-checked="${k === settings.recordColor}" aria-label="${esc(t('rc_' + k))}" data-color="${k}" style="--c:${c}"></button>`).join('')}
         </div>
       </div>
+      <div class="group__item group__item--stack" data-deck-row>
+        <span><span class="group__name">${esc(t('custom_deck'))}</span><span class="group__hint" data-deck-state></span></span>
+        <div class="swatches swatches--deck" role="radiogroup" aria-label="${esc(t('custom_deck'))}">
+          ${Object.entries(DECK_COLORS).map(([k, [body, plate]]) => `<button class="swatch swatch--deck ${k === settings.deckColor ? 'is-on' : ''}" role="radio"
+            aria-checked="${k === settings.deckColor}" aria-label="${esc(t('dc_' + k))}" data-deck="${k}" style="--c:${body};--c2:${plate}"></button>`).join('')}
+        </div>
+      </div>
       <div class="group__item group__item--stack">
         <span><span class="group__name">${esc(t('custom_idle'))}</span><span class="group__hint">${esc(t('custom_idle_hint'))}</span></span>
         ${segmented('idleDelay', [['0', t('idle_off')], ...[10, 20, 40, 60].map((n) => [String(n), t('idle_s', { n })])], String(settings.idleDelay))}
@@ -135,6 +142,7 @@ export async function render() {
       const value = NUMERIC.has(seg.dataset.name) ? Number(btn.dataset.value) : btn.dataset.value;
       seg.querySelectorAll('button').forEach((b) => { b.classList.toggle('is-on', b === btn); b.setAttribute('aria-checked', b === btn); });
       updateSettings({ [seg.dataset.name]: value });
+      if (seg.dataset.name === 'playerMode') syncDeck();
     });
   });
   root.querySelector('[data-sounds]').addEventListener('change', (e) => {
@@ -163,6 +171,22 @@ export async function render() {
     haptic('light');
     await openThemePicker();
     syncThemeRow();
+  });
+  // the turntable colour matters only in the turntable view: dimmed otherwise
+  const deckRow = root.querySelector('[data-deck-row]');
+  const deckState = root.querySelector('[data-deck-state]');
+  const syncDeck = () => {
+    deckState.textContent = settings.playerMode === 'turntable' ? t('dc_' + settings.deckColor) : t('custom_deck_hint');
+    deckRow.classList.toggle('is-muted', settings.playerMode !== 'turntable');
+  };
+  syncDeck();
+  root.querySelector('.swatches--deck').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-deck]');
+    if (!btn) return;
+    haptic('select');
+    root.querySelectorAll('.swatch--deck').forEach((b) => { b.classList.toggle('is-on', b === btn); b.setAttribute('aria-checked', b === btn); });
+    updateSettings({ deckColor: btn.dataset.deck });
+    syncDeck();
   });
   const recordState = root.querySelector('[data-record-state]');
   const syncRecord = () => { recordState.textContent = t('rc_' + settings.recordColor); };

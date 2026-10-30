@@ -44,6 +44,8 @@ function applyTheme() {
   doc.dataset.mode = mode;
   if (settings.recordColor && settings.recordColor !== 'black') doc.dataset.vinyl = settings.recordColor;
   else delete doc.dataset.vinyl;
+  if (settings.deckColor && settings.deckColor !== 'walnut') doc.dataset.deck = settings.deckColor;
+  else delete doc.dataset.deck;
   const color = custom ? custom.bg : COLORS[theme];
   try {
     if (tg?.isVersionAtLeast?.('6.1')) { tg.setHeaderColor(color); tg.setBackgroundColor(color); }

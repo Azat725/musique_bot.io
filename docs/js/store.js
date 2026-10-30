@@ -29,6 +29,7 @@ export const settings = {
   colorTheme: 'classic', // themes.js; 'classic' follows `theme` (auto / light / dark)
   playerMode: 'record', // 'record' alone or 'turntable'
   recordColor: 'black',
+  deckColor: 'walnut', // the turntable's colourway, see css/tokens.css
   idleDelay: 20, // seconds before the player's interface fades away; 0 never
   hapticSeek: true, // a tick under the finger while seeking
   sleeve: true, // a track heard for the first time comes out of its sleeve
