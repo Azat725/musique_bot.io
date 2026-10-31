@@ -1,6 +1,8 @@
 """HTTP API for the Mini App."""
 import asyncio
 import logging
+import secrets
+import time
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -10,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
 
-from . import auth, config, db, importer, lyrics, music
+from . import auth, config, db, importer, lyrics, music, weblogin
 
 log = logging.getLogger("musique.api")
 
@@ -76,8 +78,66 @@ async def health():
 
 @app.get("/api/me")
 async def me(user=User):
-    return {"user": {k: user.get(k) for k in ("id", "first_name", "username", "language_code")},
+    return {"user": {**{k: user.get(k) for k in ("id", "first_name", "username", "language_code")}, "kind": user.get("kind", "telegram")},
             "token": auth.make_stream_token(user["id"])}
+
+
+# ---------- the site in an ordinary browser: guests, and signing in with Telegram through the bot ----------
+
+GUESTS_PER_HOUR = 20  # from one address: enough for a family behind one router, not for a script
+_guest_log: dict[str, list[float]] = {}
+
+
+def _client_ip(request: Request) -> str:
+    # behind Caddy the visitor's address comes in X-Forwarded-For (its first entry)
+    fwd = request.headers.get("x-forwarded-for", "")
+    return fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "")
+
+
+@app.post("/api/guest")
+async def new_guest(request: Request):
+    """A guest account for this browser: the library is kept on the server under a negative id."""
+    ip, now = _client_ip(request), time.time()
+    recent = [t for t in _guest_log.get(ip, []) if now - t < 3600]
+    if len(recent) >= GUESTS_PER_HOUR:
+        raise HTTPException(429, "too many guests")
+    _guest_log[ip] = recent + [now]
+    if len(_guest_log) > 10000:
+        _guest_log.pop(next(iter(_guest_log)))
+    lang = (request.headers.get("accept-language") or "en")[:2].lower()
+    guest_id = -secrets.randbelow(2 ** 52) - 1
+    await db.save_account(guest_id, "guest", "", "", lang)
+    return {"session": auth.make_session(guest_id)}
+
+
+@app.post("/api/login/start")
+async def login_start(user=User):
+    """A one-time code and the bot link that confirms it."""
+    if user.get("kind") != "guest":
+        raise HTTPException(400, "already signed in")
+    code = weblogin.start(user["id"])
+    url = weblogin.link(code)
+    if not url:
+        raise HTTPException(503, "bot not ready")
+    return {"code": code, "url": url}
+
+
+@app.get("/api/login/{code}")
+async def login_poll(code: str, user=User):
+    """wait | expired | ok (with a session for the Telegram account; the guest's library is moved into it)."""
+    if user.get("kind") != "guest":
+        raise HTTPException(400, "not a guest")
+    status, tg_user = weblogin.poll(code[:64], user["id"])
+    if status != "ok":
+        return {"status": status}
+    tg_id = int(tg_user["id"])
+    await db.save_account(tg_id, "telegram", tg_user.get("first_name") or "", tg_user.get("username") or "",
+                          tg_user.get("language_code") or "")
+    await db.merge_user(user["id"], tg_id)
+    auth.forget_profile(user["id"])
+    auth.forget_profile(tg_id)
+    return {"status": "ok", "session": auth.make_session(tg_id),
+            "user": {"first_name": tg_user.get("first_name") or "", "username": tg_user.get("username") or ""}}
 
 
 @app.get("/api/home")
@@ -273,6 +333,8 @@ def _spawn(coro) -> None:
 
 @app.post("/api/send")
 async def send(body: TrackBody, user=User):
+    if user.get("kind") == "guest":
+        raise HTTPException(403, "telegram only")  # the bot has no chat to send a guest the file to
     t = _track(body)
     await db.save_track(t)
     _spawn(send_track(user["id"], t["id"], user.get("language_code") or "en"))

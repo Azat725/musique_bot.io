@@ -1,5 +1,18 @@
 const tg = window.Telegram?.WebApp;
 const API_KEY = 'musique.api';
+const SESSION_KEY = 'musique.session';
+// the server, when the site is opened from GitHub Pages without ?api= (on its own domain the site asks its own address)
+const DEFAULT_API = 'https://109-66-243-195.sslip.io';
+
+/** Inside Telegram every request carries its signature; in an ordinary browser a session (guest or account) does. */
+export const inTelegram = !!tg?.initData;
+let session = '';
+try { session = localStorage.getItem(SESSION_KEY) || ''; } catch {}
+
+function keepSession(value) {
+  session = value || '';
+  try { if (session) localStorage.setItem(SESSION_KEY, session); else localStorage.removeItem(SESSION_KEY); } catch {}
+}
 
 /** A usable server address from a possibly over-encoded value ("https%3A%2F%2F…"), or '' if there is none. */
 export function cleanBase(value) {
@@ -24,7 +37,8 @@ function resolveBase() {
     if (saved) return saved;
   } catch {}
   if (/^(localhost|127\.)/.test(location.hostname) || location.protocol === 'file:') return 'http://localhost:8000';
-  return '';
+  if (location.hostname.endsWith('github.io')) return DEFAULT_API;
+  return location.origin; // the site on its own domain: Caddy serves the API at the same address
 }
 
 const base = resolveBase();
@@ -40,7 +54,7 @@ async function request(method, path, body, signal, timeout = 0) {
       signal: ctrl.signal,
       method,
       headers: {
-        'X-Init-Data': tg?.initData || '',
+        ...(inTelegram ? { 'X-Init-Data': tg.initData } : session ? { Authorization: `Bearer ${session}` } : {}),
         'ngrok-skip-browser-warning': '1', // ngrok's free tier otherwise answers browsers with an interstitial page
         ...(body ? { 'Content-Type': 'application/json' } : {}),
       },
@@ -79,11 +93,34 @@ export const api = {
     if (!res.ok) throw new Error(`http-${res.status}`);
     return URL.createObjectURL(await res.blob());
   },
+  /** Who is listening. Outside Telegram a browser without a session (or with one the server no longer knows)
+   *  becomes a guest first. */
   async me() {
-    const data = await get('/api/me');
+    if (!inTelegram && !session) keepSession((await post('/api/guest')).session);
+    let data;
+    try {
+      data = await get('/api/me');
+    } catch (e) {
+      if (inTelegram || e.message !== 'http-401') throw e;
+      keepSession((await post('/api/guest')).session);
+      data = await get('/api/me');
+    }
     streamToken = data.token;
+    api.user = data.user;
     return data.user;
   },
+  user: null, // { id, first_name, username, language_code, kind: 'telegram' | 'guest' }
+  isGuest: () => api.user?.kind === 'guest',
+  /** Sign in with Telegram from the site: { code, url } — the url opens the bot, which asks to confirm. */
+  loginStart: () => post('/api/login/start'),
+  /** { status: 'wait' | 'expired' | 'ok', session?, user? }; on ok the new session is kept at once. */
+  async loginPoll(code) {
+    const r = await get('/api/login/' + encodeURIComponent(code));
+    if (r.status === 'ok') keepSession(r.session);
+    return r;
+  },
+  /** Back to being a guest in this browser (a new, empty guest library). */
+  logout() { keepSession(''); },
   /** fx: "<speed>-<reverb>"; anything but plain is a file the server renders (slowed, 45 rpm, reverb). */
   streamUrl: (id, fx = 'normal-off') => `${base}/api/stream/${id}?t=${encodeURIComponent(streamToken)}${fx === 'normal-off' ? '' : `&fx=${fx}`}`,
   /** Start /api/home during boot; the first home() call takes the request already in flight. */

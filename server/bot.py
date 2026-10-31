@@ -8,7 +8,7 @@ from aiogram.filters import Command, CommandStart
 from aiogram.types import (BotCommand, BufferedInputFile, CallbackQuery, FSInputFile, InlineKeyboardButton,
                            InlineKeyboardMarkup, LabeledPrice, MenuButtonWebApp, Message, PreCheckoutQuery, WebAppInfo)
 
-from . import backup, config, db, music
+from . import backup, config, db, music, weblogin
 
 log = logging.getLogger("musique.bot")
 
@@ -24,6 +24,10 @@ TEXTS = {
         "results": "Результаты по запросу «{q}»:",
         "loading": "Загружаю трек…",
         "failed": "Не удалось загрузить этот трек. Попробуй другой вариант.",
+        "login_ask": "Войти в Musique в браузере? Нажмите «Войти», только если вы сами только что открыли сайт.",
+        "login_yes": "Войти", "login_no": "Отмена",
+        "login_done": "Готово — вернитесь в браузер, ваша медиатека уже там 🎶",
+        "login_cancelled": "Вход отменён", "login_expired": "Ссылка для входа устарела — нажмите «Войти через Telegram» на сайте ещё раз",
         "description": "Слушай любую музыку прямо в Telegram: поиск, плейлисты, избранное и виниловый плеер.",
         "short": "Вся музыка в Telegram. Поиск, плейлисты, винил.",
         "support": "⭐ Поддержать автора",
@@ -56,6 +60,10 @@ TEXTS = {
         "results": "Results for “{q}”:",
         "loading": "Loading the track…",
         "failed": "Couldn't load this track. Try another one.",
+        "login_ask": "Sign in to Musique in your browser? Tap “Sign in” only if you have just opened the site yourself.",
+        "login_yes": "Sign in", "login_no": "Cancel",
+        "login_done": "Done — go back to the browser, your library is already there 🎶",
+        "login_cancelled": "Sign-in cancelled", "login_expired": "This sign-in link has expired — tap “Sign in with Telegram” on the site again",
         "description": "Listen to any music right in Telegram: search, playlists, favourites and a vinyl player.",
         "short": "All music in Telegram. Search, playlists, vinyl.",
         "support": "⭐ Support the author",
@@ -107,8 +115,44 @@ def _open_keyboard(code: str | None) -> InlineKeyboardMarkup:
 @router.message(CommandStart())
 async def start(message: Message):
     _awaiting_amount.discard(message.from_user.id)
+    arg = (message.text or "").split(maxsplit=1)[1:]
+    if arg and arg[0].startswith("login_"):  # the site asks to sign in with this Telegram account
+        await _ask_login(message, arg[0][6:70])
+        return
     await message.answer(_t(message.from_user.language_code, "start"),
                          reply_markup=_open_keyboard(message.from_user.language_code))
+
+
+# ---------- signing in on the site: the bot confirms that this Telegram account is the one opening it ----------
+
+async def _ask_login(message: Message, code: str) -> None:
+    lang = message.from_user.language_code
+    if not weblogin.known(code):
+        await message.answer(_t(lang, "login_expired"))
+        return
+    # a confirmation, not an instant sign-in: someone else's link must not slip a stranger into this account
+    await message.answer(_t(lang, "login_ask"), reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text=_t(lang, "login_yes"), callback_data=f"wl:ok:{code}"),
+        InlineKeyboardButton(text=_t(lang, "login_no"), callback_data=f"wl:no:{code}"),
+    ]]))
+
+
+@router.callback_query(F.data.startswith("wl:"))
+async def login_answer(cb: CallbackQuery):
+    _, answer, code = cb.data.split(":", 2)
+    u = cb.from_user
+    lang = u.language_code
+    if answer == "ok":
+        ok = weblogin.confirm(code, {"id": u.id, "first_name": u.first_name or "", "username": u.username or "",
+                                     "language_code": u.language_code or ""})
+        text = _t(lang, "login_done" if ok else "login_expired")
+    else:
+        text = _t(lang, "login_cancelled")
+    await cb.answer()
+    try:
+        await cb.message.edit_text(text)
+    except Exception:
+        await cb.message.answer(text)
 
 
 # ---------- support the author with Telegram Stars (bot only: the Mini App never takes payments) ----------
@@ -319,6 +363,10 @@ async def update_menu_button() -> None:
 async def setup(bot: Bot) -> None:
     global _bot
     _bot = bot
+    try:
+        weblogin.bot_username = (await bot.me()).username or ""  # the site links to t.me/<it>?start=login_…
+    except Exception:
+        log.exception("could not learn the bot's username: signing in on the site will wait")
     await update_menu_button()
     for code in ("ru", "en"):
         lang = None if code == "en" else code

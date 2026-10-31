@@ -26,8 +26,10 @@ services:
       - "443:443/udp"
     environment:
       API_DOMAIN: ${API_DOMAIN:-localhost}  # "localhost" while unset: a harmless local certificate, nothing is requested
+      SITE_DOMAIN: ${SITE_DOMAIN:-site.localhost}  # your own domain for the site in a browser (see DEPLOY.md)
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./docs:/srv/site:ro  # the site's files, served at SITE_DOMAIN (git pull updates them)
       - caddy-data:/data  # certificates: keep them, Let's Encrypt limits how many can be issued
       - caddy-config:/config
 

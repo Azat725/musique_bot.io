@@ -513,7 +513,7 @@ export async function trackMenu(track, context = null) {
     { icon: 'listPlus', label: t('menu_add_playlist'), run: 'playlist' },
     { icon: 'next2', label: t('menu_play_next'), run: 'next' },
     { icon: 'mic', label: t('menu_artist'), run: 'artist' },
-    { icon: 'send', label: t('menu_send'), run: 'send' },
+    ...(api.isGuest?.() ? [] : [{ icon: 'send', label: t('menu_send'), run: 'send' }]), // a guest has no chat with the bot
   ];
   // the full player's menu: the track already plays, and the turntable's own switches join in
   if (context?.player) {

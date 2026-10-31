@@ -6,3 +6,17 @@
 		flush_interval -1
 	}
 }
+
+# The site itself on its own domain (set SITE_DOMAIN once the domain points at this server): the app's files from
+# docs/ and the API at the same address, so the site needs no ?api=. Unset, the harmless site.localhost is used.
+{$SITE_DOMAIN:site.localhost} {
+	handle /api/* {
+		reverse_proxy musique:8000 {
+			flush_interval -1
+		}
+	}
+	handle {
+		root * /srv/site
+		file_server
+	}
+}

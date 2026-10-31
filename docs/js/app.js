@@ -1,4 +1,4 @@
-import { api } from './api.js';
+import { api, inTelegram } from './api.js';
 import { setLang, t } from './i18n.js';
 import { player } from './player.js';
 import { likes, loadHeard, loadLikes, onSettings, settings, syncCloudSettings, toggleLike } from './store.js';
@@ -31,7 +31,7 @@ let tab = 'home';
 
 function resolvedTheme() {
   if (settings.theme !== 'system') return settings.theme;
-  if (tg?.colorScheme) return tg.colorScheme;
+  if (inTelegram && tg?.colorScheme) return tg.colorScheme;
   return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
@@ -58,10 +58,11 @@ function applyTheme() {
 // ---------- navigation ----------
 
 const navApi = {
-  push(name, params = {}) {
+  push(name, params = {}, { reuse = false } = {}) {
     const stack = stacks[tab];
     stack[stack.length - 1].scroll = window.scrollY;
     stack.push({ name, params });
+    if (!reuse) webPush('view');
     show('forward');
   },
   back() {
@@ -69,6 +70,60 @@ const navApi = {
     if (stack.length > 1) { stack.pop(); show('back'); }
   },
 };
+
+// ---------- the site in a browser: no Telegram back button, so the browser's own history does that job ----------
+// Each step deeper and each opening of the player is a history entry; the system back (Android, a swipe, the
+// browser's button) goes back or closes the player. webStack says what each of our entries stands for.
+const webNav = !(window.Telegram?.WebApp?.BackButton && window.Telegram.WebApp.isVersionAtLeast?.('6.1'));
+const webStack = [];
+let ignorePops = 0, closingFromHistory = false;
+
+function webPush(kind) {
+  if (!webNav) return;
+  webStack.push(kind);
+  history.pushState({ musique: webStack.length }, '');
+}
+
+/** Our entries vanish without acting on them (switching tabs leaves the old tab's depth behind). */
+function webForget() {
+  if (!webNav || !webStack.length) return;
+  ignorePops++;
+  history.go(-webStack.length);
+  webStack.length = 0;
+}
+
+/** The in-app back: through the history when the step has an entry, so the browser stays in step. */
+function goBack() {
+  if (webNav && webStack[webStack.length - 1] === 'view') history.back();
+  else navApi.back();
+}
+
+addEventListener('popstate', () => {
+  if (!webNav) return;
+  if (ignorePops) { ignorePops--; return; }
+  const kind = webStack.pop();
+  if (kind === 'player' && isPlayerOpen()) {
+    closingFromHistory = true;
+    closePlayer();
+    closingFromHistory = false;
+  } else if (kind === 'view') navApi.back();
+});
+
+document.addEventListener('keydown', (e) => { // a keyboard: Escape closes the player or goes back
+  if (e.key !== 'Escape' || document.querySelector('.sheet, .dialog')) return;
+  if (isPlayerOpen()) closePlayer();
+  else if (stacks[tab].length > 1) goBack();
+});
+
+/** A back arrow in the head of deeper screens, where Telegram would show its own. */
+function addBackArrow(el) {
+  if (!webNav || el.querySelector('.view__back')) return;
+  const head = el.querySelector('.view__head');
+  if (!head) return;
+  const btn = h(`<button class="icon-btn view__back" aria-label="${esc(t('back'))}">${icon('down')}</button>`);
+  btn.addEventListener('click', () => { haptic('light'); goBack(); });
+  head.prepend(btn);
+}
 
 // how the incoming and the outgoing screen move: deeper slides in from the right, back from the left, tabs cross-fade
 const MOVES = {
@@ -127,6 +182,7 @@ async function show(dir = null) {
       entry.el = errorView(() => { entry.el = null; show(); });
     }
     if (stacks[tab][stacks[tab].length - 1] !== entry) return; // user navigated away meanwhile
+    if (stack.length > 1) addBackArrow(entry.el);
     if (skeleton.isConnected) {
       skeleton.replaceWith(entry.el);
       entry.el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 240, easing: EASE_IO });
@@ -135,6 +191,7 @@ async function show(dir = null) {
     }
   } else {
     entry.el.onShow?.();
+    if (stack.length > 1) addBackArrow(entry.el);
     transition(entry.el, dir);
   }
   markPlaying(main);
@@ -144,11 +201,12 @@ async function show(dir = null) {
 function switchTab(next) {
   if (next === tab) {
     // tapping the active tab returns to its root
-    if (stacks[tab].length > 1) { stacks[tab].length = 1; show('back'); }
+    if (stacks[tab].length > 1) { stacks[tab].length = 1; webForget(); show('back'); }
     else window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
   stacks[tab][stacks[tab].length - 1].scroll = window.scrollY;
+  webForget();
   tab = next;
   haptic('select');
   show('tab');
@@ -184,13 +242,25 @@ if (hasBackButton) tg.BackButton.onClick(() => {
 });
 document.addEventListener('open-artist', (e) => {
   const top = stacks[tab][stacks[tab].length - 1];
+  // leaving the player for an artist: its history entry becomes the artist's (no back-and-push race)
+  const reuse = isPlayerOpen() && webNav && webStack[webStack.length - 1] === 'player';
+  if (reuse) webStack[webStack.length - 1] = 'view';
   if (isPlayerOpen()) closePlayer();
-  if (top.name === 'artist' && (top.params.id ? top.params.id === e.detail.id : top.params.name === e.detail.name)) return;
-  navApi.push('artist', { ...e.detail });
+  if (top.name === 'artist' && (top.params.id ? top.params.id === e.detail.id : top.params.name === e.detail.name)) {
+    if (reuse) { webStack.pop(); ignorePops++; history.back(); }
+    return;
+  }
+  navApi.push('artist', { ...e.detail }, { reuse });
 });
 document.addEventListener('player-open', (e) => {
   document.body.classList.toggle('player-open', e.detail);
   syncBackButton();
+  if (e.detail) webPush('player');
+  else if (!closingFromHistory && webNav && webStack[webStack.length - 1] === 'player') { // closed by its own arrow
+    webStack.pop();
+    ignorePops++;
+    history.back();
+  }
 });
 
 function errorView(retry) {
@@ -335,6 +405,7 @@ async function boot() {
   if (!me) return noServer();
   try {
     await me;
+    document.body.classList.toggle('is-guest', api.isGuest());
     initOffline().then(() => loadLikes()).then(() => syncOffline(), () => {});
     loadHeard().catch(() => {});
   } catch {

@@ -33,6 +33,9 @@ CREATE TABLE IF NOT EXISTS sources (
 CREATE TABLE IF NOT EXISTS lyrics (
     track_id TEXT PRIMARY KEY, text TEXT, source TEXT, fetched REAL, synced TEXT
 );
+CREATE TABLE IF NOT EXISTS accounts (
+    id INTEGER PRIMARY KEY, kind TEXT, first_name TEXT, username TEXT, language_code TEXT, created REAL
+);
 CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id);
 """
 
@@ -111,6 +114,47 @@ async def save_lyrics(track_id: str, text: str | None, source: str = "", synced:
         "fetched = excluded.fetched, synced = excluded.synced",
         (track_id, text, source, time.time(), synced),
     )
+    await _db.commit()
+
+
+# ---------- accounts of the site (guests have negative ids, Telegram accounts their Telegram id) ----------
+
+def _account(row) -> dict:
+    return {"id": row["id"], "kind": row["kind"], "first_name": row["first_name"] or "",
+            "username": row["username"] or "", "language_code": row["language_code"] or ""}
+
+
+async def get_account(user_id: int) -> dict | None:
+    async with _db.execute("SELECT * FROM accounts WHERE id = ?", (user_id,)) as cur:
+        row = await cur.fetchone()
+    return _account(row) if row else None
+
+
+async def save_account(user_id: int, kind: str, first_name: str = "", username: str = "", language_code: str = "") -> None:
+    await _db.execute(
+        "INSERT INTO accounts (id, kind, first_name, username, language_code, created) VALUES (?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT(id) DO UPDATE SET kind = excluded.kind, first_name = excluded.first_name, "
+        "username = excluded.username, language_code = excluded.language_code",
+        (user_id, kind, first_name, username, language_code, time.time()))
+    await _db.commit()
+
+
+async def merge_user(src: int, dst: int) -> None:
+    """Move a guest's library into an account: likes, playlists, history and artists (no duplicates;
+    a track in both histories keeps the later time), then forget the guest."""
+    if src == dst:
+        return
+    await _db.execute("INSERT OR IGNORE INTO likes SELECT ?, track_id, created FROM likes WHERE user_id = ?", (dst, src))
+    await _db.execute("DELETE FROM likes WHERE user_id = ?", (src,))
+    await _db.execute("UPDATE playlists SET user_id = ? WHERE user_id = ?", (dst, src))
+    await _db.execute(
+        "INSERT INTO history SELECT ?, track_id, played FROM history WHERE user_id = ? AND true "
+        "ON CONFLICT(user_id, track_id) DO UPDATE SET played = MAX(history.played, excluded.played)", (dst, src))
+    await _db.execute("DELETE FROM history WHERE user_id = ?", (src,))
+    await _db.execute("INSERT OR IGNORE INTO fav_artists SELECT ?, artist_id, name, cover, created FROM fav_artists WHERE user_id = ?",
+                      (dst, src))
+    await _db.execute("DELETE FROM fav_artists WHERE user_id = ?", (src,))
+    await _db.execute("DELETE FROM accounts WHERE id = ?", (src,))
     await _db.commit()
 
 

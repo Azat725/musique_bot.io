@@ -1,4 +1,5 @@
-import { api } from '../api.js';
+import { api, inTelegram } from '../api.js';
+import { openLogin } from '../login.js';
 import { t } from '../i18n.js';
 import { heard, settings, updateSettings } from '../store.js';
 import { openControlPanel } from '../eq.js';
@@ -39,9 +40,32 @@ function segmented(name, options, value) {
   </div>`;
 }
 
+/** In an ordinary browser: who is listening here, and the way to sign in with Telegram (or out). */
+function accountGroup() {
+  const u = api.user || {};
+  if (u.kind === 'guest') {
+    return `<section class="group">
+      <div class="group__label">${esc(t('account_title'))}</div>
+      <div class="group__item group__item--stack">
+        <span><span class="group__name">${esc(t('account_guest'))}</span><span class="group__hint">${esc(t('account_guest_hint'))}</span></span>
+        <button class="btn btn--accent account__login" data-login>${esc(t('account_login'))}</button>
+      </div>
+    </section>`;
+  }
+  return `<section class="group">
+    <div class="group__label">${esc(t('account_title'))}</div>
+    <div class="group__item">
+      <span><span class="group__name">${esc(t('account_tg', { name: u.first_name || u.username || '' }))}</span>
+        ${u.username ? `<span class="group__hint">@${esc(u.username)}</span>` : ''}</span>
+    </div>
+    <button class="group__item group__item--danger" data-logout>${esc(t('account_logout'))}</button>
+  </section>`;
+}
+
 export async function render() {
   const root = h(`<div class="view">
     <header class="view__head"><h1 class="view__title">${esc(t('nav_settings'))}</h1></header>
+    ${inTelegram ? '' : accountGroup()}
 
     <section class="group">
       <div class="group__label">${esc(t('settings_profile'))}</div>
@@ -147,6 +171,14 @@ export async function render() {
       </div>
     </section>
   </div>`);
+
+  root.querySelector('[data-login]')?.addEventListener('click', () => { haptic('light'); openLogin(); });
+  root.querySelector('[data-logout]')?.addEventListener('click', async () => {
+    if (!await confirmSheet({ title: t('account_logout'), text: t('logout_confirm'), action: t('account_logout') })) return;
+    api.logout();
+    try { localStorage.removeItem('musique.likes'); } catch {} // the kept list was the account's
+    location.reload(); // a fresh guest library in this browser
+  });
 
   root.querySelectorAll('.segmented').forEach((seg) => {
     seg.addEventListener('click', (e) => {
