@@ -194,6 +194,26 @@ async def search(query: str, limit: int = 30, videos: bool = True) -> list[dict]
     return out
 
 
+async def suggestions(query: str, limit: int = 8) -> list[str]:
+    """What YouTube Music would complete the query with, for the search box as the user types. Never raises."""
+    query = query.strip()[:100]
+    if not query:
+        return []
+    key = "suggest:" + query.lower()
+    cached = _search_cache.get(key)
+    if cached and time.time() - cached[0] < 600:
+        return cached[1]
+    try:
+        found = await asyncio.to_thread(_yt.get_search_suggestions, query)
+    except Exception as e:
+        log.info("suggestions failed for %r: %s", query, str(e)[:120])
+        return []
+    out = [s.strip() for s in found if isinstance(s, str) and s.strip()][:limit]
+    _search_cache[key] = (time.time(), out)
+    _trim(_search_cache, 500)
+    return out
+
+
 async def search_artists(query: str, limit: int = 12) -> list[dict]:
     query = query.strip()[:200]
     if not query:

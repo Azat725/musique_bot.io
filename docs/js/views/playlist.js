@@ -2,7 +2,10 @@ import { api } from '../api.js';
 import { plural, t } from '../i18n.js';
 import { player } from '../player.js';
 import { invalidatePlaylists, likedList } from '../store.js';
-import { confirmDialog, esc, h, haptic, icon, loader, promptName, sheet, toast, trackList } from '../ui.js';
+import { confirmSheet, esc, h, haptic, icon, loader, promptName, sheet, toast, trackList } from '../ui.js';
+
+const FILTER_FROM = 8; // a list this long (or longer) gets a search field
+const norm = (s) => String(s || '').toLowerCase().replace(/ё/g, 'е');
 
 async function loadTracks(p) {
   switch (p.kind) {
@@ -39,38 +42,73 @@ export async function render(params, nav) {
         <button class="icon-btn" data-more hidden aria-label="more">${icon('more')}</button>
       </div>
     </header>
+    <div class="searchbar searchbar--list" hidden>
+      ${icon('search')}
+      <input type="search" enterkeyhint="search" autocomplete="off" placeholder="${esc(t('list_filter'))}">
+      <button class="icon-btn searchbar__clear" aria-label="clear" hidden>${icon('close')}</button>
+    </div>
     <div class="list__body">${loader()}</div>
   </div>`);
   const body = root.querySelector('.list__body');
   const sub = root.querySelector('.view__sub');
   const more = root.querySelector('[data-more]');
+  const filterBar = root.querySelector('.searchbar--list');
+  const filterInput = filterBar.querySelector('input');
+  const filterClear = filterBar.querySelector('.searchbar__clear');
   let tracks = [];
+  let query = '';
 
-  const refreshCount = () => {
-    sub.textContent = plural(tracks.length);
+  /** What the filter lets through; with an empty field, the list itself. */
+  const shown = () => {
+    const q = norm(query.trim());
+    return q ? tracks.filter((tr) => norm(`${tr.title} ${tr.artist}`).includes(q)) : tracks;
+  };
+
+  const refreshCount = (visible = shown()) => {
+    sub.textContent = query.trim() ? t('list_found', { n: visible.length, m: tracks.length }) : plural(tracks.length);
     root.querySelector('.list-actions').classList.toggle('is-disabled', !tracks.length);
   };
 
   function draw() {
     body.innerHTML = '';
+    filterBar.hidden = tracks.length < FILTER_FROM;
+    if (filterBar.hidden && query) { query = ''; filterInput.value = ''; filterClear.hidden = true; }
     if (!tracks.length) {
       body.append(h(`<div class="empty"><div class="empty__title">${esc(t(EMPTY[params.kind] || 'playlist_empty'))}</div></div>`));
     } else {
-      const context = { playlistId: params.kind === 'user' ? params.id : null, likes: params.kind === 'likes' };
-      body.append(trackList(tracks, { numbered: params.kind !== 'history', context, onChange: () => { refreshCount(); if (!tracks.length) draw(); } }));
+      const visible = shown().slice(); // a copy: the list splices out what is removed, the filter keeps the rest
+      if (!visible.length) {
+        body.append(h(`<div class="empty"><div class="empty__title">${esc(t('search_nothing'))}</div></div>`));
+      } else {
+        const context = { playlistId: params.kind === 'user' ? params.id : null, likes: params.kind === 'likes' };
+        body.append(trackList(visible, { numbered: params.kind !== 'history', context, onChange: () => {
+          const left = new Set(visible.map((tr) => tr.id)); // a row was taken off: forget it in the whole list too
+          const gone = shown().filter((tr) => !left.has(tr.id)).map((tr) => tr.id);
+          tracks = tracks.filter((tr) => !gone.includes(tr.id));
+          refreshCount(visible);
+          if (!tracks.length || !visible.length) draw();
+        } }));
+      }
     }
     refreshCount();
   }
 
-  root.querySelector('[data-play]').addEventListener('click', () => { if (tracks.length) { haptic('medium'); player.playQueue(tracks, 0); } });
-  root.querySelector('[data-shuffle]').addEventListener('click', () => { if (tracks.length) { haptic('medium'); player.playQueue(tracks, 0, { shuffle: true }); } });
+  filterInput.addEventListener('input', () => {
+    query = filterInput.value;
+    filterClear.hidden = !query;
+    draw();
+  });
+  filterClear.addEventListener('click', () => { filterInput.value = ''; query = ''; filterClear.hidden = true; draw(); filterInput.focus(); });
+
+  root.querySelector('[data-play]').addEventListener('click', () => { const v = shown(); if (v.length) { haptic('medium'); player.playQueue(v, 0); } });
+  root.querySelector('[data-shuffle]').addEventListener('click', () => { const v = shown(); if (v.length) { haptic('medium'); player.playQueue(v, 0, { shuffle: true }); } });
 
   if (params.kind === 'user' || params.kind === 'history') {
     more.hidden = false;
     more.addEventListener('click', async () => {
       if (params.kind === 'history') {
         const i = await sheet({ items: [{ icon: 'trash', label: t('clear_history'), danger: true }] });
-        if (i === 0) { await api.clearHistory(); tracks = []; draw(); toast(t('settings_cleared')); }
+        if (i === 0) { await api.clearHistory(); tracks = []; draw(); toast(t('settings_cleared'), 'done'); }
         return;
       }
       const i = await sheet({ title: esc(params.title), items: [
@@ -84,7 +122,7 @@ export async function render(params, nav) {
         invalidatePlaylists();
         params.title = name;
         root.querySelector('.view__title').textContent = name;
-      } else if (i === 1 && await confirmDialog(t('playlist_delete_confirm', { name: params.title }))) {
+      } else if (i === 1 && await confirmSheet({ title: params.title, text: t('playlist_delete_confirm', { name: params.title }), action: t('delete') })) {
         await api.deletePlaylist(params.id);
         invalidatePlaylists();
         haptic('success');

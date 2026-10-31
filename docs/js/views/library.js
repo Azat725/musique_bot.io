@@ -70,7 +70,14 @@ export async function render(_, nav) {
     rows.clear();
     sortBtn.hidden = playlists.length < 2;
     if (!playlists.length) {
-      list.append(h(`<div class="empty empty--inline"><div class="empty__text">${esc(t('lib_empty_playlists'))}</div></div>`));
+      const empty = h(`<div class="pl-empty">${EMPTY_ART}
+        <div class="pl-empty__title">${esc(t('lib_empty_title'))}</div>
+        <div class="pl-empty__text">${esc(t('lib_empty_playlists'))}</div>
+        <button class="btn btn--accent" data-new>${icon('plus')}${esc(t('lib_new_playlist'))}</button>
+        <button class="link" data-import>${esc(t('import_menu'))}</button></div>`);
+      empty.querySelector('[data-new]').addEventListener('click', createPlaylist);
+      empty.querySelector('[data-import]').addEventListener('click', () => importPlaylist(nav));
+      list.append(empty);
       return;
     }
     playlists.forEach((p) => {
@@ -92,16 +99,19 @@ export async function render(_, nav) {
     arrange(true);
   });
 
-  root.querySelector('[data-create]').addEventListener('click', async () => {
-    const choice = await sheet({ items: [{ icon: 'plus', label: t('lib_new_playlist') }, { icon: 'import', label: t('import_menu') }] });
-    if (choice === 1) { importPlaylist(nav); return; }
-    if (choice !== 0) return;
+  async function createPlaylist() {
     const name = await promptName({ title: t('lib_new_playlist'), action: t('create') });
     if (!name) return;
     const { id } = await api.createPlaylist(name);
     invalidatePlaylists();
     haptic('success');
     nav.push('playlist', { kind: 'user', id, title: name });
+  }
+
+  root.querySelector('[data-create]').addEventListener('click', async () => {
+    const choice = await sheet({ items: [{ icon: 'plus', label: t('lib_new_playlist') }, { icon: 'import', label: t('import_menu') }] });
+    if (choice === 1) importPlaylist(nav);
+    else if (choice === 0) createPlaylist();
   });
 
   await load();
@@ -115,6 +125,12 @@ export async function render(_, nav) {
 // ---------- import a playlist from another app (a link) or a pasted list of tracks ----------
 
 const IMPORT_ERRORS = ['unrecognized', 'youtube', 'spotify', 'yandex', 'empty'];
+
+/** The empty state of "Playlists": a record peeking out of its sleeve, and the two ways to begin. */
+const EMPTY_ART = `<svg class="pl-empty__art" viewBox="0 0 160 120" aria-hidden="true">
+  <g class="pl-empty__record"><circle cx="92" cy="58" r="44"/>${[36, 28, 20].map((r) => `<circle class="g" cx="92" cy="58" r="${r}"/>`).join('')}<circle class="l" cx="92" cy="58" r="13"/><circle class="h" cx="92" cy="58" r="2.4"/></g>
+  <rect class="pl-empty__sleeve" x="14" y="18" width="84" height="84" rx="4"/><path class="pl-empty__slot" d="M14 34h84"/><circle class="pl-empty__dot" cx="56" cy="68" r="12"/>
+</svg>`;
 
 function importPlaylist(nav) {
   const root = h(`<div class="dialog" role="dialog" aria-modal="true">
@@ -148,10 +164,9 @@ function importPlaylist(nav) {
     try {
       const r = await api.importPlaylist(source);
       invalidatePlaylists();
-      if (gone) { toast(t('import_done', { n: r.added, m: r.total })); return; } // closed while waiting: just say so
+      if (gone) { toast(t('import_done', { n: r.added, m: r.total }), 'done'); return; } // closed while waiting: just say so
       close();
-      haptic('success');
-      toast(t('import_done', { n: r.added, m: r.total }));
+      toast(t('import_done', { n: r.added, m: r.total }), 'done');
       if (r.missing?.length) await showMissing(r);
       nav.push('playlist', { kind: 'user', id: r.id, title: r.name });
     } catch (err) {

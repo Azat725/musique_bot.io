@@ -30,7 +30,7 @@ export async function render() {
           haptic('medium');
           const i = await sheet({ title: esc(a.name), items: [{ icon: 'trash', label: t('artist_unfav_menu'), danger: true }] });
           if (i !== 0) return;
-          try { await toggleFavArtist(a); toast(t('toast_artist_unfav')); } catch { toast(t('toast_error')); }
+          try { await toggleFavArtist(a); toast(t('toast_artist_unfav'), 'unlike'); } catch { toast(t('toast_error'), 'error'); }
         }, 550);
       });
       const cancel = () => clearTimeout(timer);

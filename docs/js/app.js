@@ -231,7 +231,7 @@ mini.addEventListener('click', (e) => {
   if (e.target.closest('[data-mini-play]')) { haptic('light'); player.toggle(); return; }
   if (e.target.closest('[data-mini-like]')) {
     haptic('light');
-    toggleLike(player.current).then(() => document.dispatchEvent(new CustomEvent('likes-changed')), () => toast(t('toast_error')));
+    toggleLike(player.current).then(() => document.dispatchEvent(new CustomEvent('likes-changed')), () => toast(t('toast_error'), 'error'));
     renderMini();
     return;
   }
@@ -250,7 +250,7 @@ player.addEventListener('time', () => {
   const bar = mini.firstElementChild; // .mini__progress
   if (bar) bar.style.setProperty('--p', player.duration ? player.time / player.duration : 0);
 });
-player.addEventListener('error', () => { haptic('error'); toast(t('toast_unavailable')); });
+player.addEventListener('error', () => toast(t('toast_unavailable'), 'error'));
 
 // a cover that fails to load: a smaller size that always exists, otherwise the vinyl placeholder
 document.addEventListener('error', (e) => {

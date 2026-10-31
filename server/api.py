@@ -102,6 +102,12 @@ async def search(q: str = "", type: str = "all", user=User):
     return {"tracks": results[0], "more": results[1], "artists": results[2][:4] if type == "all" else []}
 
 
+@app.get("/api/suggest")
+async def suggest(q: str = "", user=User):
+    """Search-box completions, as the user types."""
+    return {"suggestions": await music.suggestions(q[:100])}
+
+
 @app.get("/api/collection/{playlist_id}")
 async def collection(playlist_id: str, user=User):
     return {"tracks": await music.collection(playlist_id)}

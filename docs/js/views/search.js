@@ -1,7 +1,7 @@
 import { api } from '../api.js';
 import { t } from '../i18n.js';
 import { clearRecentSearches, pushRecentSearch, recentSearches, settings, updateSettings } from '../store.js';
-import { artistRow, confirmDialog, esc, h, haptic, icon, loader, trackList } from '../ui.js';
+import { artistRow, confirmSheet, esc, h, haptic, icon, loader, trackList } from '../ui.js';
 
 const MODES = ['all', 'tracks', 'artists'];
 let last = null; // { q, mode, tracks, more, artists }
@@ -36,6 +36,7 @@ export async function render() {
       <input type="search" enterkeyhint="search" autocomplete="off" placeholder="${esc(t('search_placeholder'))}">
       <button class="icon-btn searchbar__clear" aria-label="clear" hidden>${icon('close')}</button>
     </div>
+    <div class="suggest" role="listbox" hidden></div>
     <div class="segmented search__modes" role="tablist">
       ${MODES.map((m) => `<button role="tab" data-mode="${m}">${esc(t('search_mode_' + m))}</button>`).join('')}
     </div>
@@ -45,7 +46,8 @@ export async function render() {
   const clear = root.querySelector('.searchbar__clear');
   const body = root.querySelector('.search__body');
   const modes = root.querySelector('.search__modes');
-  let timer, seq = 0, inflight = null;
+  const suggestBox = root.querySelector('.suggest');
+  let timer, seq = 0, inflight = null, suggestTimer = 0, suggestSeq = 0, suggestAbort = null;
   const syncModes = () => modes.querySelectorAll('button').forEach((b) => {
     b.classList.toggle('is-on', b.dataset.mode === mode());
     b.setAttribute('aria-selected', b.dataset.mode === mode());
@@ -72,7 +74,7 @@ export async function render() {
     const head = h(`<div class="section__head"><h2 class="section__title">${esc(t('search_recent'))}</h2>
       <button class="link">${esc(t('search_clear'))}</button></div>`);
     head.querySelector('button').addEventListener('click', async () => {
-      if (!await confirmDialog(t('confirm_clear_search'))) return;
+      if (!await confirmSheet({ title: t('search_recent'), text: t('confirm_clear_search'), action: t('search_clear') })) return;
       clearRecentSearches();
       showIdle();
     });
@@ -83,6 +85,53 @@ export async function render() {
       chips.append(chip);
     });
     body.append(head, chips);
+  }
+
+  // ---------- completions as the user types: what they searched before, then what YouTube Music suggests ----------
+
+  function hideSuggest() {
+    clearTimeout(suggestTimer);
+    suggestAbort?.abort();
+    suggestSeq++;
+    suggestBox.hidden = true;
+    suggestBox.replaceChildren();
+  }
+
+  function showSuggest(q, fromServer = []) {
+    const low = q.toLowerCase();
+    const mine = recentSearches().filter((r) => r.toLowerCase().startsWith(low) && r.toLowerCase() !== low).slice(0, 3);
+    const items = [...mine.map((text) => ({ text, past: true })),
+      ...fromServer.filter((s) => s.toLowerCase() !== low && !mine.some((m) => m.toLowerCase() === s.toLowerCase())).map((text) => ({ text, past: false }))].slice(0, 8);
+    suggestBox.replaceChildren(...items.map(({ text, past }) => {
+      const row = h(`<button class="suggest__item" role="option">${icon(past ? 'clock' : 'search')}<span>${esc(text)}</span></button>`);
+      // pointerdown, not click: the field loses focus first, and that would close the list under the finger
+      row.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        haptic('select');
+        input.value = text;
+        hideSuggest();
+        input.blur();
+        run(text, true);
+      });
+      return row;
+    }));
+    suggestBox.hidden = !items.length;
+  }
+
+  function askSuggest() {
+    const q = input.value.trim();
+    clearTimeout(suggestTimer);
+    if (!q || document.activeElement !== input) { hideSuggest(); return; }
+    showSuggest(q); // what is already known appears at once
+    suggestTimer = setTimeout(async () => {
+      suggestAbort?.abort(); // a superseded query must not keep the server busy
+      suggestAbort = new AbortController();
+      const my = ++suggestSeq;
+      try {
+        const { suggestions = [] } = await api.suggest(q, suggestAbort.signal);
+        if (my === suggestSeq && input.value.trim() === q && document.activeElement === input) showSuggest(q, suggestions);
+      } catch { /* no suggestions is fine */ }
+    }, 150);
   }
 
   async function run(q, remember = false) {
@@ -108,12 +157,17 @@ export async function render() {
   input.addEventListener('input', () => {
     clearTimeout(timer);
     timer = setTimeout(() => run(input.value), 350);
+    askSuggest();
   });
+  input.addEventListener('focus', askSuggest);
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { clearTimeout(timer); run(input.value, true); input.blur(); }
+    if (e.key === 'Enter') { clearTimeout(timer); hideSuggest(); run(input.value, true); input.blur(); }
   });
-  input.addEventListener('blur', () => { if (input.value.trim() && last && !isEmpty(last)) pushRecentSearch(input.value.trim()); });
-  clear.addEventListener('click', () => { input.value = ''; run(''); input.focus(); });
+  input.addEventListener('blur', () => {
+    hideSuggest();
+    if (input.value.trim() && last && !isEmpty(last)) pushRecentSearch(input.value.trim());
+  });
+  clear.addEventListener('click', () => { input.value = ''; hideSuggest(); run(''); input.focus(); });
 
   if (last && last.mode === mode()) {
     input.value = last.q;

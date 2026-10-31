@@ -4,7 +4,7 @@ import { heard, settings, updateSettings } from '../store.js';
 import { openEqualizer } from '../eq.js';
 import { showStories } from '../stories.js';
 import { CLASSIC_SWATCH, DECK_COLORS, RECORD_COLORS, THEMES } from '../themes.js';
-import { brandMark, confirmDialog, esc, h, haptic, icon, promptName, sheet, tg, toast } from '../ui.js';
+import { brandMark, confirmSheet, esc, h, haptic, icon, promptName, sheet, tg, toast } from '../ui.js';
 
 const NUMERIC = new Set(['vinylNoise', 'idleDelay']); // segmented controls that store numbers
 
@@ -234,11 +234,11 @@ export async function render() {
   root.querySelector('[data-eq]').addEventListener('click', async () => { haptic('light'); await openEqualizer(); syncEqState(); syncNoise(); });
   root.querySelector('[data-stories]').addEventListener('click', () => { haptic('light'); showStories(); });
   root.querySelector('[data-clear]').addEventListener('click', async () => {
-    if (!await confirmDialog(t('confirm_clear_history'))) return;
+    if (!await confirmSheet({ title: t('clear_history'), text: t('confirm_clear_history'), action: t('clear_history') })) return;
     await api.clearHistory();
     heard.clear(); // with the history gone every track is new again: each comes out of its sleeve once more
     haptic('success');
-    toast(t('settings_cleared'));
+    toast(t('settings_cleared'), 'done');
   });
   return root;
 }

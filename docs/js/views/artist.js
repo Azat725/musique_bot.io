@@ -89,8 +89,8 @@ export async function render(params, nav) {
     try {
       const now = await toggleFavArtist(me);
       haptic('success');
-      toast(t(now ? 'toast_artist_fav' : 'toast_artist_unfav'));
-    } catch { toast(t('toast_error')); }
+      toast(t(now ? 'toast_artist_fav' : 'toast_artist_unfav'), now ? 'like' : 'unlike');
+    } catch { toast(t('toast_error'), 'error'); }
     syncFav();
   });
   root.querySelector('[data-play]').addEventListener('click', () => { if (tracks.length) { haptic('medium'); player.playQueue(tracks, 0); } });

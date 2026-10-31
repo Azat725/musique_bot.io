@@ -144,13 +144,25 @@ export function cover(url, cls = '', px = 144) {
 // ---------- toast ----------
 
 let toastTimer;
-export function toast(text) {
+// what each kind of toast shows beside its text, and the buzz it comes with
+const TOAST_KINDS = {
+  like: ['heartFill', 'success'], unlike: ['heart', 'light'], add: ['check', 'success'], remove: ['trash', 'light'],
+  send: ['send', 'success'], next: ['next2', 'light'], error: ['close', 'error'], done: ['check', 'success'],
+};
+
+/** `kind` (optional) adds a small icon in front of the text and the matching vibration. */
+export function toast(text, kind) {
   let el = document.getElementById('toast');
   if (!el) {
     el = h('<div id="toast" class="toast" role="status"></div>');
     document.body.append(el);
   }
-  el.textContent = text;
+  const [ic, buzz] = TOAST_KINDS[kind] || [];
+  el.replaceChildren(...(ic ? [h(`<span class="toast__icon">${icon(ic)}</span>`)] : []), document.createTextNode(text));
+  el.classList.toggle('has-icon', !!ic);
+  if (buzz) haptic(buzz);
+  el.classList.remove('is-on');
+  void el.offsetWidth; // the icon pops again for a toast right after another
   el.classList.add('is-on');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('is-on'), 2200);
@@ -266,6 +278,13 @@ export function promptName({ title, value = '', action, placeholder = t('playlis
   });
 }
 
+/** A confirmation in the app's own style: a sheet with the question and a red action. Resolves true or false. */
+export async function confirmSheet({ title, text = '', action, icon: ic = 'trash' }) {
+  const content = h(`<div class="confirm">${text ? `<p class="confirm__text">${esc(text)}</p>` : ''}</div>`);
+  const i = await sheet({ title: esc(title), content, items: [{ icon: ic, label: action, danger: true }], swipe: true });
+  return i === 0;
+}
+
 export function confirmDialog(text) {
   return new Promise((resolve) => {
     if (tg?.showConfirm && tg.isVersionAtLeast?.('6.2')) tg.showConfirm(text, resolve);
@@ -367,7 +386,7 @@ export function trackList(tracks, { numbered = false, context = null, onChange =
         const now = await toggleLike(tracks[i]);
         document.dispatchEvent(new CustomEvent('likes-changed'));
         if (!now && context?.likes) { tracks.splice(i, 1); removeRow(row, onChange); }
-      } catch { toast(t('toast_error')); }
+      } catch { toast(t('toast_error'), 'error'); }
       return;
     }
     if (e.target.closest('.track__more')) {
@@ -444,7 +463,7 @@ export async function chooseAndAddToPlaylist(track) {
   await api.addToPlaylist(pl.id, track);
   invalidatePlaylists();
   haptic('success');
-  toast(t('toast_added', { name: pl.name }));
+  toast(t('toast_added', { name: pl.name }), 'add');
 }
 
 export async function trackMenu(track, context = null) {
@@ -470,25 +489,24 @@ export async function trackMenu(track, context = null) {
       case 'like': {
         const now = await toggleLike(track);
         haptic('success');
-        toast(t(now ? 'toast_liked' : 'toast_unliked'));
+        toast(t(now ? 'toast_liked' : 'toast_unliked'), now ? 'like' : 'unlike');
         document.dispatchEvent(new CustomEvent('likes-changed'));
         if (!now && context?.likes) return 'removed';
         break;
       }
       case 'playlist': await chooseAndAddToPlaylist(track); break;
-      case 'next': player.playNext(track); toast(t('toast_next')); break;
+      case 'next': player.playNext(track); toast(t('toast_next'), 'next'); break;
       case 'artist': await openArtist(track); break;
-      case 'send': await api.send(track); haptic('success'); toast(t('toast_sending')); break;
+      case 'send': await api.send(track); toast(t('toast_sending'), 'send'); break;
       case 'sleep': case 'sound': return actions[i].run; // the player handles its own switches
       case 'remove':
         await api.removeFromPlaylist(context.playlistId, track.id);
         invalidatePlaylists();
-        toast(t('toast_removed'));
+        toast(t('toast_removed'), 'remove');
         return 'removed';
     }
   } catch {
-    haptic('error');
-    toast(t('toast_error'));
+    toast(t('toast_error'), 'error');
   }
   return null;
 }

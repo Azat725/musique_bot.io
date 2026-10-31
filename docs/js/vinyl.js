@@ -149,10 +149,10 @@ export function initFullPlayer() {
   $('[data-queue]').addEventListener('click', openQueue);
   $('.fp__marker').addEventListener('click', () => (sleepMode() ? openSleep() : openSound()));
   $('[data-eq]').addEventListener('click', () => { haptic('light'); openEqualizer(); });
-  $('[data-add]').addEventListener('click', () => player.current && chooseAndAddToPlaylist(player.current).catch(() => toast(t('toast_error'))));
+  $('[data-add]').addEventListener('click', () => player.current && chooseAndAddToPlaylist(player.current).catch(() => toast(t('toast_error'), 'error')));
   $('[data-send]').addEventListener('click', async () => {
     if (!player.current) return;
-    try { await api.send(player.current); haptic('success'); toast(t('toast_sending')); } catch { toast(t('toast_error')); }
+    try { await api.send(player.current); toast(t('toast_sending'), 'send'); } catch { toast(t('toast_error'), 'error'); }
   });
   $('[data-lyrics]').addEventListener('click', openLyrics);
   $('[data-like]').addEventListener('click', async () => {
@@ -161,7 +161,7 @@ export function initFullPlayer() {
     try {
       await toggleLike(player.current);
       document.dispatchEvent(new CustomEvent('likes-changed'));
-    } catch { toast(t('toast_error')); }
+    } catch { toast(t('toast_error'), 'error'); }
     syncLike();
   });
 
@@ -217,7 +217,7 @@ async function openSleep() {
   if (i === null) return;
   haptic('select');
   setSleep(opts[i]);
-  if (opts[i]) toast(opts[i] === 'track' ? t('sleep_set_track') : t('sleep_set', { n: opts[i] }));
+  if (opts[i]) toast(opts[i] === 'track' ? t('sleep_set_track') : t('sleep_set', { n: opts[i] }), 'done');
 }
 
 // ---------- sound: speed and reverb ----------
