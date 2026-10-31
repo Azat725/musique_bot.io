@@ -1,6 +1,6 @@
 *, *::before, *::after { box-sizing: border-box; }
 
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; overflow-x: hidden; overflow-x: clip; }
 
 body {
   margin: 0;
@@ -26,7 +26,7 @@ img { display: block; }
 }
 body.has-mini #main { padding-bottom: calc(var(--nav-h) + var(--mini-h) + var(--safe-b) + 24px); }
 
-.view { padding: 8px var(--gutter) 0; max-width: 720px; margin: 0 auto; }
+.view { padding: 8px var(--gutter) 0; max-width: 720px; margin: 0 auto; overflow-x: clip; }
 
 /* rows and cards arrive one after another (restarts whenever a screen is shown again) */
 @keyframes row-in { from { opacity: 0; transform: translateY(10px); } }
@@ -468,13 +468,13 @@ body.player-open .mini { opacity: 0; pointer-events: none; }
 .sheet__head { flex: none; padding: 12px 0 14px; border-bottom: 1px solid var(--line); text-align: center; touch-action: none; }
 .lyrics__title { font: 600 20px/1.2 var(--font-serif); overflow-wrap: anywhere; }
 .lyrics__artist { margin-top: 4px; font-size: 14px; color: var(--text-2); }
-.sheet__scroll { position: relative; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 18px 2px 8px; }
+.sheet__scroll { position: relative; flex: 1; min-height: 0; overflow-x: hidden; touch-action: pan-y; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 18px 2px 8px; }
 .lyrics__text { margin: 0; white-space: pre-wrap; font-size: 17px; line-height: 1.65; text-align: center; color: var(--text); }
 .lyrics__source { margin: 22px 0 6px; font-size: 12px; color: var(--text-3); text-align: center; }
 /* timed lyrics: the line being sung is lit and kept in the middle; tap a line to jump to it */
 .lyrics--synced .sheet__scroll { padding: 30vh 6px 30vh; }
 .lyrics__lines { display: flex; flex-direction: column; align-items: center; }
-.lyrics__line { margin: 0; padding: 6px 4px; font: 600 19px/1.4 var(--font-serif); text-align: center; color: var(--text-3); cursor: pointer;
+.lyrics__line { max-width: 92%; margin: 0; padding: 6px 4px; font: 600 19px/1.4 var(--font-serif); text-align: center; color: var(--text-3); cursor: pointer;
   transform-origin: center; transition: color .35s var(--ease-io), transform .35s var(--ease-io); overflow-wrap: anywhere; }
 .lyrics__line.is-active { color: var(--accent-text); transform: scale(1.06); }
 .lyrics__line:active { opacity: .6; }
@@ -546,3 +546,58 @@ body.player-open .toast { bottom: calc(24px + var(--safe-b)); }
 /* titles in the serif face use the theme's heading colour (--heading is the text colour unless the theme sets one) */
 .view__title, .section__title, .sheet__title, .dialog__title, .empty__title, .lyrics__title, .fp__title,
 .hero .brand__name, .about__brand .brand__name { color: var(--heading); }
+
+/* ---------- press: a small motion of the icon on every tap (ui.js pressAnim adds .is-press) ---------- */
+
+.ic__hands, .ic__heart, .ic__roll, .ic__plus, .ic__ln, .ic__dot, .ic__cap, .ic__mid { transform-box: fill-box; transform-origin: center; }
+.ic__hands { transform-box: view-box; transform-origin: 12px 12px; } /* the hands turn on the clock's centre */
+@media (prefers-reduced-motion: no-preference) {
+  /* Favourites: the heart jumps and beats, the record on the shelf rolls a little */
+  .is-press .ic--shelf .ic__heart { animation: pr-beat .6s var(--ease); }
+  .is-press .ic--shelf .ic__roll { animation: pr-roll .6s var(--ease-io); }
+  /* History: the hands run backwards, one full turn */
+  .is-press .ic--clock .ic__hands { animation: pr-back .6s var(--ease-io); }
+  /* + (new playlist, import) and the plus in "To a playlist" */
+  .is-press .ic--plus { animation: pr-plus .5s var(--ease); }
+  .is-press .ic--listPlus .ic__plus { animation: pr-quarter .5s var(--ease); }
+  /* hearts: a beat when liked, a squeeze when unliked */
+  .is-press:not(.was-on) .ic--heartFill { animation: like-pop .35s var(--ease); }
+  .is-press.was-on .ic--heart { animation: pr-squeeze .35s var(--ease); }
+  .is-press :is(.ic--play, .ic--pause) { animation: pr-pop .32s var(--ease); }
+  .is-press .ic--next { animation: pr-push-r .35s var(--ease); }
+  .is-press .ic--prev { animation: pr-push-l .35s var(--ease); }
+  .is-press .ic--shuffle { animation: pr-flip .45s var(--ease-io); }
+  .is-press :is(.ic--repeat, .ic--repeat1) { animation: pr-turn .55s var(--ease-io); }
+  .is-press .ic--send { animation: pr-fly .6s var(--ease-io); }
+  .is-press .ic--lyrics .ic__ln { animation: pr-read .5s var(--ease) both; }
+  .is-press .ic--lyrics .ic__ln:nth-of-type(2) { animation-delay: .07s; }
+  .is-press .ic--lyrics .ic__ln:nth-of-type(3) { animation-delay: .14s; }
+  .is-press .ic--eq .ic__cap { animation: pr-fader .5s var(--ease-io); }
+  .is-press .ic--eq .ic__cap:nth-of-type(2) { animation-name: pr-fader2; }
+  .is-press .ic--eq .ic__cap:nth-of-type(3) { animation-delay: .06s; }
+  .is-press .ic--queue .ic__mid { animation: pr-shift .5s var(--ease-io); }
+  .is-press .ic--more .ic__dot { animation: pr-hop .4s var(--ease) both; }
+  .is-press .ic--more .ic__dot:nth-of-type(2) { animation-delay: .06s; }
+  .is-press .ic--more .ic__dot:nth-of-type(3) { animation-delay: .12s; }
+  .is-press .ic--down { animation: pr-dive .4s var(--ease); }
+  .is-press .ic--sort { animation: pr-upend .45s var(--ease-io); }
+}
+@keyframes pr-beat { 30% { transform: translateY(-3px) scale(1.25); } 55% { transform: translateY(-1px) scale(.95); } 75% { transform: scale(1.1); } }
+@keyframes pr-roll { 50% { transform: translateX(-1.5px) rotate(-70deg); } }
+@keyframes pr-back { to { transform: rotate(-360deg); } }
+@keyframes pr-plus { 60% { transform: rotate(100deg) scale(1.15); } 100% { transform: rotate(90deg); } }
+@keyframes pr-quarter { to { transform: rotate(90deg); } }
+@keyframes pr-squeeze { 40% { transform: scale(.75); } }
+@keyframes pr-pop { 0% { transform: scale(.7); } 60% { transform: scale(1.08); } }
+@keyframes pr-push-r { 40% { transform: translateX(3px); } }
+@keyframes pr-push-l { 40% { transform: translateX(-3px); } }
+@keyframes pr-flip { 50% { transform: scaleX(-1); } }
+@keyframes pr-turn { to { transform: rotate(360deg); } }
+@keyframes pr-fly { 45% { transform: translate(7px, -7px) scale(.7); opacity: 0; } 55% { transform: translate(-5px, 5px) scale(.7); opacity: 0; } }
+@keyframes pr-read { 45% { transform: translateX(2.5px); opacity: .55; } }
+@keyframes pr-fader { 40% { transform: translateY(-4px); } 75% { transform: translateY(1px); } }
+@keyframes pr-fader2 { 40% { transform: translateY(5px); } 75% { transform: translateY(-1px); } }
+@keyframes pr-shift { 45% { transform: translateX(4px); opacity: .4; } }
+@keyframes pr-hop { 40% { transform: translateY(-3px); } }
+@keyframes pr-dive { 45% { transform: translateY(3px); } }
+@keyframes pr-upend { 50% { transform: scaleY(-1); } }

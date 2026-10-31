@@ -2,7 +2,7 @@
 
 .fp {
   --size: min(84vw, 46vh, 420px);
-  position: fixed; inset: 0; z-index: 50;
+  position: fixed; inset: 0; z-index: 50; overflow-x: clip;
   display: flex; flex-direction: column;
   padding: 6px var(--gutter) calc(16px + var(--safe-b));
   background: var(--bg);

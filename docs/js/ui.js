@@ -14,7 +14,8 @@ const ICONS = {
   library: P('M4 6.5h10.5v13H4z') + '<g class="ic__disc">' + P('M14.5 7a6 6 0 0 1 0 12') + P('M14.5 10.6a2.4 2.4 0 0 1 0 4.8') + '</g>',
   settings: '<g class="ic__knob"><circle cx="12" cy="13.5" r="6"/>' + P('M12 13.5 8.6 10.1') + '</g>'
     + P('M4.3 10.7 2.7 10.1M7.3 6.8 6.3 5.4M12 5.3V3.6M16.7 6.8l1-1.4M19.7 10.7l1.6-.6'),
-  lyrics: P('M4 6h10M4 10h10M4 14h6') + P('M18 17.5V8.5l3-1') + '<circle class="fill" cx="16.2" cy="17.6" r="2.1"/>',
+  lyrics: '<g class="ic__ln">' + P('M4 6h10') + '</g><g class="ic__ln">' + P('M4 10h10') + '</g><g class="ic__ln">' + P('M4 14h6') + '</g>'
+    + P('M18 17.5V8.5l3-1') + '<circle class="fill" cx="16.2" cy="17.6" r="2.1"/>',
   palette: P('M12 3.5a8.5 8.5 0 1 0 0 17c1 0 1.6-.7 1.6-1.5 0-.5-.2-.8-.5-1.1-.3-.3-.5-.7-.5-1.1 0-.9.7-1.6 1.6-1.6h1.9a4.4 4.4 0 0 0 4.4-4.4c0-4-3.8-7.3-8.5-7.3z')
     + '<circle class="fill" cx="7.6" cy="11.2" r="1.2"/><circle class="fill" cx="10.2" cy="7.4" r="1.2"/><circle class="fill" cx="14.6" cy="7.6" r="1.2"/>',
   play: '<path class="fill" d="M8 5.5v13a.8.8 0 0 0 1.2.7l10.4-6.5a.8.8 0 0 0 0-1.4L9.2 4.8A.8.8 0 0 0 8 5.5z"/>',
@@ -26,32 +27,32 @@ const ICONS = {
   repeat1: P('M5 11V9a2 2 0 0 1 2-2h12m-3-3 3 3-3 3M19 13v2a2 2 0 0 1-2 2H5m3 3-3-3 3-3') + P('M11.5 10.5 12.5 10v4.5'),
   heart: P('M12 19.5s-7.5-4.6-7.5-10A4.2 4.2 0 0 1 12 7a4.2 4.2 0 0 1 7.5 2.5c0 5.4-7.5 10-7.5 10z'),
   heartFill: '<path class="fill" d="M12 19.5s-7.5-4.6-7.5-10A4.2 4.2 0 0 1 12 7a4.2 4.2 0 0 1 7.5 2.5c0 5.4-7.5 10-7.5 10z"/>',
-  more: '<circle class="fill" cx="5.5" cy="12" r="1.5"/><circle class="fill" cx="12" cy="12" r="1.5"/><circle class="fill" cx="18.5" cy="12" r="1.5"/>',
+  more: [5.5, 12, 18.5].map((x) => `<circle class="fill ic__dot" cx="${x}" cy="12" r="1.5"/>`).join(''),
   down: P('m6 9.5 6 6 6-6'),
   right: P('m9.5 6 6 6-6 6'),
   plus: P('M12 5v14M5 12h14'),
   send: P('M20 4 3.5 10.6l6.6 2.8L20 4zm0 0-9.9 9.4 2.8 6.6z'),
-  listPlus: P('M4 7h11M4 12h11M4 17h7M17 14v6M14 17h6'),
+  listPlus: P('M4 7h11M4 12h11M4 17h7') + '<g class="ic__plus">' + P('M17 14v6M14 17h6') + '</g>',
   next2: P('M4 7h12M4 12h12M4 17h8') + '<path class="fill" d="M16 14.5v5l4-2.5z"/>',
   trash: P('M5 7h14M10 7V5h4v2M7 7l.8 12a1 1 0 0 0 1 1h6.4a1 1 0 0 0 1-1L17 7'),
   edit: P('M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4'),
-  clock: '<circle cx="12" cy="12" r="8"/>' + P('M12 8v4.5l3 1.5'),
+  clock: '<circle cx="12" cy="12" r="8"/><g class="ic__hands">' + P('M12 8v4.5l3 1.5') + '</g>',
   vinyl: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><circle class="fill" cx="12" cy="12" r=".9"/>',
   close: P('M6 6l12 12M18 6 6 18'),
   // favourites: records on a shelf (two sleeves and a disc) with a small heart above
   shelf: P('M3 19.5h18M4.5 19.5v1.5M19.5 19.5v1.5') + '<rect x="4.5" y="9.5" width="4" height="10" rx=".4"/><rect x="9.6" y="8" width="4" height="11.5" rx=".4"/>'
-    + '<circle cx="17.6" cy="15.6" r="3.9"/><circle cx="17.6" cy="15.6" r="1.1"/>'
-    + '<path class="fill" d="M17.6 9.2s-2.7-1.6-2.7-3.5a1.45 1.45 0 0 1 2.7-.75 1.45 1.45 0 0 1 2.7.75c0 1.9-2.7 3.5-2.7 3.5z"/>',
+    + '<g class="ic__roll"><circle cx="17.6" cy="15.6" r="3.9"/><circle cx="17.6" cy="15.6" r="1.1"/>' + P('M17.6 12.4v1.4') + '</g>'
+    + '<path class="fill ic__heart" d="M17.6 9.2s-2.7-1.6-2.7-3.5a1.45 1.45 0 0 1 2.7-.75 1.45 1.45 0 0 1 2.7.75c0 1.9-2.7 3.5-2.7 3.5z"/>',
   check: P('m5 12.5 4.5 4.5L19 7.5'),
   sort: P('M7 5v14m0 0-3-3m3 3 3-3M14 7h6M14 12h4.5M14 17h3'),
-  eq: P('M6 4v16M12 4v16M18 4v16') + '<rect class="fill" x="4" y="13" width="4" height="3" rx=".8"/><rect class="fill" x="10" y="7" width="4" height="3" rx=".8"/><rect class="fill" x="16" y="11" width="4" height="3" rx=".8"/>',
+  eq: P('M6 4v16M12 4v16M18 4v16') + [[4, 13], [10, 7], [16, 11]].map(([x, y]) => `<rect class="fill ic__cap" x="${x}" y="${y}" width="4" height="3" rx=".8"/>`).join(''),
   micFill: '<path class="fill" d="M12 3.5a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0v-5a3 3 0 0 1 3-3z"/>' + P('M6.5 11a5.5 5.5 0 0 0 11 0M12 16.5V20M9 20h6'),
   // favourite artists: a microphone with a small heart beside it
   micFav: P('M10 4.5a2.8 2.8 0 0 1 2.8 2.8v4.4a2.8 2.8 0 0 1-5.6 0V7.3A2.8 2.8 0 0 1 10 4.5zM4.8 11.3a5.2 5.2 0 0 0 10.4 0M10 16.5V20M7.2 20h5.6')
     + '<path class="fill" d="M18.4 9.6s-2.9-1.7-2.9-3.7a1.5 1.5 0 0 1 2.9-.8 1.5 1.5 0 0 1 2.9.8c0 2-2.9 3.7-2.9 3.7z"/>',
   mic: P('M12 3.5a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0v-5a3 3 0 0 1 3-3zM6.5 11a5.5 5.5 0 0 0 11 0M12 16.5V20M9 20h6'),
   // up next: a short stack of lines with the current one marked
-  queue: P('M9 6.5h11M9 12h11M9 17.5h11') + '<path class="fill" d="M3.5 4.2v4.6l3.8-2.3z"/>' + P('M4 12h1.5M4 17.5h1.5'),
+  queue: P('M9 6.5h11M9 17.5h11') + '<g class="ic__mid">' + P('M9 12h11') + '</g><path class="fill" d="M3.5 4.2v4.6l3.8-2.3z"/>' + P('M4 12h1.5M4 17.5h1.5'),
   grip: '<g class="fill">' + [8.5, 15.5].map((x) => [6, 12, 18].map((y) => `<circle cx="${x}" cy="${y}" r="1.5"/>`).join('')).join('') + '</g>',
   moon: P('M19.5 14.5A7.5 7.5 0 0 1 9.5 4.5a7.5 7.5 0 1 0 10 10z'),
   // the 33 / 45 speed selector of a turntable
@@ -63,8 +64,26 @@ export const EASE_IO = 'cubic-bezier(.65, 0, .35, 1)';
 export const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export function icon(name, cls = '') {
-  return `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
+  return `<svg class="ic ic--${name} ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
 }
+
+// ---------- a small motion of the icon on every press (css: .is-press .ic--<name>) ----------
+
+const PRESSABLE = '.icon-btn, .play-btn, .pill, .tile, .link--sort';
+const PRESS_MS = 650;
+
+/** Replays the press motion of a button's icon; the class goes by timer (animations stall in a hidden page). */
+export function pressAnim(btn) {
+  if (!btn || reducedMotion()) return;
+  btn.classList.remove('is-press');
+  btn.classList.toggle('was-on', !!btn.querySelector('.ic--heartFill')); // a heart being unliked squeezes; one being liked beats
+  void btn.offsetWidth; // restart the animation when tapped again quickly
+  btn.classList.add('is-press');
+  clearTimeout(btn._pressTimer);
+  btn._pressTimer = setTimeout(() => btn.classList.remove('is-press'), PRESS_MS);
+}
+// one listener for the whole app: every pressable button plays its icon's motion, whatever else the tap does
+document.addEventListener('click', (e) => pressAnim(e.target.closest?.(PRESSABLE)), true);
 
 /** Brand mark: a small vinyl record with a bordeaux label. */
 export function brandMark() {
@@ -311,6 +330,25 @@ export function syncHearts(root = document) {
 }
 document.addEventListener('likes-changed', () => syncHearts());
 
+/** A track leaves a list the way a record leaves a shelf: drawn out a little, slid away, the gap closing.
+ *  Removed by timer (a hidden page never finishes animations); `done` runs once it is gone. */
+export function removeRow(row, done) {
+  row.classList.add('is-removing');
+  if (reducedMotion()) { row.remove(); done?.(); return; }
+  const height = row.offsetHeight;
+  row.animate([
+    { transform: 'none', boxShadow: '0 0 0 rgba(0, 0, 0, 0)' },
+    { offset: 0.33, transform: 'translateY(-6px) scale(1.02)', boxShadow: '0 10px 22px rgba(0, 0, 0, .22)', opacity: 1 },
+    { transform: 'translate(60%, -6px) rotate(3deg)', boxShadow: '0 10px 22px rgba(0, 0, 0, 0)', opacity: 0 },
+  ], { duration: 420, easing: EASE_IO, fill: 'forwards' });
+  setTimeout(() => {
+    row.style.overflow = 'hidden';
+    row.animate([{ height: `${height}px`, minHeight: `${height}px` }, { height: '0px', minHeight: '0px', paddingTop: '0px', paddingBottom: '0px' }],
+      { duration: 200, easing: 'ease-out', fill: 'forwards' });
+  }, 400);
+  setTimeout(() => { row.remove(); done?.(); }, 620);
+}
+
 /** Render a playable list; clicking a row plays the list starting at it. */
 export function trackList(tracks, { numbered = false, context = null, onChange = null } = {}) {
   const list = h(`<div class="tracks ${numbered ? 'tracks--numbered' : ''}"></div>`);
@@ -318,7 +356,8 @@ export function trackList(tracks, { numbered = false, context = null, onChange =
   list.addEventListener('click', async (e) => {
     const row = e.target.closest('.track');
     if (!row) return;
-    const i = [...list.children].indexOf(row);
+    if (row.classList.contains('is-removing')) return;
+    const i = [...list.children].filter((r) => !r.classList.contains('is-removing')).indexOf(row);
     if (e.target.closest('.track__artist')) { e.stopPropagation(); openArtist(tracks[i]); return; }
     if (e.target.closest('.track__like')) {
       // like right from the list: the track keeps playing (or not) as it was
@@ -327,14 +366,14 @@ export function trackList(tracks, { numbered = false, context = null, onChange =
       try {
         const now = await toggleLike(tracks[i]);
         document.dispatchEvent(new CustomEvent('likes-changed'));
-        if (!now && context?.likes) { tracks.splice(i, 1); row.remove(); onChange?.(); }
+        if (!now && context?.likes) { tracks.splice(i, 1); removeRow(row, onChange); }
       } catch { toast(t('toast_error')); }
       return;
     }
     if (e.target.closest('.track__more')) {
       e.stopPropagation();
       const changed = await trackMenu(tracks[i], context);
-      if (changed === 'removed') { tracks.splice(i, 1); row.remove(); onChange?.(); }
+      if (changed === 'removed') { tracks.splice(i, 1); removeRow(row, onChange); }
       return;
     }
     haptic('light');
