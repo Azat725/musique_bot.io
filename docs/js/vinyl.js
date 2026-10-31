@@ -178,6 +178,7 @@ export function initFullPlayer() {
 
   player.addEventListener('track', (e) => onTrack(e.detail));
   player.addEventListener('state', syncState);
+  player.addEventListener('state', syncMarker);
   player.addEventListener('time', syncTime);
   player.addEventListener('modes', syncModes);
   document.addEventListener('likes-changed', syncLike);
@@ -280,9 +281,13 @@ function syncMarker() {
   if (!btn) return;
   const m = sleepMode();
   const parts = [];
+  // a first play with an effect waits for the server to render it: say so instead of a silent pause
+  const preparing = player.loading && player.fx !== 'normal-off' && !!player.current;
+  btn.classList.toggle('is-busy', preparing);
+  if (preparing) parts.push(`<span>${esc(t('fx_preparing'))}</span>`);
   if (m) parts.push(`${icon('moon')}<span>${esc(m === 'track' ? t('sleep_track_short') : fmt(sleepLeft()))}</span>`);
   const tag = soundTag();
-  if (tag) parts.push(`<span>${esc(tag)}</span>`);
+  if (tag && !preparing) parts.push(`<span>${esc(tag)}</span>`);
   btn.hidden = !parts.length;
   const html = parts.join('<i>·</i>');
   if (btn.innerHTML !== html) btn.innerHTML = html;

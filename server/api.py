@@ -43,6 +43,7 @@ class TrackBody(BaseModel):
 
 class PrefetchBody(TrackBody):
     fx: str = Field(default="", max_length=16)  # music.FX_RE, e.g. "slow-hall"
+    ahead: int = Field(default=1, ge=1, le=3)  # how many places ahead in the queue (1 = the very next)
 
 
 class ArtistIn(BaseModel):
@@ -100,6 +101,14 @@ async def search(q: str = "", type: str = "all", user=User):
         jobs.append(music.search_artists(q))
     results = await asyncio.gather(*jobs)
     return {"tracks": results[0], "more": results[1], "artists": results[2][:4] if type == "all" else []}
+
+
+@app.get("/api/why/{vid}")
+async def why(vid: str, user=User):
+    """Why a track just failed to play: region | removed | age | youtube | notfound | '' (unknown)."""
+    if not music.ID_RE.match(vid):
+        raise HTTPException(400, "bad id")
+    return {"reason": music.failure(vid)}
 
 
 @app.get("/api/suggest")
@@ -272,7 +281,7 @@ async def send(body: TrackBody, user=User):
 
 @app.post("/api/prefetch")
 async def prefetch(body: PrefetchBody, user=User):
-    _spawn(music.prefetch(_track(body)["id"], body.fx if music.FX_RE.match(body.fx) else ""))
+    _spawn(music.prefetch(_track(body)["id"], body.fx if music.FX_RE.match(body.fx) else "", body.ahead))
     return {"ok": True}
 
 
@@ -330,8 +339,9 @@ async def stream(vid: str, request: Request, t: str = "", fx: str = "", q: str =
                                      headers=out, background=BackgroundTask(resp.aclose))
         path = await music.ensure_file(vid)
         return _file_response(music.Source("file", music.mime_for(path.suffix.lstrip(".")), path=path))
-    except Exception:
+    except Exception as e:
         log.exception("stream failed for %s", vid)
+        music.note_failure(vid, e)
         raise HTTPException(404, "track unavailable")
 
 

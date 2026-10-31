@@ -13,6 +13,7 @@ export const MAX_SAVED = 100; // the newest liked tracks kept on the phone (abou
 export const offline = new EventTarget(); // 'change' whenever the saved set or the download progress changes
 const saved = new Map(); // id -> bytes
 let db = null, ready = null, syncing = false, again = false, current = null, abort = null, stopped = '';
+let pct = 0; // how much of the current download has arrived, 0-100
 const urls = new Map(); // id -> object URL of the audio (a few are kept, the oldest are revoked)
 const coverUrls = new Map(); // id -> object URL of the small cover
 
@@ -49,6 +50,7 @@ export function initOffline() {
 
 export const isSaved = (id) => saved.has(id);
 export const savingId = () => current;
+export const savingPct = () => pct;
 export const stopReason = () => stopped; // '' | 'space' | 'network'
 
 export function usage() {
@@ -109,6 +111,25 @@ export async function clearAll() {
   emit();
 }
 
+/** The body as a Blob, reporting the share received as it comes (every few percent, not every chunk). */
+async function readWithProgress(res) {
+  const total = Number(res.headers.get('content-length')) || 0;
+  if (!total || !res.body?.getReader) return res.blob(); // no length known: no percentage, just the file
+  const reader = res.body.getReader();
+  const chunks = [];
+  let got = 0, shown = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    got += value.length;
+    pct = Math.min(99, Math.floor((got / total) * 100));
+    if (pct - shown >= 4) { shown = pct; emit(); }
+  }
+  pct = 100;
+  return new Blob(chunks, { type: res.headers.get('content-type') || 'audio/mp4' });
+}
+
 function smallCover(url) {
   if (!url) return '';
   if (url.includes('i.ytimg.com')) return url.replace(/\/(hq720|maxresdefault|sddefault|hqdefault)\.jpg/, '/mqdefault.jpg');
@@ -119,7 +140,7 @@ async function download(track) {
   abort = new AbortController();
   const res = await fetch(`${api.streamUrl(track.id)}&q=save`, { signal: abort.signal, headers: { 'ngrok-skip-browser-warning': '1' } });
   if (!res.ok) throw Object.assign(new Error(`http-${res.status}`), { skip: res.status === 404 });
-  const blob = await res.blob();
+  const blob = await readWithProgress(res);
   let cover = null;
   if (track.cover) {
     try { // a cover is nice to have: some hosts refuse to be fetched from a page, and that is fine
@@ -153,6 +174,7 @@ export async function syncOffline() {
       if (saved.has(track.id)) continue;
       if (!navigator.onLine) { stopped = 'network'; break; }
       current = track.id;
+      pct = 0;
       emit();
       try {
         await download(track);

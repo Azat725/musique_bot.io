@@ -4,6 +4,8 @@ import { clearRecentSearches, pushRecentSearch, recentSearches, settings, update
 import { artistRow, confirmSheet, esc, h, haptic, icon, loader, trackList } from '../ui.js';
 
 const MODES = ['all', 'tracks', 'artists'];
+const SUGGEST_DELAY = 60; // ms of quiet typing before asking the server
+const suggestCache = new Map(); // query -> what the server suggested, so going back a letter is instant
 let last = null; // { q, mode, tracks, more, artists }
 
 const mode = () => (MODES.includes(settings.searchMode) ? settings.searchMode : 'all');
@@ -122,16 +124,20 @@ export async function render() {
     const q = input.value.trim();
     clearTimeout(suggestTimer);
     if (!q || document.activeElement !== input) { hideSuggest(); return; }
-    showSuggest(q); // what is already known appears at once
+    const known = suggestCache.get(q.toLowerCase());
+    showSuggest(q, known || []); // what is already known appears at once
+    if (known) return;
     suggestTimer = setTimeout(async () => {
       suggestAbort?.abort(); // a superseded query must not keep the server busy
       suggestAbort = new AbortController();
       const my = ++suggestSeq;
       try {
         const { suggestions = [] } = await api.suggest(q, suggestAbort.signal);
+        suggestCache.set(q.toLowerCase(), suggestions);
+        if (suggestCache.size > 200) suggestCache.delete(suggestCache.keys().next().value);
         if (my === suggestSeq && input.value.trim() === q && document.activeElement === input) showSuggest(q, suggestions);
       } catch { /* no suggestions is fine */ }
-    }, 150);
+    }, SUGGEST_DELAY);
   }
 
   async function run(q, remember = false) {

@@ -4,6 +4,7 @@ import { audioUrl as savedUrl, isSaved } from './offline.js';
 
 export const RATES = { slow: 0.85, normal: 1, fast: 45 / (100 / 3) }; // fast = 1.35: a 45 rpm record played at 45 instead of 33⅓
 const PLAIN = 'normal-off';
+const PREPARE_AHEAD = 3; // tracks of the queue got ready on the server in advance
 
 /** The sound chosen in the Sound sheet as the server names it: "<speed>-<reverb>", e.g. "slow-hall". */
 const chosenFx = () => `${RATES[settings.speed] ? settings.speed : 'normal'}-${['room', 'hall'].includes(settings.reverb) ? settings.reverb : 'off'}`;
@@ -44,11 +45,7 @@ class Player extends EventTarget {
         this._logged = tr.id;
         heard.add(tr.id);
         api.addHistory(tr).catch(() => {});
-        const upcoming = this.queue[this.index + 1];
-        if (upcoming) {
-          if (api.usesBlob) this._audioUrl(upcoming.id, this._fxFor(upcoming)).catch(() => {});
-          else api.prefetch(upcoming, this._fxFor(upcoming)).catch(() => {});
-        }
+        this._prepareAhead();
       }
     });
     a.addEventListener('pause', () => this._state());
@@ -70,7 +67,7 @@ class Player extends EventTarget {
       }
       this.loading = false;
       this.errors += 1;
-      this._emit('error');
+      this._emit('error', { track: this.current });
       if (this.errors <= 3 && this.index < this.queue.length - 1) this._errTimer = setTimeout(() => this.next(true), 1200);
       else this._state();
     });
@@ -166,6 +163,19 @@ class Player extends EventTarget {
     // without a network a saved track plays as it was saved: the server cannot render effects now
     if (track.id === this._plainFor || (!navigator.onLine && isSaved(track.id))) return PLAIN;
     return chosenFx();
+  }
+
+  /** Get the next few tracks ready on the server, so moving on starts at once: the very next one now,
+   *  the two after it in the background. Saved tracks need nothing, they play from the phone. */
+  _prepareAhead() {
+    for (let k = 1; k <= PREPARE_AHEAD; k++) {
+      const tr = this.queue[this.index + k];
+      if (!tr) break;
+      const fx = this._fxFor(tr);
+      if (fx === PLAIN && isSaved(tr.id)) continue;
+      if (api.usesBlob) { if (k === 1) this._audioUrl(tr.id, fx).catch(() => {}); } // ngrok: a blob in memory each
+      else api.prefetch(tr, fx, k).catch(() => {});
+    }
   }
 
   /** Index of the nearest saved track from the current one in `step` direction (wrapping round), or -1. */

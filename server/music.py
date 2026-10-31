@@ -47,6 +47,8 @@ _ffmpeg_slots = asyncio.Semaphore(1)
 # offline copies for phones queue on their own, one at a time for the whole server, at a low CPU priority:
 # however many people download at once, playback keeps the encoder and the download slots first
 _save_slots = asyncio.Semaphore(1)
+# tracks two and three places ahead in someone's queue are prepared the same way: in the background, one at a time
+_ahead_slots = asyncio.Semaphore(1)
 _NICE = shutil.which("nice")  # Linux (the VPS); elsewhere the encoder simply runs at normal priority
 FFMPEG_TIMEOUT = 300
 _yt_blocked_until = 0.0
@@ -588,6 +590,35 @@ def _prune_cache() -> None:
             pass
 
 
+# why a track could not be played, so the Mini App can say it in words (GET /api/why/{id})
+_why: dict[str, str] = {}
+_WHY_PATTERNS = (
+    ("region", ("in your country", "not available in your region", "geo restrict", "geo-restrict")),
+    ("removed", ("private video", "video unavailable", "has been removed", "no longer available", "account associated",
+                 "terminated", "copyright")),
+    ("age", ("confirm your age", "age-restricted", "age restricted", "inappropriate for some users")),
+    ("youtube", ("not a bot", "429", "sign in", "403", "too many requests")),
+)
+
+
+def why_reason(e: Exception) -> str:
+    """'region' | 'removed' | 'age' | 'youtube' | '' (nothing recognisable in the error)."""
+    msg = str(e).lower()
+    return next((reason for reason, needles in _WHY_PATTERNS if any(n in msg for n in needles)), "")
+
+
+def note_failure(vid: str, e: Exception | None = None) -> None:
+    """Remember the most telling reason a track failed: a specific one beats a vague one."""
+    reason = why_reason(e) if e else ""
+    if reason or vid not in _why:
+        _why[vid] = reason or ("youtube" if time.time() < _yt_blocked_until else "notfound")
+        _trim(_why, 2000)
+
+
+def failure(vid: str) -> str:
+    return _why.get(vid, "")
+
+
 def _mark_if_blocked(e: Exception) -> None:
     global _yt_blocked_until
     msg = str(e).lower()
@@ -621,6 +652,7 @@ async def ensure_file(vid: str) -> Path:
                 except Exception as e:
                     log.warning("YouTube download failed for %s: %s", vid, str(e)[:160])
                     _mark_if_blocked(e)
+                    note_failure(vid, e)
             if not path:
                 meta = await track_meta(vid)
                 if not meta:
@@ -651,6 +683,7 @@ async def resolve(vid: str, fresh: bool = False) -> Source:
         except Exception as e:
             log.warning("YouTube resolve failed for %s: %s", vid, str(e)[:160])
             _mark_if_blocked(e)
+            note_failure(vid, e)
     path = await ensure_file(vid)
     return Source("file", mime_for(path.suffix.lstrip(".")), path=path)
 
@@ -668,16 +701,20 @@ def lite_enabled() -> bool:
     return bool(config.FFMPEG) and config.STREAM_BITRATE not in ("", "0")
 
 
-async def stream_file(vid: str) -> Path:
-    """Cached file re-encoded to a low bitrate, so playback keeps up over a slow tunnel."""
+async def stream_file(vid: str, background: bool = False) -> Path:
+    """Cached file re-encoded to a low bitrate, so playback keeps up over a slow tunnel.
+    background: prepared ahead of time, at a low priority, outside the playback encoder slot."""
     dest = LITE_DIR / f"{vid}.m4a"
     if dest.exists():
         return dest
     src = await ensure_file(vid)
     async with _lock("lite:" + vid):
         if not dest.exists():
-            async with _ffmpeg_slots:
-                await asyncio.to_thread(_encode_lite, src, dest)
+            if background:
+                await asyncio.to_thread(_encode_lite, src, dest, "", True)
+            else:
+                async with _ffmpeg_slots:
+                    await asyncio.to_thread(_encode_lite, src, dest)
     return dest
 
 
@@ -732,13 +769,14 @@ def _fx_filter(fx: str, norm: str = _IR_NORMS[0]) -> tuple[list[str], str]:
             f"[d][r]amix=inputs=2:weights={1 - wet * 0.45:.2f} {wet:.2f}:normalize=0,alimiter=limit=0.97[o]")
 
 
-def _render_fx(src: Path, dest: Path, fx: str) -> None:
+def _render_fx(src: Path, dest: Path, fx: str, background: bool = False) -> None:
     bitrate = config.STREAM_BITRATE if config.STREAM_BITRATE not in ("", "0") else "128k"
     tmp = dest.with_suffix(".part")
+    nice = [_NICE, "-n", "15"] if background and _NICE else []
     for i, norm in enumerate(_IR_NORMS):
         extra, graph = _fx_filter(fx, norm)
         try:
-            subprocess.run([config.FFMPEG, "-y", "-loglevel", "error", "-i", str(src), *extra, "-filter_complex", graph,
+            subprocess.run([*nice, config.FFMPEG, "-y", "-loglevel", "error", "-i", str(src), *extra, "-filter_complex", graph,
                             "-map", "[o]", "-vn", "-c:a", "aac", "-b:a", bitrate, "-movflags", "+faststart", "-f", "mp4", str(tmp)],
                            check=True, timeout=FFMPEG_TIMEOUT, capture_output=True,
                            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
@@ -750,7 +788,7 @@ def _render_fx(src: Path, dest: Path, fx: str) -> None:
     tmp.replace(dest)
 
 
-async def fx_file(vid: str, fx: str) -> Path:
+async def fx_file(vid: str, fx: str, background: bool = False) -> Path:
     """The track slowed / sped up / with reverb, rendered once and kept in the cache."""
     if not config.FFMPEG or not FX_RE.match(fx):
         raise LookupError("fx unavailable")
@@ -760,8 +798,11 @@ async def fx_file(vid: str, fx: str) -> Path:
     src = await ensure_file(vid)
     async with _lock(f"fx:{vid}:{fx}"):
         if not dest.exists():
-            async with _ffmpeg_slots:
-                await asyncio.to_thread(_render_fx, src, dest, fx)
+            if background:
+                await asyncio.to_thread(_render_fx, src, dest, fx, True)
+            else:
+                async with _ffmpeg_slots:
+                    await asyncio.to_thread(_render_fx, src, dest, fx)
     await asyncio.to_thread(_prune_cache)
     return dest
 
@@ -787,15 +828,23 @@ async def save_file(vid: str) -> Path:
     return dest
 
 
-async def prefetch(vid: str, fx: str = "") -> None:
-    """Warm the cache for an upcoming track when playback depends on a local file."""
-    try:
+async def prefetch(vid: str, fx: str = "", ahead: int = 1) -> None:
+    """Warm the cache for an upcoming track when playback depends on a local file. The very next track is
+    prepared at once; those two or three places ahead wait their turn in the background (one at a time,
+    low priority), so they never hold up what someone is about to hear."""
+    async def warm(background: bool) -> None:
         if fx and fx != "normal-off":
-            await fx_file(vid, fx)
+            await fx_file(vid, fx, background)
         elif lite_enabled():
-            await stream_file(vid)
+            await stream_file(vid, background)
         elif not _cached_file(vid) and (time.time() < _yt_blocked_until or sources.is_external(vid)):
             await ensure_file(vid)
+    try:
+        if ahead <= 1:
+            await warm(False)
+        else:
+            async with _ahead_slots:
+                await warm(True)
     except Exception as e:
         log.info("prefetch failed for %s: %s", vid, str(e)[:120])
 

@@ -2,7 +2,7 @@ import { api } from './api.js';
 import { t } from './i18n.js';
 import { player } from './player.js';
 import { getPlaylists, invalidatePlaylists, likes, toggleLike } from './store.js';
-import { coverUrl as savedCover, isSaved, offline, savingId } from './offline.js';
+import { coverUrl as savedCover, isSaved, offline, savingId, savingPct } from './offline.js';
 
 export const tg = window.Telegram?.WebApp;
 
@@ -343,11 +343,26 @@ export function fitMarquee(box) {
 addEventListener('resize', () => document.querySelectorAll('[data-marquee]').forEach(fitMarquee));
 
 /** "Saved" marks in every list follow the downloads; the row being downloaded shows a small spinner. */
+// the track downloading now: a ring that fills as the file arrives
+const RING = '<svg class="ring" viewBox="0 0 20 20" aria-hidden="true"><circle class="ring__track" cx="10" cy="10" r="8"/>'
+  + '<circle class="ring__fill" cx="10" cy="10" r="8" pathLength="100"/></svg>';
+
 export function syncSaved(root = document) {
   const busy = savingId();
   root.querySelectorAll('.track[data-id]').forEach((row) => {
+    const saving = row.dataset.id === busy;
     row.classList.toggle('is-saved', isSaved(row.dataset.id));
-    row.classList.toggle('is-saving', row.dataset.id === busy);
+    row.classList.toggle('is-saving', saving);
+    const mark = row.querySelector('.track__saved');
+    if (!mark) return;
+    if (saving) {
+      if (!mark.querySelector('.ring')) mark.innerHTML = RING;
+      mark.style.setProperty('--p', savingPct());
+      mark.title = `${savingPct()}%`;
+    } else if (mark.querySelector('.ring')) {
+      mark.innerHTML = icon('saved');
+      mark.removeAttribute('title');
+    }
   });
 }
 offline.addEventListener('change', () => syncSaved());

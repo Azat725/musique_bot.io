@@ -251,7 +251,14 @@ player.addEventListener('time', () => {
   const bar = mini.firstElementChild; // .mini__progress
   if (bar) bar.style.setProperty('--p', player.duration ? player.time / player.duration : 0);
 });
-player.addEventListener('error', () => toast(t('toast_unavailable'), 'error'));
+const WHY = ['region', 'removed', 'age', 'youtube', 'notfound'];
+player.addEventListener('error', async (e) => {
+  const id = e.detail?.track?.id;
+  if (!navigator.onLine) { toast(t('why_offline'), 'error'); return; }
+  let reason = '';
+  try { reason = id ? (await api.why(id)).reason : ''; } catch { reason = 'server'; }
+  toast(t(reason === 'server' ? 'why_server' : WHY.includes(reason) ? 'why_' + reason : 'toast_unavailable'), 'error');
+});
 player.addEventListener('offline-miss', () => toast(t('offline_miss'), 'error'));
 // the network went away: say once that what is saved keeps playing
 addEventListener('offline', () => { if (settings.offlineLikes) toast(t('offline_now'), 'done'); });

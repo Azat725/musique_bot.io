@@ -23,6 +23,9 @@
 .fp__marker { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: 10px; background: var(--surface);
   font: 600 11.5px/1 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--accent-text); white-space: nowrap; }
 .fp__marker[hidden] { display: none; }
+.fp__marker.is-busy { color: var(--text-2); }
+.fp__marker.is-busy span { animation: marker-busy 1.2s var(--ease-io) infinite; }
+@keyframes marker-busy { 50% { opacity: .45; } }
 .fp__marker .ic { width: 12px; height: 12px; }
 .fp__marker i { font-style: normal; color: var(--text-3); }
 .fp__kicker { font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-2); }

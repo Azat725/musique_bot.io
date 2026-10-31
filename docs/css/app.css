@@ -126,9 +126,12 @@ body.has-mini #main { padding-bottom: calc(var(--nav-h) + var(--mini-h) + var(--
 .track__saved { display: none; flex: none; color: var(--accent-text); margin-right: -6px; }
 .track__saved .ic { width: 15px; height: 15px; }
 .track.is-saved .track__saved, .track.is-saving .track__saved { display: grid; }
-.track.is-saving .track__saved { color: var(--text-3); }
-.track.is-saving .track__saved .ic { animation: saving 1.1s linear infinite; }
-@keyframes saving { 50% { opacity: .35; } }
+/* the download in progress: a ring filling up to --p percent (pathLength 100), no gradients */
+.ring { width: 15px; height: 15px; transform: rotate(-90deg); }
+.ring circle { fill: none; stroke-width: 2.6; }
+.ring__track { stroke: var(--line); }
+.ring__fill { stroke: var(--accent-text); stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: calc(100 - var(--p, 0));
+  transition: stroke-dashoffset .3s var(--ease-io); }
 .offline-note { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 10px 12px; border-radius: var(--r-md);
   background: var(--surface); color: var(--text-2); font-size: 13.5px; line-height: 1.35; }
 .offline-note[hidden] { display: none; }

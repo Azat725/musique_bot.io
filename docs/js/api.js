@@ -116,7 +116,10 @@ export const api = {
   addHistory: (track) => post('/api/history', { track }),
   clearHistory: () => del('/api/history'),
   send: (track) => post('/api/send', { track }),
-  prefetch: (track, fx = 'normal-off') => post('/api/prefetch', { track, fx }),
+  /** ahead: how many places ahead in the queue (1 = the very next; 2 and 3 are prepared in the background). */
+  prefetch: (track, fx = 'normal-off', ahead = 1) => post('/api/prefetch', { track, fx, ahead }),
+  /** Why a track just failed: { reason: 'region' | 'removed' | 'age' | 'youtube' | 'notfound' | '' }. */
+  why: (id) => request('GET', '/api/why/' + encodeURIComponent(id), null, null, 4000),
   /** { lyrics: string | null, source }; asked once per track per session. A failed request is forgotten, so it is retried. */
   lyrics(track) {
     if (!lyricsCache.has(track.id)) {
