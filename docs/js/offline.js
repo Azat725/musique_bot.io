@@ -8,7 +8,7 @@ import { likedList, likes, onSettings, settings } from './store.js';
 const DB = 'musique-offline';
 const STORE = 'tracks';
 const COVER_PX = 144;
-export const MAX_SAVED = 100; // the newest liked tracks kept on the phone (about 300 MB); older likes stream as before
+export const MAX_SAVED = 500; // the newest liked tracks kept on the phone (about 1.5 GB); older likes stream as before
 
 export const offline = new EventTarget(); // 'change' whenever the saved set or the download progress changes
 const saved = new Map(); // id -> bytes
