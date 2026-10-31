@@ -60,6 +60,7 @@ class Player extends EventTarget {
     });
     a.addEventListener('error', () => {
       if (!this.current) return;
+      if (this._standby) { this.loading = false; this._state(); return; } // a restored queue that cannot load yet: wait for play, never move on by itself
       if (this.fx !== PLAIN && this._plainFor !== this.current.id) { // no rendering for it: play it as it is
         this._plainFor = this.current.id;
         this._reload();
@@ -213,8 +214,45 @@ class Player extends EventTarget {
 
   toggle() {
     if (!this.current) return;
+    if (this._standby) { // a restored queue: the first play
+      this._standby = false;
+      if (this.audio.error || !this.audio.src) { this._load(0); return; } // its file did not load: start the track properly
+    }
+    this.audio.preload = 'auto';
     if (this.audio.paused) this.audio.play().catch(() => {});
     else this.audio.pause();
+  }
+
+  /** Take the queue another device left (tracks, place in it, place in the track, shuffle, repeat) and stand ready
+   *  to play it: paused, only the start of the file fetched. `time` is in the song's own seconds. */
+  restore({ tracks, index, time = 0, shuffle = false, repeat = 'off' }) {
+    if (!tracks?.length) return;
+    clearTimeout(this._errTimer);
+    this.queue = tracks.slice();
+    this.original = null;
+    this.index = Math.min(Math.max(0, index), this.queue.length - 1);
+    this.shuffle = !!shuffle;
+    this.repeat = ['off', 'all', 'one'].includes(repeat) ? repeat : 'off';
+    const tr = this.current;
+    const seq = ++this._seq;
+    this._standby = true; // paused on purpose until someone presses play
+    this.fx = this._fxFor(tr);
+    this.loading = false;
+    this.audio.pause();
+    this.audio.preload = 'metadata'; // not the whole file until someone presses play
+    this._audioUrl(tr.id, this.fx).then((url) => {
+      if (seq !== this._seq) return;
+      const a = this.audio;
+      a.addEventListener('loadedmetadata', () => {
+        if (seq === this._seq && time > 0) a.currentTime = Math.min(time / this.rate, Math.max(0, (a.duration || Infinity) - 1));
+      }, { once: true });
+      a.src = url;
+    }).catch(() => {});
+    this._emit('track', { track: tr, dir: 0 });
+    this._emit('queue');
+    this._emit('modes');
+    this._state();
+    this._updateMediaSession(tr);
   }
 
   next(auto = false) {
@@ -282,7 +320,9 @@ class Player extends EventTarget {
       tr = this.current;
     }
     clearTimeout(this._errTimer); // a pending auto-skip must not override the user's choice
+    this._standby = false;
     this.loading = true;
+    this.audio.preload = 'auto';
     const seq = ++this._seq;
     if (api.usesBlob) this.audio.pause(); // the previous track must not keep playing while the next downloads
     const fx = this._fxFor(tr);

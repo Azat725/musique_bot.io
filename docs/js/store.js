@@ -43,12 +43,26 @@ export const settings = {
 };
 migrate();
 
-export function updateSettings(patch) {
+// what belongs to this device alone and stays out of the account's look: downloads live on one phone, and the
+// "just so you know" notes are shown once per device
+const DEVICE_ONLY = new Set(['offlineLikes', 'fxNoted', 'eqNoted']);
+
+/** The settings that follow the account to every device. */
+export function sharedSettings() {
+  return Object.fromEntries(Object.entries(settings).filter(([k, v]) => !DEVICE_ONLY.has(k) && v !== undefined));
+}
+
+/** `remote`: the change came from the account (another device), so it is not to be sent back. */
+export function updateSettings(patch, { remote = false } = {}) {
+  if (remote) { // only what a device may take over, and only known keys
+    patch = Object.fromEntries(Object.entries(patch).filter(([k]) => !DEVICE_ONLY.has(k) && k in settings));
+  }
   Object.assign(settings, patch);
+  if (remote) migrate();
   const json = JSON.stringify(settings);
   try { localStorage.setItem(KEY, json); } catch {}
   try { if (tg?.isVersionAtLeast?.('6.9')) tg.CloudStorage.setItem(KEY, json); } catch {}
-  listeners.forEach((fn) => fn(settings));
+  listeners.forEach((fn) => fn(settings, { remote }));
 }
 
 export function onSettings(fn) {

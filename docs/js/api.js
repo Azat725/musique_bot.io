@@ -44,7 +44,7 @@ function resolveBase() {
 const base = resolveBase();
 let streamToken = '';
 
-async function request(method, path, body, signal, timeout = 0) {
+async function request(method, path, body, signal, timeout = 0, keepalive = false) {
   if (!base) throw new Error('no-server');
   const ctrl = new AbortController(); // never hang on a blocked or sleeping server (AbortSignal.timeout is missing in older WebViews)
   const timer = setTimeout(() => ctrl.abort(), timeout || (path === '/api/me' ? 15000 : 45000));
@@ -52,6 +52,7 @@ async function request(method, path, body, signal, timeout = 0) {
   try {
     const res = await fetch(base + path, {
       signal: ctrl.signal,
+      keepalive, // a last small write while the page is going away
       method,
       headers: {
         ...(inTelegram ? { 'X-Init-Data': tg.initData } : session ? { Authorization: `Bearer ${session}` } : {}),
@@ -109,6 +110,12 @@ export const api = {
     api.user = data.user;
     return data.user;
   },
+  /** The account's look and queue: { settings: {value, updated} | null, queue: {value, updated} | null } (server time). */
+  state: () => get('/api/state'),
+  putSettings: (value) => request('PUT', '/api/state/settings', { value }),
+  putQueue: (queue, keepalive = false) => request('PUT', '/api/state/queue', queue, null, 0, keepalive),
+  /** Just the place in the queue and in the track; rejects with http-409 when the server holds another queue. */
+  patchQueue: (pos, keepalive = false) => request('PATCH', '/api/state/queue', pos, null, 0, keepalive),
   user: null, // { id, first_name, username, language_code, kind: 'telegram' | 'guest' }
   isGuest: () => api.user?.kind === 'guest',
   /** Sign in with Telegram from the site: { code, url } — the url opens the bot, which asks to confirm. */

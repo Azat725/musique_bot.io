@@ -5,6 +5,7 @@ import { likes, loadHeard, loadLikes, onSettings, settings, syncCloudSettings, t
 import { EASE_IO, cover, esc, fitMarquee, h, haptic, icon, loader, markPlaying, openArtist, reducedMotion, tg, toast } from './ui.js';
 import { initFx } from './graph.js';
 import { initOffline, syncOffline } from './offline.js';
+import { initSync } from './sync.js';
 import { syncVinylNoise } from './sfx.js';
 import { maybeShowStories } from './stories.js';
 import { CLASSIC_BG, THEMES } from './themes.js';
@@ -406,6 +407,8 @@ async function boot() {
   try {
     await me;
     document.body.classList.toggle('is-guest', api.isGuest());
+    // the account's look and queue from the other devices: awaited a moment, so the first screen already has the right theme
+    await Promise.race([initSync(), new Promise((resolve) => setTimeout(resolve, 1500))]);
     initOffline().then(() => loadLikes()).then(() => syncOffline(), () => {});
     loadHeard().catch(() => {});
   } catch {

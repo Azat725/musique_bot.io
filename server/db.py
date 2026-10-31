@@ -1,4 +1,5 @@
 """SQLite storage: tracks, likes, playlists, history and Telegram file_id cache."""
+import json
 import time
 
 import aiosqlite
@@ -32,6 +33,9 @@ CREATE TABLE IF NOT EXISTS sources (
 );
 CREATE TABLE IF NOT EXISTS lyrics (
     track_id TEXT PRIMARY KEY, text TEXT, source TEXT, fetched REAL, synced TEXT
+);
+CREATE TABLE IF NOT EXISTS user_state (
+    user_id INTEGER, key TEXT, value TEXT, updated REAL, PRIMARY KEY (user_id, key)
 );
 CREATE TABLE IF NOT EXISTS accounts (
     id INTEGER PRIMARY KEY, kind TEXT, first_name TEXT, username TEXT, language_code TEXT, created REAL
@@ -139,6 +143,41 @@ async def save_account(user_id: int, kind: str, first_name: str = "", username: 
     await _db.commit()
 
 
+# ---------- what follows the account from device to device: the look (settings) and the queue ----------
+
+async def get_states(user_id: int) -> dict[str, dict]:
+    """{ key: {"value": object, "updated": server time} } for the settings and the queue."""
+    async with _db.execute("SELECT key, value, updated FROM user_state WHERE user_id = ?", (user_id,)) as cur:
+        rows = await cur.fetchall()
+    return {r["key"]: {"value": json.loads(r["value"]), "updated": r["updated"]} for r in rows}
+
+
+async def set_state(user_id: int, key: str, value: dict) -> float:
+    """Store it (the last write wins) and return the server time of the write: devices compare against it."""
+    async with _db.execute("SELECT updated FROM user_state WHERE user_id = ? AND key = ?", (user_id, key)) as cur:
+        row = await cur.fetchone()
+    now = max(time.time(), (row["updated"] + 0.001) if row else 0)  # strictly newer than the previous write
+    await _db.execute(
+        "INSERT INTO user_state (user_id, key, value, updated) VALUES (?, ?, ?, ?) "
+        "ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value, updated = excluded.updated",
+        (user_id, key, json.dumps(value, ensure_ascii=False), now))
+    await _db.commit()
+    return now
+
+
+async def move_queue_position(user_id: int, track_id: str, index: int, seconds: float) -> float | None:
+    """Only where the listener is in the stored queue (a small write): None when that queue is not the one in use."""
+    state = (await get_states(user_id)).get("queue")
+    if not state:
+        return None
+    queue = state["value"]
+    tracks = queue.get("tracks") or []
+    if not 0 <= index < len(tracks) or tracks[index].get("id") != track_id:
+        return None
+    queue["index"], queue["time"] = index, seconds
+    return await set_state(user_id, "queue", queue)
+
+
 async def merge_user(src: int, dst: int) -> None:
     """Move a guest's library into an account: likes, playlists, history and artists (no duplicates;
     a track in both histories keeps the later time), then forget the guest."""
@@ -154,6 +193,9 @@ async def merge_user(src: int, dst: int) -> None:
     await _db.execute("INSERT OR IGNORE INTO fav_artists SELECT ?, artist_id, name, cover, created FROM fav_artists WHERE user_id = ?",
                       (dst, src))
     await _db.execute("DELETE FROM fav_artists WHERE user_id = ?", (src,))
+    # the account keeps its own look and queue; a guest's move in only where the account has none yet
+    await _db.execute("INSERT OR IGNORE INTO user_state SELECT ?, key, value, updated FROM user_state WHERE user_id = ?", (dst, src))
+    await _db.execute("DELETE FROM user_state WHERE user_id = ?", (src,))
     await _db.execute("DELETE FROM accounts WHERE id = ?", (src,))
     await _db.commit()
 

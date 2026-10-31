@@ -1,5 +1,6 @@
 """HTTP API for the Mini App."""
 import asyncio
+import json
 import logging
 import secrets
 import time
@@ -48,6 +49,24 @@ class PrefetchBody(TrackBody):
     ahead: int = Field(default=1, ge=1, le=3)  # how many places ahead in the queue (1 = the very next)
 
 
+class SettingsIn(BaseModel):
+    value: dict
+
+
+class QueueIn(BaseModel):
+    tracks: list[TrackIn] = Field(max_length=500)
+    index: int = Field(ge=0, le=499)
+    time: float = Field(default=0, ge=0, le=36000)  # where in the current track, in the song's own seconds
+    shuffle: bool = False
+    repeat: str = Field(default="off", pattern="^(off|all|one)$")
+
+
+class PositionIn(BaseModel):
+    id: str = Field(max_length=16)
+    index: int = Field(ge=0, le=499)
+    time: float = Field(default=0, ge=0, le=36000)
+
+
 class ArtistIn(BaseModel):
     id: str = Field(pattern=r"^[A-Za-z0-9_-]{10,64}$")  # music.ARTIST_ID_RE
     name: str = Field(max_length=200)
@@ -80,6 +99,41 @@ async def health():
 async def me(user=User):
     return {"user": {**{k: user.get(k) for k in ("id", "first_name", "username", "language_code")}, "kind": user.get("kind", "telegram")},
             "token": auth.make_stream_token(user["id"])}
+
+
+# ---------- one look and one queue for one account, whatever the device ----------
+
+SETTINGS_MAX_BYTES = 20_000
+
+
+@app.get("/api/state")
+async def get_state(user=User):
+    """{ settings: {value, updated} | null, queue: {value, updated} | null }; `updated` is server time."""
+    states = await db.get_states(user["id"])
+    return {"settings": states.get("settings"), "queue": states.get("queue")}
+
+
+@app.put("/api/state/settings")
+async def put_settings(body: SettingsIn, user=User):
+    if len(json.dumps(body.value)) > SETTINGS_MAX_BYTES:
+        raise HTTPException(413, "settings too large")
+    return {"updated": await db.set_state(user["id"], "settings", body.value)}
+
+
+@app.put("/api/state/queue")
+async def put_queue(body: QueueIn, user=User):
+    if body.tracks and body.index >= len(body.tracks):
+        raise HTTPException(422, "index outside the queue")
+    return {"updated": await db.set_state(user["id"], "queue", body.model_dump())}
+
+
+@app.patch("/api/state/queue")
+async def patch_queue(body: PositionIn, user=User):
+    """Just the place in the queue and in the track: small, sent often. 409 when the stored queue is another one."""
+    updated = await db.move_queue_position(user["id"], body.id, body.index, body.time)
+    if updated is None:
+        raise HTTPException(409, "not the stored queue")
+    return {"updated": updated}
 
 
 # ---------- the site in an ordinary browser: guests, and signing in with Telegram through the bot ----------
