@@ -65,7 +65,13 @@ export async function render(_, nav) {
   }
 
   async function load() {
-    playlists = await getPlaylists();
+    try {
+      playlists = await getPlaylists();
+    } catch {
+      list.innerHTML = `<div class="empty empty--inline"><div class="empty__text">${esc(t('offline_lists'))}</div></div>`;
+      dirty = true; // asked again when the library is shown next
+      return;
+    }
     list.innerHTML = '';
     rows.clear();
     sortBtn.hidden = playlists.length < 2;
@@ -113,6 +119,14 @@ export async function render(_, nav) {
     if (choice === 1) importPlaylist(nav);
     else if (choice === 0) createPlaylist();
   });
+
+  // no network: favourites still play if they are saved; the rest waits for the network
+  const note = h(`<div class="offline-note" hidden>${icon('offline')}<span>${esc(t(settings.offlineLikes ? 'offline_note' : 'offline_note_off'))}</span></div>`);
+  root.querySelector('.tiles').before(note);
+  const syncNote = () => { note.hidden = navigator.onLine; };
+  syncNote();
+  addEventListener('online', () => { syncNote(); if (root.isConnected) { dirty = false; load(); } });
+  addEventListener('offline', syncNote);
 
   await load();
   root.onShow = () => {

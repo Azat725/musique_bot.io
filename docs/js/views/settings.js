@@ -4,6 +4,7 @@ import { heard, settings, updateSettings } from '../store.js';
 import { openEqualizer } from '../eq.js';
 import { showStories } from '../stories.js';
 import { CLASSIC_SWATCH, DECK_COLORS, RECORD_COLORS, THEMES } from '../themes.js';
+import { clearAll as clearDownloads, offline, savingId, stopReason, usage as savedUsage } from '../offline.js';
 import { brandMark, confirmSheet, esc, h, haptic, icon, promptName, sheet, tg, toast } from '../ui.js';
 
 const NUMERIC = new Set(['vinylNoise', 'idleDelay']); // segmented controls that store numbers
@@ -104,6 +105,15 @@ export async function render() {
         <span><span class="group__name">${esc(t('settings_sounds'))}</span><span class="group__hint">${esc(t('settings_sounds_hint'))}</span></span>
         <input type="checkbox" class="switch" data-sounds ${settings.sounds ? 'checked' : ''}>
       </label>
+    </section>
+
+    <section class="group">
+      <div class="group__label">${esc(t('settings_offline'))}</div>
+      <label class="group__item">
+        <span><span class="group__name">${esc(t('offline_switch'))}</span><span class="group__hint" data-offline-state></span></span>
+        <input type="checkbox" class="switch" data-offline ${settings.offlineLikes ? 'checked' : ''}>
+      </label>
+      <button class="group__item group__item--danger" data-offline-clear hidden>${esc(t('offline_clear'))}</button>
     </section>
 
     <section class="group">
@@ -233,6 +243,41 @@ export async function render() {
   });
   root.querySelector('[data-eq]').addEventListener('click', async () => { haptic('light'); await openEqualizer(); syncEqState(); syncNoise(); });
   root.querySelector('[data-stories]').addEventListener('click', () => { haptic('light'); showStories(); });
+  // ---------- favourites without a network ----------
+  const offState = root.querySelector('[data-offline-state]');
+  const offSwitch = root.querySelector('[data-offline]');
+  const offClear = root.querySelector('[data-offline-clear]');
+  const mb = (bytes) => Math.max(bytes ? 1 : 0, Math.round(bytes / 1048576));
+  const syncOffState = () => {
+    const { count, bytes } = savedUsage();
+    const parts = [count ? t('offline_usage', { n: count, mb: mb(bytes) }) : t('offline_hint')];
+    if (settings.offlineLikes && savingId()) parts.push(t('offline_loading'));
+    if (settings.offlineLikes && stopReason() === 'space') parts.push(t('offline_no_space'));
+    offState.textContent = parts.join(' · ');
+    offClear.hidden = !count;
+  };
+  syncOffState();
+  offline.addEventListener('change', () => { if (root.isConnected) syncOffState(); });
+  offSwitch.addEventListener('change', async () => {
+    haptic('select');
+    if (offSwitch.checked) { updateSettings({ offlineLikes: true }); syncOffState(); return; }
+    const { count, bytes } = savedUsage();
+    if (count && !await confirmSheet({ title: t('offline_switch'), text: t('offline_off_confirm', { n: count, mb: mb(bytes) }), action: t('offline_clear') })) {
+      offSwitch.checked = true;
+      return;
+    }
+    updateSettings({ offlineLikes: false });
+    await clearDownloads();
+    syncOffState();
+  });
+  offClear.addEventListener('click', async () => {
+    const { count, bytes } = savedUsage();
+    if (!await confirmSheet({ title: t('offline_clear'), text: t('offline_clear_confirm', { n: count, mb: mb(bytes) }), action: t('offline_clear') })) return;
+    await clearDownloads();
+    toast(t('offline_cleared'), 'done');
+    syncOffState();
+  });
+
   root.querySelector('[data-clear]').addEventListener('click', async () => {
     if (!await confirmSheet({ title: t('clear_history'), text: t('confirm_clear_history'), action: t('clear_history') })) return;
     await api.clearHistory();

@@ -293,14 +293,20 @@ def _file_response(src: music.Source) -> FileResponse:
 
 
 @app.get("/api/stream/{vid}")
-async def stream(vid: str, request: Request, t: str = "", fx: str = ""):
+async def stream(vid: str, request: Request, t: str = "", fx: str = "", q: str = ""):
+    """q=save: a compact file the Mini App keeps for listening offline."""
     if not music.ID_RE.match(vid):
         raise HTTPException(404)
     if not auth.check_stream_token(t):
         raise HTTPException(403)
     if fx and not music.FX_RE.match(fx):
         raise HTTPException(400, "bad fx")
+    if q not in ("", "save"):
+        raise HTTPException(400, "bad q")
     try:
+        if q == "save":
+            path = await music.save_file(vid)
+            return FileResponse(path, media_type=music.mime_for(path.suffix.lstrip(".")))
         if fx and fx != "normal-off":  # slowed / sped up / reverb: a file rendered by ffmpeg
             return FileResponse(await music.fx_file(vid, fx), media_type="audio/mp4")
         if music.lite_enabled():

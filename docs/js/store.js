@@ -38,6 +38,7 @@ export const settings = {
   sleeve: true, // a track heard for the first time comes out of its sleeve
   speed: 'normal', // 'slow' 0.85×, 'normal' 33⅓ rpm, 'fast' 45 rpm 1.35×: the record spins and plays at that pace, pitch following
   reverb: 'off', // 'room' | 'hall'; with a slowed record this is the slowed + reverb sound
+  offlineLikes: false, // favourites are downloaded to the phone and play without a network (offline.js)
   ...load(),
 };
 migrate();
@@ -76,15 +77,28 @@ export function syncCloudSettings() {
 export const likes = new Set();
 let likedTracks = [];
 let likesLoaded = null;
+const LIKES_KEY = 'musique.likes'; // the last list seen, so Favourites opens (and plays) without a network
 
-/** Liked tracks, downloaded once per session and then kept in step with toggleLike(). */
+function keepLikes() {
+  try { localStorage.setItem(LIKES_KEY, JSON.stringify(likedTracks)); } catch {}
+}
+
+function useLikes(tracks) {
+  likedTracks = tracks;
+  likes.clear();
+  tracks.forEach((t) => likes.add(t.id));
+}
+
+/** Liked tracks, downloaded once per session and then kept in step with toggleLike().
+ *  Without a network the list last seen is used, and the server is asked again next time. */
 export function loadLikes() {
-  likesLoaded ||= api.likes().then(({ tracks }) => {
-    likedTracks = tracks;
-    likes.clear();
-    tracks.forEach((t) => likes.add(t.id));
+  likesLoaded ||= api.likes().then(({ tracks }) => { useLikes(tracks); keepLikes(); }, (err) => {
+    likesLoaded = null;
+    let kept = null;
+    try { kept = JSON.parse(localStorage.getItem(LIKES_KEY)); } catch {}
+    if (!Array.isArray(kept)) throw err;
+    useLikes(kept);
   });
-  likesLoaded.catch(() => { likesLoaded = null; });
   return likesLoaded;
 }
 
@@ -97,11 +111,13 @@ export async function toggleLike(track) {
   if (likes.has(track.id)) {
     likes.delete(track.id);
     likedTracks = likedTracks.filter((t) => t.id !== track.id);
+    keepLikes();
     await api.unlike(track.id);
     return false;
   }
   likes.add(track.id);
   likedTracks = [track, ...likedTracks];
+  keepLikes();
   await api.like(track);
   return true;
 }

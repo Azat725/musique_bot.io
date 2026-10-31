@@ -2,6 +2,7 @@ import { api } from './api.js';
 import { t } from './i18n.js';
 import { player } from './player.js';
 import { getPlaylists, invalidatePlaylists, likes, toggleLike } from './store.js';
+import { coverUrl as savedCover, isSaved, offline, savingId } from './offline.js';
 
 export const tg = window.Telegram?.WebApp;
 
@@ -58,6 +59,9 @@ const ICONS = {
   // the 33 / 45 speed selector of a turntable
   speed: '<circle cx="12" cy="13" r="7.5"/>' + P('M12 13l3.6-3.6M7.5 5.2 6.4 3.7M16.5 5.2l1.1-1.5'),
   import: P('M12 4v10m0 0-4-4m4 4 4-4M5 15v3.5a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5V15'),
+  // saved on the phone: an arrow into a circle
+  saved: '<circle cx="12" cy="12" r="8.5"/>' + P('M12 7.5v8m0 0-3.2-3.2M12 15.5l3.2-3.2'),
+  offline: P('M3 8.5a13 13 0 0 1 18 0M6 12a8.5 8.5 0 0 1 12 0M9 15.5a4 4 0 0 1 6 0') + '<circle class="fill" cx="12" cy="19" r="1.3"/>' + P('M4 4l16 16'),
 };
 
 export const EASE_IO = 'cubic-bezier(.65, 0, .35, 1)';
@@ -296,13 +300,14 @@ export function confirmDialog(text) {
 
 export function trackRow(track, { index = null } = {}) {
   const liked = likes.has(track.id);
-  const row = h(`<div class="track" data-id="${esc(track.id)}" role="button" tabindex="0">
+  const row = h(`<div class="track ${isSaved(track.id) ? 'is-saved' : ''}" data-id="${esc(track.id)}" role="button" tabindex="0">
     ${index !== null ? `<span class="track__num">${index + 1}</span>` : ''}
     <div class="track__art">${cover(track.cover)}<span class="eq"><i></i><i></i><i></i></span></div>
     <div class="track__meta">
       <div class="track__title">${esc(track.title)}</div>
       <div class="track__artist">${esc(track.artist)}</div>
     </div>
+    <span class="track__saved" aria-hidden="true">${icon('saved')}</span>
     <span class="track__time">${track.duration ? fmt(track.duration) : ''}</span>
     <button class="icon-btn track__like ${liked ? 'is-on' : ''}" aria-label="like" aria-pressed="${liked}">${icon(liked ? 'heartFill' : 'heart')}</button>
     <button class="icon-btn track__more" aria-label="more">${icon('more')}</button>
@@ -336,6 +341,26 @@ export function fitMarquee(box) {
   });
 }
 addEventListener('resize', () => document.querySelectorAll('[data-marquee]').forEach(fitMarquee));
+
+/** "Saved" marks in every list follow the downloads; the row being downloaded shows a small spinner. */
+export function syncSaved(root = document) {
+  const busy = savingId();
+  root.querySelectorAll('.track[data-id]').forEach((row) => {
+    row.classList.toggle('is-saved', isSaved(row.dataset.id));
+    row.classList.toggle('is-saving', row.dataset.id === busy);
+  });
+}
+offline.addEventListener('change', () => syncSaved());
+
+// without a network a cover cannot load: a saved track shows the small copy kept with its audio
+document.addEventListener('error', (e) => {
+  const img = e.target;
+  if (!(img instanceof HTMLImageElement) || img.dataset.offline) return;
+  const id = img.closest('[data-id]')?.dataset.id;
+  if (!id || !isSaved(id)) return;
+  img.dataset.offline = '1';
+  savedCover(id).then((url) => { if (url) img.src = url; });
+}, true);
 
 /** Hearts in every list follow the likes, wherever a track was liked (row, menu, player). */
 export function syncHearts(root = document) {

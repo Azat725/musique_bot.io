@@ -1,5 +1,6 @@
 import { api } from './api.js';
 import { heard, onSettings, settings } from './store.js';
+import { audioUrl as savedUrl, isSaved } from './offline.js';
 
 export const RATES = { slow: 0.85, normal: 1, fast: 45 / (100 / 3) }; // fast = 1.35: a 45 rpm record played at 45 instead of 33⅓
 const PLAIN = 'normal-off';
@@ -161,7 +162,21 @@ class Player extends EventTarget {
    *  and timed lyrics turn the file's time back into the song's with it. */
   get rate() { return RATES[this.fx.split('-')[0]] || 1; }
 
-  _fxFor(track) { return track.id === this._plainFor ? PLAIN : chosenFx(); }
+  _fxFor(track) {
+    // without a network a saved track plays as it was saved: the server cannot render effects now
+    if (track.id === this._plainFor || (!navigator.onLine && isSaved(track.id))) return PLAIN;
+    return chosenFx();
+  }
+
+  /** Index of the nearest saved track from the current one in `step` direction (wrapping round), or -1. */
+  _nearestSaved(step) {
+    const n = this.queue.length;
+    for (let k = 1; k <= n; k++) {
+      const i = (((this.index + step * k) % n) + n) % n;
+      if (isSaved(this.queue[i].id)) return i;
+    }
+    return -1;
+  }
 
   /** The sound changed mid-track: load the new rendering and carry on from the same moment of the song. */
   _reload() {
@@ -241,8 +256,21 @@ class Player extends EventTarget {
   }
 
   _load(dir) {
-    const tr = this.current;
+    let tr = this.current;
     if (!tr) return;
+    if (!navigator.onLine && !isSaved(tr.id)) { // no network: only what is saved on the phone can play
+      const i = this._nearestSaved(dir < 0 ? -1 : 1);
+      if (i === -1 || i === this.index) {
+        this.loading = false;
+        this.audio.pause();
+        this._emit('offline-miss');
+        this._emit('track', { track: tr, dir });
+        this._state();
+        return;
+      }
+      this.index = i;
+      tr = this.current;
+    }
     clearTimeout(this._errTimer); // a pending auto-skip must not override the user's choice
     this.loading = true;
     const seq = ++this._seq;
@@ -263,6 +291,12 @@ class Player extends EventTarget {
 
   /** Playable URL for a track. Behind ngrok the audio is fetched with a header and played from memory. */
   _audioUrl(id, fx = PLAIN) {
+    // a saved track plays from the phone: it starts at once, costs no traffic and needs no network
+    if (fx === PLAIN && isSaved(id)) return savedUrl(id).then((url) => url || this._remoteUrl(id, fx));
+    return this._remoteUrl(id, fx);
+  }
+
+  _remoteUrl(id, fx) {
     if (!api.usesBlob) return Promise.resolve(api.streamUrl(id, fx));
     const key = `${id}|${fx}`;
     if (!this._blobs.has(key)) {

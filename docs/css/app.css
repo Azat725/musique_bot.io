@@ -122,6 +122,17 @@ body.has-mini #main { padding-bottom: calc(var(--nav-h) + var(--mini-h) + var(--
 .track__title { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .track__artist { font-size: 13px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
 .track__time { font-size: 13px; color: var(--text-3); font-variant-numeric: tabular-nums; flex: none; }
+/* saved on the phone (offline.js): a small mark beside the length; the one downloading now spins */
+.track__saved { display: none; flex: none; color: var(--accent-text); margin-right: -6px; }
+.track__saved .ic { width: 15px; height: 15px; }
+.track.is-saved .track__saved, .track.is-saving .track__saved { display: grid; }
+.track.is-saving .track__saved { color: var(--text-3); }
+.track.is-saving .track__saved .ic { animation: saving 1.1s linear infinite; }
+@keyframes saving { 50% { opacity: .35; } }
+.offline-note { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 10px 12px; border-radius: var(--r-md);
+  background: var(--surface); color: var(--text-2); font-size: 13.5px; line-height: 1.35; }
+.offline-note[hidden] { display: none; }
+.offline-note .ic { width: 20px; height: 20px; flex: none; color: var(--accent-text); }
 .track__more { color: var(--text-3); margin-right: -8px; }
 /* the heart sits tight against "more": two 40 px buttons side by side would eat the title */
 .track__like { width: 36px; height: 36px; margin-right: -10px; color: var(--text-3); }

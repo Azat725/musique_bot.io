@@ -650,10 +650,10 @@ async def resolve(vid: str, fresh: bool = False) -> Source:
     return Source("file", mime_for(path.suffix.lstrip(".")), path=path)
 
 
-def _encode_lite(src: Path, dest: Path) -> None:
+def _encode_lite(src: Path, dest: Path, bitrate: str = "") -> None:
     tmp = dest.with_suffix(".part")
     subprocess.run([config.FFMPEG, "-y", "-loglevel", "error", "-i", str(src), "-vn", "-c:a", "aac",
-                    "-b:a", config.STREAM_BITRATE, "-movflags", "+faststart", "-f", "mp4", str(tmp)], check=True,
+                    "-b:a", bitrate or config.STREAM_BITRATE, "-movflags", "+faststart", "-f", "mp4", str(tmp)], check=True,
                    timeout=FFMPEG_TIMEOUT, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     tmp.replace(dest)
 
@@ -756,6 +756,27 @@ async def fx_file(vid: str, fx: str) -> Path:
         if not dest.exists():
             async with _ffmpeg_slots:
                 await asyncio.to_thread(_render_fx, src, dest, fx)
+    await asyncio.to_thread(_prune_cache)
+    return dest
+
+
+SAVE_DIR = config.CACHE_DIR / "save"
+SAVE_DIR.mkdir(exist_ok=True)
+SAVE_BITRATE = "96k"  # what the Mini App keeps on the phone for listening offline: ~3 MB a track
+
+
+async def save_file(vid: str) -> Path:
+    """A compact copy of the track (AAC 96 kbit/s) for the phone to keep and play without a network."""
+    if not config.FFMPEG:
+        return await ensure_file(vid)  # no encoder here: the original is still playable
+    dest = SAVE_DIR / f"{vid}.m4a"
+    if dest.exists():
+        return dest
+    src = await ensure_file(vid)
+    async with _lock("save:" + vid):
+        if not dest.exists():
+            async with _ffmpeg_slots:
+                await asyncio.to_thread(_encode_lite, src, dest, SAVE_BITRATE)
     await asyncio.to_thread(_prune_cache)
     return dest
 

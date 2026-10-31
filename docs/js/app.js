@@ -4,6 +4,7 @@ import { player } from './player.js';
 import { likes, loadHeard, loadLikes, onSettings, settings, syncCloudSettings, toggleLike } from './store.js';
 import { EASE_IO, cover, esc, fitMarquee, h, haptic, icon, loader, markPlaying, openArtist, reducedMotion, tg, toast } from './ui.js';
 import { initFx } from './graph.js';
+import { initOffline, syncOffline } from './offline.js';
 import { syncVinylNoise } from './sfx.js';
 import { maybeShowStories } from './stories.js';
 import { CLASSIC_BG, THEMES } from './themes.js';
@@ -251,6 +252,9 @@ player.addEventListener('time', () => {
   if (bar) bar.style.setProperty('--p', player.duration ? player.time / player.duration : 0);
 });
 player.addEventListener('error', () => toast(t('toast_unavailable'), 'error'));
+player.addEventListener('offline-miss', () => toast(t('offline_miss'), 'error'));
+// the network went away: say once that what is saved keeps playing
+addEventListener('offline', () => { if (settings.offlineLikes) toast(t('offline_now'), 'done'); });
 
 // a cover that fails to load: a smaller size that always exists, otherwise the vinyl placeholder
 document.addEventListener('error', (e) => {
@@ -324,7 +328,7 @@ async function boot() {
   if (!me) return noServer();
   try {
     await me;
-    loadLikes().catch(() => {});
+    initOffline().then(() => loadLikes()).then(() => syncOffline(), () => {});
     loadHeard().catch(() => {});
   } catch {
     return noServer();
