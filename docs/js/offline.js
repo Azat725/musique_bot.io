@@ -8,10 +8,11 @@ import { likedList, likes, onSettings, settings } from './store.js';
 const DB = 'musique-offline';
 const STORE = 'tracks';
 const COVER_PX = 144;
+export const MAX_SAVED = 100; // the newest liked tracks kept on the phone (about 300 MB); older likes stream as before
 
 export const offline = new EventTarget(); // 'change' whenever the saved set or the download progress changes
 const saved = new Map(); // id -> bytes
-let db = null, ready = null, syncing = false, current = null, abort = null, stopped = '';
+let db = null, ready = null, syncing = false, again = false, current = null, abort = null, stopped = '';
 const urls = new Map(); // id -> object URL of the audio (a few are kept, the oldest are revoked)
 const coverUrls = new Map(); // id -> object URL of the small cover
 
@@ -56,11 +57,11 @@ export function usage() {
   return { count: saved.size, bytes };
 }
 
-/** How many of the favourites are saved: { done, total }. */
+/** How many of the favourites are saved: { done, total, capped } (total never above MAX_SAVED). */
 export function progress() {
   let done = 0;
   likes.forEach((id) => { if (saved.has(id)) done++; });
-  return { done, total: likes.size };
+  return { done: Math.min(done, MAX_SAVED), total: Math.min(likes.size, MAX_SAVED), capped: likes.size > MAX_SAVED };
 }
 
 /** A playable URL for a saved track, or null. */
@@ -120,25 +121,30 @@ async function download(track) {
   if (!res.ok) throw Object.assign(new Error(`http-${res.status}`), { skip: res.status === 404 });
   const blob = await res.blob();
   let cover = null;
-  try { // a cover is nice to have: some hosts refuse to be fetched from a page, and that is fine
-    const c = await fetch(smallCover(track.cover), { signal: abort.signal, mode: 'cors' });
-    if (c.ok) cover = await c.blob();
-  } catch {}
+  if (track.cover) {
+    try { // a cover is nice to have: some hosts refuse to be fetched from a page, and that is fine
+      const c = await fetch(smallCover(track.cover), { signal: abort.signal, mode: 'cors' });
+      if (c.ok && c.headers.get('content-type')?.startsWith('image/')) cover = await c.blob();
+    } catch {}
+  }
   const meta = { title: track.title, artist: track.artist, duration: track.duration, artist_id: track.artist_id || '', cover: track.cover || '' };
   await req(tx('readwrite').put({ id: track.id, blob, cover, meta, size: blob.size + (cover?.size || 0), savedAt: Date.now() }));
   saved.set(track.id, blob.size + (cover?.size || 0));
 }
 
-/** Make the saved set match the favourites: delete what was unliked, download what is missing, one at a time. */
+/** Make the saved set match the newest MAX_SAVED favourites: delete what was unliked (or pushed past the limit
+ *  by newer likes), download what is missing, one at a time. */
 export async function syncOffline() {
-  if (syncing || !settings.offlineLikes) return;
+  if (!settings.offlineLikes) return;
+  if (syncing) { again = true; return; } // the favourites changed meanwhile: look once more when this round ends
   syncing = true;
+  again = false;
   stopped = '';
   try {
     await initOffline();
     if (!db) return;
     let list;
-    try { list = await likedList(); } catch { return; }
+    try { list = (await likedList()).slice(0, MAX_SAVED); } catch { return; } // newest first
     const wanted = new Set(list.map((tr) => tr.id));
     for (const id of [...saved.keys()]) if (!wanted.has(id)) await remove(id);
     emit();
@@ -166,6 +172,7 @@ export async function syncOffline() {
     syncing = false;
     abort = null;
     emit();
+    if (again && settings.offlineLikes && !stopped) soon(300);
   }
 }
 

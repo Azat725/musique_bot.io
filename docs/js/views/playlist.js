@@ -2,7 +2,7 @@ import { api } from '../api.js';
 import { plural, t } from '../i18n.js';
 import { player } from '../player.js';
 import { invalidatePlaylists, likedList, settings } from '../store.js';
-import { offline, progress as savedProgress, usage as savedUsage } from '../offline.js';
+import { MAX_SAVED, offline, progress as savedProgress, usage as savedUsage } from '../offline.js';
 import { confirmSheet, esc, h, haptic, icon, loader, promptName, sheet, toast, trackList } from '../ui.js';
 
 const FILTER_FROM = 8; // a list this long (or longer) gets a search field
@@ -68,8 +68,9 @@ export async function render(params, nav) {
   const refreshCount = (visible = shown()) => {
     let text = query.trim() ? t('list_found', { n: visible.length, m: tracks.length }) : plural(tracks.length);
     if (params.kind === 'likes' && settings.offlineLikes && tracks.length) { // how much plays without a network
-      const { done, total } = savedProgress();
-      text += ' · ' + (done >= total ? t('offline_all', { mb: Math.max(1, Math.round(savedUsage().bytes / 1048576)) }) : t('offline_some', { n: done, m: total }));
+      const { done, total, capped } = savedProgress();
+      const mb = Math.max(1, Math.round(savedUsage().bytes / 1048576));
+      text += ' · ' + (done < total ? t('offline_some', { n: done, m: total }) : capped ? t('offline_capped', { n: MAX_SAVED, mb }) : t('offline_all', { mb }));
     }
     sub.textContent = text;
     root.querySelector('.list-actions').classList.toggle('is-disabled', !tracks.length);

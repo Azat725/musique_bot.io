@@ -4,6 +4,7 @@ import asyncio
 import logging
 import random
 import re
+import shutil
 import subprocess
 import time
 import wave
@@ -43,6 +44,10 @@ _home_lock = asyncio.Lock()
 # a 2 GB VPS: a burst of prefetches must not run a dozen downloads and encoders at once
 _download_slots = asyncio.Semaphore(2)
 _ffmpeg_slots = asyncio.Semaphore(1)
+# offline copies for phones queue on their own, one at a time for the whole server, at a low CPU priority:
+# however many people download at once, playback keeps the encoder and the download slots first
+_save_slots = asyncio.Semaphore(1)
+_NICE = shutil.which("nice")  # Linux (the VPS); elsewhere the encoder simply runs at normal priority
 FFMPEG_TIMEOUT = 300
 _yt_blocked_until = 0.0
 
@@ -650,9 +655,10 @@ async def resolve(vid: str, fresh: bool = False) -> Source:
     return Source("file", mime_for(path.suffix.lstrip(".")), path=path)
 
 
-def _encode_lite(src: Path, dest: Path, bitrate: str = "") -> None:
+def _encode_lite(src: Path, dest: Path, bitrate: str = "", background: bool = False) -> None:
     tmp = dest.with_suffix(".part")
-    subprocess.run([config.FFMPEG, "-y", "-loglevel", "error", "-i", str(src), "-vn", "-c:a", "aac",
+    nice = [_NICE, "-n", "15"] if background and _NICE else []
+    subprocess.run([*nice, config.FFMPEG, "-y", "-loglevel", "error", "-i", str(src), "-vn", "-c:a", "aac",
                     "-b:a", bitrate or config.STREAM_BITRATE, "-movflags", "+faststart", "-f", "mp4", str(tmp)], check=True,
                    timeout=FFMPEG_TIMEOUT, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     tmp.replace(dest)
@@ -772,11 +778,11 @@ async def save_file(vid: str) -> Path:
     dest = SAVE_DIR / f"{vid}.m4a"
     if dest.exists():
         return dest
-    src = await ensure_file(vid)
-    async with _lock("save:" + vid):
-        if not dest.exists():
-            async with _ffmpeg_slots:
-                await asyncio.to_thread(_encode_lite, src, dest, SAVE_BITRATE)
+    async with _save_slots:  # the download from YouTube and the encode both happen inside this one slot
+        async with _lock("save:" + vid):
+            if not dest.exists():
+                src = await ensure_file(vid)
+                await asyncio.to_thread(_encode_lite, src, dest, SAVE_BITRATE, True)
     await asyncio.to_thread(_prune_cache)
     return dest
 
