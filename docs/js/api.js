@@ -44,8 +44,19 @@ function resolveBase() {
 const base = resolveBase();
 let streamToken = '';
 
-async function request(method, path, body, signal, timeout = 0, keepalive = false) {
+let guestStart = null;
+
+/** In an ordinary browser every request needs a session. A first visit has none: one guest is made, and whatever
+ *  asks meanwhile (the home screen is asked for at the very start) waits for that one instead of going out bare. */
+function ensureSession() {
+  if (inTelegram || session) return Promise.resolve();
+  guestStart ||= request('POST', '/api/guest').then((r) => keepSession(r.session)).finally(() => { guestStart = null; });
+  return guestStart;
+}
+
+async function request(method, path, body, signal, timeout = 0, keepalive = false, retried = false) {
   if (!base) throw new Error('no-server');
+  if (path !== '/api/guest') await ensureSession();
   const ctrl = new AbortController(); // never hang on a blocked or sleeping server (AbortSignal.timeout is missing in older WebViews)
   const timer = setTimeout(() => ctrl.abort(), timeout || (path === '/api/me' ? 15000 : 45000));
   signal?.addEventListener('abort', () => ctrl.abort());
@@ -61,6 +72,12 @@ async function request(method, path, body, signal, timeout = 0, keepalive = fals
       },
       body: body ? JSON.stringify(body) : undefined,
     });
+    if (res.status === 401 && !inTelegram && !retried && path !== '/api/guest') {
+      // the server does not know this session (a new database, an old browser profile): start over as a new guest
+      keepSession('');
+      await ensureSession();
+      return request(method, path, body, signal, timeout, keepalive, true);
+    }
     if (!res.ok) {
       const err = new Error(`http-${res.status}`);
       err.code = await res.json().then((j) => j.detail, () => ''); // a reason the app can explain, e.g. an import that failed
@@ -97,15 +114,7 @@ export const api = {
   /** Who is listening. Outside Telegram a browser without a session (or with one the server no longer knows)
    *  becomes a guest first. */
   async me() {
-    if (!inTelegram && !session) keepSession((await post('/api/guest')).session);
-    let data;
-    try {
-      data = await get('/api/me');
-    } catch (e) {
-      if (inTelegram || e.message !== 'http-401') throw e;
-      keepSession((await post('/api/guest')).session);
-      data = await get('/api/me');
-    }
+    const data = await get('/api/me'); // makes the guest first when there is no session, and mends a stale one
     streamToken = data.token;
     api.user = data.user;
     return data.user;
