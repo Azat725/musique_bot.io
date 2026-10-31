@@ -2,6 +2,10 @@ import { api } from './api.js';
 import { heard, onSettings, settings } from './store.js';
 
 export const RATES = { slow: 0.85, normal: 1, fast: 45 / (100 / 3) }; // fast = 1.35: a 45 rpm record played at 45 instead of 33⅓
+const PLAIN = 'normal-off';
+
+/** The sound chosen in the Sound sheet as the server names it: "<speed>-<reverb>", e.g. "slow-hall". */
+const chosenFx = () => `${RATES[settings.speed] ? settings.speed : 'normal'}-${['room', 'hall'].includes(settings.reverb) ? settings.reverb : 'off'}`;
 
 /** Audio engine: queue, shuffle/repeat, Media Session. UI listens to events on `player`. */
 class Player extends EventTarget {
@@ -20,7 +24,11 @@ class Player extends EventTarget {
     this.errors = 0;
     this._logged = null;
     this._seq = 0;
-    this._blobs = new Map(); // track id -> Promise<object URL>
+    this._blobs = new Map(); // "track id|fx" -> Promise<object URL>
+    // slowed, sped up and reverb are rendered by the server (a phone's own resampler crackles): the file already
+    // runs at that pace, the element always plays at 1. `fx` is what the loaded file was rendered with
+    this.fx = PLAIN;
+    this._plainFor = null; // a track whose rendering failed plays plain
     this._errTimer = 0;
     this._lastState = '';
     this.stopAfter = false; // sleep timer "end of track": stop instead of moving on
@@ -37,8 +45,8 @@ class Player extends EventTarget {
         api.addHistory(tr).catch(() => {});
         const upcoming = this.queue[this.index + 1];
         if (upcoming) {
-          if (api.usesBlob) this._audioUrl(upcoming.id).catch(() => {});
-          else api.prefetch(upcoming).catch(() => {});
+          if (api.usesBlob) this._audioUrl(upcoming.id, this._fxFor(upcoming)).catch(() => {});
+          else api.prefetch(upcoming, this._fxFor(upcoming)).catch(() => {});
         }
       }
     });
@@ -54,6 +62,11 @@ class Player extends EventTarget {
     });
     a.addEventListener('error', () => {
       if (!this.current) return;
+      if (this.fx !== PLAIN && this._plainFor !== this.current.id) { // no rendering for it: play it as it is
+        this._plainFor = this.current.id;
+        this._reload();
+        return;
+      }
       this.loading = false;
       this.errors += 1;
       this._emit('error');
@@ -64,8 +77,7 @@ class Player extends EventTarget {
     // is not cut by the mute switch or the lock screen. Unsupported browsers simply skip it.
     try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
     this._mediaSession();
-    this._applyRate();
-    onSettings(() => this._applyRate());
+    onSettings(() => { if (this.current && this._fxFor(this.current) !== this.fx) this._reload(); });
   }
 
   get current() { return this.queue[this.index] || null; }
@@ -73,7 +85,7 @@ class Player extends EventTarget {
   get time() { return this.audio.currentTime || 0; }
   get duration() {
     const d = this.audio.duration;
-    return Number.isFinite(d) && d > 0 ? d : (this.current?.duration || 0);
+    return Number.isFinite(d) && d > 0 ? d : (this.current?.duration || 0) / this.rate;
   }
 
   _emit(type, detail) { this.dispatchEvent(new CustomEvent(type, { detail })); }
@@ -145,15 +157,33 @@ class Player extends EventTarget {
     this._emit('queue');
   }
 
-  get rate() { return RATES[settings.speed] || 1; }
+  /** How fast the loaded file runs against the original (0.85 slowed, 1.35 at 45): the record spins at it,
+   *  and timed lyrics turn the file's time back into the song's with it. */
+  get rate() { return RATES[this.fx.split('-')[0]] || 1; }
 
-  /** 33⅓ or 45: pitch follows speed, as on a turntable (a new src resets playbackRate to the default one). */
-  _applyRate() {
-    const a = this.audio, rate = this.rate;
-    if (a.playbackRate === rate && a.defaultPlaybackRate === rate) return;
-    a.preservesPitch = a.webkitPreservesPitch = a.mozPreservesPitch = rate === 1;
-    a.defaultPlaybackRate = rate;
-    a.playbackRate = rate;
+  _fxFor(track) { return track.id === this._plainFor ? PLAIN : chosenFx(); }
+
+  /** The sound changed mid-track: load the new rendering and carry on from the same moment of the song. */
+  _reload() {
+    const tr = this.current;
+    if (!tr) return;
+    const songTime = this.time * this.rate, wasPlaying = this.playing || this.loading;
+    const fx = this._fxFor(tr);
+    const seq = ++this._seq;
+    this.fx = fx;
+    this.loading = true;
+    this._state();
+    this._audioUrl(tr.id, fx).then((url) => {
+      if (seq !== this._seq) return;
+      const a = this.audio;
+      a.addEventListener('loadedmetadata', () => {
+        if (seq !== this._seq) return;
+        a.currentTime = Math.max(0, songTime / this.rate);
+        if (wasPlaying) a.play().catch(() => {});
+      }, { once: true });
+      a.src = url;
+    }).catch(() => { if (seq === this._seq) this.audio.dispatchEvent(new Event('error')); });
+    this._emit('fx');
   }
 
   toggle() {
@@ -217,10 +247,11 @@ class Player extends EventTarget {
     this.loading = true;
     const seq = ++this._seq;
     if (api.usesBlob) this.audio.pause(); // the previous track must not keep playing while the next downloads
-    this._audioUrl(tr.id).then((url) => {
+    const fx = this._fxFor(tr);
+    this.fx = fx;
+    this._audioUrl(tr.id, fx).then((url) => {
       if (seq !== this._seq) return; // the user already moved on
       this.audio.src = url;
-      this._applyRate();
       this.audio.play().catch(() => {});
     }).catch(() => {
       if (seq === this._seq) this.audio.dispatchEvent(new Event('error'));
@@ -231,20 +262,21 @@ class Player extends EventTarget {
   }
 
   /** Playable URL for a track. Behind ngrok the audio is fetched with a header and played from memory. */
-  _audioUrl(id) {
-    if (!api.usesBlob) return Promise.resolve(api.streamUrl(id));
-    if (!this._blobs.has(id)) {
-      const p = api.audioBlob(id);
-      p.catch(() => this._blobs.delete(id));
-      this._blobs.set(id, p);
+  _audioUrl(id, fx = PLAIN) {
+    if (!api.usesBlob) return Promise.resolve(api.streamUrl(id, fx));
+    const key = `${id}|${fx}`;
+    if (!this._blobs.has(key)) {
+      const p = api.audioBlob(id, fx);
+      p.catch(() => this._blobs.delete(key));
+      this._blobs.set(key, p);
       while (this._blobs.size > 3) {
-        const old = [...this._blobs.keys()].find((k) => k !== this.current?.id && k !== id);
+        const old = [...this._blobs.keys()].find((k) => !k.startsWith(`${this.current?.id}|`) && k !== key);
         if (!old) break;
         this._blobs.get(old).then((u) => URL.revokeObjectURL(u), () => {});
         this._blobs.delete(old);
       }
     }
-    return this._blobs.get(id);
+    return this._blobs.get(key);
   }
 
   _mediaSession() {

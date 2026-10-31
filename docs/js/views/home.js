@@ -2,7 +2,7 @@ import { api } from '../api.js';
 import { t } from '../i18n.js';
 import { player } from '../player.js';
 import { onSettings, settings } from '../store.js';
-import { brandMark, cover, esc, h, haptic, icon, loader, openArtist, trackList } from '../ui.js';
+import { brandMark, cover, esc, h, haptic, icon, loader, openArtist } from '../ui.js';
 
 /** "Good morning", or "Good morning, Azat" when a name is set in Settings. */
 function greeting() {
@@ -72,20 +72,6 @@ export async function render(_, nav) {
     forYou.hidden = false;
   }).catch(() => {});
 
-  const countries = (data.sections || []).filter((s) => s.key === 'country' && s.tracks?.length);
-  for (const s of countries) {
-    const title = t('home_trending_in', { c: t('country_' + s.country) });
-    const sec = h('<section class="section"></section>');
-    sec.append(sectionHead(title, openList(title, s.tracks)), cards(s.tracks.slice(0, 15)));
-    body.append(sec);
-  }
-  const byKey = Object.fromEntries((data.sections || []).map((s) => [s.key, s.tracks]));
-  if (byKey.popular?.length) {
-    const s = h('<section class="section"></section>');
-    s.append(sectionHead(t('home_popular'), openList(t('home_popular'), byKey.popular)), trackList(byKey.popular.slice(0, 10), { numbered: true }));
-    body.append(s);
-  }
-
   if (data.genres?.length) {
     const s = h('<section class="section"></section>');
     s.append(sectionHead(t('home_genres')));
@@ -100,12 +86,6 @@ export async function render(_, nav) {
     body.append(s);
   }
 
-  for (const [key, label] of [['top_global', 'home_top_global']]) {
-    if (!byKey[key]?.length) continue;
-    const s = h('<section class="section"></section>');
-    s.append(sectionHead(t(label), openList(t(label), byKey[key])), cards(byKey[key].slice(0, 15)));
-    body.append(s);
-  }
   if (!body.children.length || [...body.children].every((c) => c.hidden)) {
     // nothing came back: say so instead of leaving an empty page
     const empty = h(`<div class="empty">${icon('vinyl', 'empty__icon')}

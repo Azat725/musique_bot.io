@@ -1,10 +1,12 @@
 """Search (YouTube Music + other sources) and audio resolution (YouTube, then SoundCloud, then other sources)."""
+import array
 import asyncio
 import logging
 import random
 import re
 import subprocess
 import time
+import wave
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from difflib import SequenceMatcher
@@ -230,54 +232,13 @@ async def search_more(query: str) -> list[dict]:
     return out
 
 
-def _chart_playlist(charts: dict, prefix: str) -> str | None:
-    for item in charts.get("videos", []):
-        if item.get("title", "").startswith(prefix):
-            return item["playlistId"]
-    return None
-
-
 def _playlist_tracks(playlist_id: str, limit: int = 40) -> list[dict]:
     data = _yt.get_playlist(playlist_id, limit=limit)
     return [t for t in (normalize(r) for r in data.get("tracks", [])) if t]
 
 
-CIS = ("RU", "KZ", "BY", "US")  # charts shown on the home screen, in this order
-# which chart of a country to show: what is trending first, then the daily/weekly tops
-CHART_PREFIXES = ("Trending 20", "Daily Top Music Videos", "Weekly Top", "Top 100 Music Videos")
-
-
-def _country_chart(country: str) -> dict | None:
-    charts = _yt.get_charts(country)
-    playlists = charts.get("videos") or charts.get("daily") or charts.get("weekly") or []
-    pid = next((p["playlistId"] for prefix in CHART_PREFIXES for p in playlists
-                if (p.get("title") or "").startswith(prefix) and p.get("playlistId")), None)
-    pid = pid or next((p["playlistId"] for p in playlists if p.get("playlistId")), None)
-    if not pid:
-        return None
-    tracks = _playlist_tracks(pid, 30)
-    return {"key": "country", "country": country, "tracks": tracks} if tracks else None
-
-
 def _build_home() -> dict:
-    sections = []
-    try:
-        world = _yt.get_charts("ZZ")
-        supported = set((world.get("countries") or {}).get("options") or CIS)
-        pid = _chart_playlist(world, "Top 100 Music Videos")
-        global_top = {"key": "top_global", "tracks": _playlist_tracks(pid, 30)} if pid else None
-    except Exception:
-        log.exception("global chart failed")
-        supported, global_top = set(CIS), None
-
-    # the CIS countries side by side, each in its own thread (one by one they took several seconds)
-    countries = [c for c in CIS if c in supported]
-    with ThreadPoolExecutor(max_workers=len(countries) or 1) as pool:
-        results = list(pool.map(lambda c: _safe(_country_chart, c), countries))
-    sections += [r for r in results if r]
-    if global_top:
-        sections.append(global_top)
-
+    """Genres only: the home screen shows no charts (the user's recent and recommended tracks come from elsewhere)."""
     genres = []
     try:
         us = _yt.get_charts("US")
@@ -288,7 +249,7 @@ def _build_home() -> dict:
                     genres.append({"key": key, "id": g["playlistId"]})
     except Exception:
         log.exception("genres failed")
-    return {"sections": sections, "genres": genres}
+    return {"sections": [], "genres": genres}
 
 
 def _safe(fn, *args):
@@ -335,14 +296,9 @@ async def home() -> dict:
         if _home_cache and time.time() - _home_cache[0] < 3600:
             return _home_cache[1]
         data = await asyncio.to_thread(_build_home)
-        if data["sections"]:
+        if data["genres"]:  # an unreachable YouTube Music is asked again next time
             _home_cache = (time.time(), data)
-            return data
-    # YouTube Music unreachable (blocked network, outage): show what is popular on Zaycev instead
-    tracks = await sources.popular()
-    for t in tracks:
-        _meta[t["id"]] = t
-    return {**data, "sections": [{"key": "popular", "tracks": tracks}] if tracks else []}
+        return data
 
 
 async def collection(playlist_id: str) -> list[dict]:
@@ -699,10 +655,97 @@ async def stream_file(vid: str) -> Path:
     return dest
 
 
-async def prefetch(vid: str) -> None:
+# ---------- slowed, sped up and reverb: rendered here, so phones play a clean file ----------
+
+FX_RE = re.compile(r"^(slow|normal|fast)-(off|room|hall)$")
+SPEEDS = {"slow": 0.85, "normal": 1.0, "fast": 45 / (100 / 3)}  # 45 rpm on a 33⅓ record
+# tail length (s), how fast it dies, and how loud the room is next to the dry sound
+ROOMS = {"room": (1.3, 2.6, 0.3), "hall": (3.4, 2.1, 0.5)}
+FX_DIR = config.CACHE_DIR / "fx"
+FX_DIR.mkdir(exist_ok=True)
+FX_RATE = 44100
+
+
+def _impulse(kind: str) -> Path:
+    """The sound of an empty room: stereo noise fading away, written once as a WAV."""
+    path = config.CACHE_DIR / f"ir_{kind}.wav"
+    if path.exists():
+        return path
+    seconds, decay, _ = ROOMS[kind]
+    n = int(FX_RATE * seconds)
+    rnd = random.Random(kind)  # the same room every time
+    samples = array.array("h", (int(rnd.uniform(-1, 1) * (1 - i // 2 / n) ** decay * 32000) for i in range(n * 2)))
+    tmp = path.with_suffix(".part")
+    with wave.open(str(tmp), "wb") as w:
+        w.setnchannels(2)
+        w.setsampwidth(2)
+        w.setframerate(FX_RATE)
+        w.writeframes(samples.tobytes())
+    tmp.replace(path)
+    return path
+
+
+# the room's loudness is set by normalising the impulse to unit energy: then a hall is about as loud as the song.
+# irnorm came with ffmpeg 6; older builds (Debian 12) normalise by RMS instead
+_IR_NORMS = ["irnorm=2", "gtype=rms"]
+
+
+def _fx_filter(fx: str, norm: str = _IR_NORMS[0]) -> tuple[list[str], str]:
+    """(extra inputs, filter graph ending in [o]) for an fx key such as 'slow-hall'."""
+    speed, reverb = FX_RE.match(fx).groups()
+    k = SPEEDS[speed]
+    # slowed the way records are: slower and lower at once, resampled by soxr so it stays clean
+    chain = f"[0:a]aformat=channel_layouts=stereo,aresample={FX_RATE}"
+    if k != 1:
+        chain += f",asetrate={FX_RATE * k:.0f},aresample={FX_RATE}:resampler=soxr"
+    if reverb == "off":
+        return [], chain + ",alimiter=limit=0.97[o]"
+    wet = ROOMS[reverb][2]
+    return (["-i", str(_impulse(reverb))],
+            f"{chain},asplit[d][w];[w][1:a]afir={norm}[r];"
+            f"[d][r]amix=inputs=2:weights={1 - wet * 0.45:.2f} {wet:.2f}:normalize=0,alimiter=limit=0.97[o]")
+
+
+def _render_fx(src: Path, dest: Path, fx: str) -> None:
+    bitrate = config.STREAM_BITRATE if config.STREAM_BITRATE not in ("", "0") else "128k"
+    tmp = dest.with_suffix(".part")
+    for i, norm in enumerate(_IR_NORMS):
+        extra, graph = _fx_filter(fx, norm)
+        try:
+            subprocess.run([config.FFMPEG, "-y", "-loglevel", "error", "-i", str(src), *extra, "-filter_complex", graph,
+                            "-map", "[o]", "-vn", "-c:a", "aac", "-b:a", bitrate, "-movflags", "+faststart", "-f", "mp4", str(tmp)],
+                           check=True, timeout=FFMPEG_TIMEOUT, capture_output=True,
+                           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            break
+        except subprocess.CalledProcessError as e:
+            if not extra or i == len(_IR_NORMS) - 1:  # no reverb (nothing to retry), or every option failed
+                log.warning("fx render failed for %s: %s", fx, (e.stderr or b"")[-300:].decode(errors="replace"))
+                raise
+    tmp.replace(dest)
+
+
+async def fx_file(vid: str, fx: str) -> Path:
+    """The track slowed / sped up / with reverb, rendered once and kept in the cache."""
+    if not config.FFMPEG or not FX_RE.match(fx):
+        raise LookupError("fx unavailable")
+    dest = FX_DIR / f"{vid}.{fx}.m4a"
+    if dest.exists():
+        return dest
+    src = await ensure_file(vid)
+    async with _lock(f"fx:{vid}:{fx}"):
+        if not dest.exists():
+            async with _ffmpeg_slots:
+                await asyncio.to_thread(_render_fx, src, dest, fx)
+    await asyncio.to_thread(_prune_cache)
+    return dest
+
+
+async def prefetch(vid: str, fx: str = "") -> None:
     """Warm the cache for an upcoming track when playback depends on a local file."""
     try:
-        if lite_enabled():
+        if fx and fx != "normal-off":
+            await fx_file(vid, fx)
+        elif lite_enabled():
             await stream_file(vid)
         elif not _cached_file(vid) and (time.time() < _yt_blocked_until or sources.is_external(vid)):
             await ensure_file(vid)

@@ -272,18 +272,28 @@ export function trackRow(track, { index = null } = {}) {
   return row;
 }
 
-/** A title too long for its box glides to its end and back, with a pause at both ends; a short one stays put.
- *  `box` holds one `.marquee` span. Call again whenever the text or the box width may have changed. */
+const MARQUEE_GAP = 48; // px between the end of the title and its next turn
+const MARQUEE_SPEED = 30; // px per second
+
+/** A title too long for its box runs round like a ticker: one way, its copy following after a gap, resting at
+ *  the start of each round; a short one stays put. `box` holds one `.marquee` span. Call again whenever the
+ *  text or the box width may have changed. */
 export function fitMarquee(box) {
   const span = box?.querySelector('.marquee');
   if (!span) return;
   box.dataset.marquee = '';
   requestAnimationFrame(() => {
     box.classList.remove('is-marquee');
-    const over = span.scrollWidth - box.clientWidth;
-    if (!box.clientWidth || over <= 2) return; // fits (or is hidden right now: measured again next time)
-    box.style.setProperty('--dist', `${-(over + 2)}px`);
-    box.style.setProperty('--dur', `${Math.max(7, 4.5 + over / 22).toFixed(1)}s`); // about 22 px/s, plus the pauses
+    span.querySelector('.marquee__copy')?.remove();
+    span.querySelector('.marquee__text') && (span.textContent = span.querySelector('.marquee__text').textContent);
+    const width = span.scrollWidth;
+    if (!box.clientWidth || width - box.clientWidth <= 2) return; // fits (or is hidden right now: measured again next time)
+    const text = span.textContent;
+    span.innerHTML = `<span class="marquee__text">${esc(text)}</span><span class="marquee__copy" aria-hidden="true">${esc(text)}</span>`;
+    const run = (width + MARQUEE_GAP) / MARQUEE_SPEED;
+    box.style.setProperty('--gap', `${MARQUEE_GAP}px`);
+    box.style.setProperty('--dist', `${-(width + MARQUEE_GAP)}px`);
+    box.style.setProperty('--dur', `${(run / 0.85).toFixed(2)}s`); // the first 15 % of a round is the rest
     box.classList.add('is-marquee');
   });
 }

@@ -4,7 +4,7 @@ import { heard, settings, updateSettings } from '../store.js';
 import { openEqualizer } from '../eq.js';
 import { showStories } from '../stories.js';
 import { CLASSIC_SWATCH, DECK_COLORS, RECORD_COLORS, THEMES } from '../themes.js';
-import { brandMark, esc, h, haptic, icon, promptName, sheet, tg, toast } from '../ui.js';
+import { brandMark, confirmDialog, esc, h, haptic, icon, promptName, sheet, tg, toast } from '../ui.js';
 
 const NUMERIC = new Set(['vinylNoise', 'idleDelay']); // segmented controls that store numbers
 
@@ -19,7 +19,8 @@ function openThemePicker() {
   const grid = h(`<div class="themes">${Object.keys(THEMES).map((key) => `
     <button class="theme-card ${key === (THEMES[settings.colorTheme] ? settings.colorTheme : 'classic') ? 'is-on' : ''}" data-key="${key}">
       <span class="theme-card__dots">${swatchDots(key)}</span>
-      <span class="theme-card__name">${esc(t('theme_' + key))}</span>${icon('check', 'theme-card__check')}
+      <span class="theme-card__text"><span class="theme-card__name">${esc(t('theme_' + key))}</span>
+        ${key === 'classic' ? '' : `<span class="theme-card__desc">${esc(t('theme_desc_' + key))}</span>`}</span>${icon('check', 'theme-card__check')}
     </button>`).join('')}</div>`);
   grid.addEventListener('click', (e) => {
     const card = e.target.closest('[data-key]');
@@ -49,27 +50,15 @@ export async function render() {
     </section>
 
     <section class="group">
-      <div class="group__label">${esc(t('settings_appearance'))}</div>
-      <div class="group__item group__item--stack" data-mode-row>
-        <span><span class="group__name">${esc(t('settings_theme'))}</span><span class="group__hint" data-mode-hint>${esc(t('theme_mode_hint'))}</span></span>
-        ${segmented('theme', [['system', t('theme_system')], ['light', t('theme_light')], ['dark', t('theme_dark')]], settings.theme)}
-      </div>
-      <div class="group__item group__item--stack">
-        <span class="group__name">${esc(t('settings_language'))}</span>
-        ${segmented('lang', [['ru', 'Русский'], ['en', 'English']], settings.lang)}
-      </div>
-      <label class="group__item">
-        <span><span class="group__name">${esc(t('settings_sounds'))}</span><span class="group__hint">${esc(t('settings_sounds_hint'))}</span></span>
-        <input type="checkbox" class="switch" data-sounds ${settings.sounds ? 'checked' : ''}>
-      </label>
-    </section>
-
-    <section class="group">
       <div class="group__label">${esc(t('settings_custom'))}</div>
       <button class="group__item" data-color-theme>
         <span class="theme-row"><span class="theme-dots" data-theme-dots></span>
           <span><span class="group__name">${esc(t('custom_theme'))}</span><span class="group__hint" data-theme-state></span></span></span>${icon('right', 'group__chev')}
       </button>
+      <div class="group__item group__item--stack" data-mode-row>
+        <span><span class="group__name">${esc(t('settings_theme'))}</span><span class="group__hint" data-mode-hint>${esc(t('theme_mode_hint'))}</span></span>
+        ${segmented('theme', [['system', t('theme_system')], ['light', t('theme_light')], ['dark', t('theme_dark')]], settings.theme)}
+      </div>
       <div class="group__item group__item--stack">
         <span class="group__name">${esc(t('custom_player'))}</span>
         ${segmented('playerMode', [['record', t('player_record')], ['turntable', t('player_turntable')]], settings.playerMode)}
@@ -111,6 +100,10 @@ export async function render() {
         <span><span class="group__name">${esc(t('settings_noise'))}</span><span class="group__hint">${esc(t('settings_noise_hint'))}</span></span>
         ${segmented('vinylNoise', [['0', t('noise_off')], ['4', t('noise_vlow')], ['1', t('noise_low')], ['2', t('noise_mid')], ['3', t('noise_high')]], String(settings.vinylNoise || 0))}
       </div>
+      <label class="group__item">
+        <span><span class="group__name">${esc(t('settings_sounds'))}</span><span class="group__hint">${esc(t('settings_sounds_hint'))}</span></span>
+        <input type="checkbox" class="switch" data-sounds ${settings.sounds ? 'checked' : ''}>
+      </label>
     </section>
 
     <section class="group">
@@ -131,6 +124,17 @@ export async function render() {
       <button class="group__item" data-stories>
         <span class="group__name">${esc(t('about_stories'))}</span>${icon('right', 'group__chev')}
       </button>
+    </section>
+
+    <section class="group group--lang">
+      <div class="group__label">${esc(t('settings_language'))}</div>
+      <div class="group__item">
+        <span class="group__name">${settings.lang === 'ru' ? 'Русский' : 'English'}</span>
+        <div class="segmented segmented--mini" role="radiogroup" data-name="lang">
+          ${[['ru', 'RU'], ['en', 'EN']].map(([v, label]) => `<button role="radio" aria-checked="${v === settings.lang}" aria-label="${v === 'ru' ? 'Русский' : 'English'}"
+            data-value="${v}" class="${v === settings.lang ? 'is-on' : ''}">${label}</button>`).join('')}
+        </div>
+      </div>
     </section>
   </div>`);
 
@@ -230,6 +234,7 @@ export async function render() {
   root.querySelector('[data-eq]').addEventListener('click', async () => { haptic('light'); await openEqualizer(); syncEqState(); syncNoise(); });
   root.querySelector('[data-stories]').addEventListener('click', () => { haptic('light'); showStories(); });
   root.querySelector('[data-clear]').addEventListener('click', async () => {
+    if (!await confirmDialog(t('confirm_clear_history'))) return;
     await api.clearHistory();
     heard.clear(); // with the history gone every track is new again: each comes out of its sleeve once more
     haptic('success');

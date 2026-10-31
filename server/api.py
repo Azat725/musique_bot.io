@@ -41,6 +41,10 @@ class TrackBody(BaseModel):
     track: TrackIn
 
 
+class PrefetchBody(TrackBody):
+    fx: str = Field(default="", max_length=16)  # music.FX_RE, e.g. "slow-hall"
+
+
 class ArtistIn(BaseModel):
     id: str = Field(pattern=r"^[A-Za-z0-9_-]{10,64}$")  # music.ARTIST_ID_RE
     name: str = Field(max_length=200)
@@ -261,8 +265,8 @@ async def send(body: TrackBody, user=User):
 
 
 @app.post("/api/prefetch")
-async def prefetch(body: TrackBody, user=User):
-    _spawn(music.prefetch(_track(body)["id"]))
+async def prefetch(body: PrefetchBody, user=User):
+    _spawn(music.prefetch(_track(body)["id"], body.fx if music.FX_RE.match(body.fx) else ""))
     return {"ok": True}
 
 
@@ -283,12 +287,16 @@ def _file_response(src: music.Source) -> FileResponse:
 
 
 @app.get("/api/stream/{vid}")
-async def stream(vid: str, request: Request, t: str = ""):
+async def stream(vid: str, request: Request, t: str = "", fx: str = ""):
     if not music.ID_RE.match(vid):
         raise HTTPException(404)
     if not auth.check_stream_token(t):
         raise HTTPException(403)
+    if fx and not music.FX_RE.match(fx):
+        raise HTTPException(400, "bad fx")
     try:
+        if fx and fx != "normal-off":  # slowed / sped up / reverb: a file rendered by ffmpeg
+            return FileResponse(await music.fx_file(vid, fx), media_type="audio/mp4")
         if music.lite_enabled():
             return FileResponse(await music.stream_file(vid), media_type="audio/mp4")
         for attempt in range(2):

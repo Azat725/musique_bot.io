@@ -6,7 +6,6 @@ import { api } from './api.js';
 import { openEqualizer } from './eq.js';
 import { initSfx, playSfx, rustle, startScratch, startSpinNoise, whoosh } from './sfx.js';
 import { openQueue } from './queue.js';
-import { applyFx, enableFx } from './graph.js';
 import { SLEEP_OPTIONS, setSleep, sleepLeft, sleepMode, sleepTimer } from './sleep.js';
 
 const RPM_MS = 1800; // one revolution at 33⅓ rpm
@@ -255,11 +254,9 @@ function openSound() {
       b.setAttribute('aria-pressed', on);
     }));
   };
-  const set = (patch) => {
-    if (patch.reverb && patch.reverb !== 'off' && !enableFx()) return; // the graph only exists once asked for
+  const set = (patch) => { // the player reloads the track rendered with the new sound
     haptic('select');
     updateSettings(patch);
-    applyFx();
     draw();
   };
   panel.addEventListener('click', (e) => {
@@ -520,11 +517,12 @@ function followLyrics(content, track, synced) {
     if (!p || player.current?.id !== track.id) return;
     haptic('select');
     handsOffUntil = 0;
-    player.seek(starts[lines.indexOf(p)] / 1000);
+    player.seek(starts[lines.indexOf(p)] / 1000 / player.rate);
     if (!player.playing) player.toggle();
   });
   const sync = () => {
-    const ms = player.current?.id === track.id ? player.time * 1000 + LYRICS_LEAD_MS : -1;
+    // the file may be slowed or sped up: its time times the rate is the song's own
+    const ms = player.current?.id === track.id ? player.time * player.rate * 1000 + LYRICS_LEAD_MS : -1;
     let lo = 0, hi = starts.length - 1, at = -1; // the last line that has started
     while (lo <= hi) {
       const mid = (lo + hi) >> 1;

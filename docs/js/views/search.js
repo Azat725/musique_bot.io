@@ -1,7 +1,7 @@
 import { api } from '../api.js';
 import { t } from '../i18n.js';
 import { clearRecentSearches, pushRecentSearch, recentSearches, settings, updateSettings } from '../store.js';
-import { artistRow, esc, h, haptic, icon, loader, trackList } from '../ui.js';
+import { artistRow, confirmDialog, esc, h, haptic, icon, loader, trackList } from '../ui.js';
 
 const MODES = ['all', 'tracks', 'artists'];
 let last = null; // { q, mode, tracks, more, artists }
@@ -71,7 +71,11 @@ export async function render() {
     }
     const head = h(`<div class="section__head"><h2 class="section__title">${esc(t('search_recent'))}</h2>
       <button class="link">${esc(t('search_clear'))}</button></div>`);
-    head.querySelector('button').addEventListener('click', () => { clearRecentSearches(); showIdle(); });
+    head.querySelector('button').addEventListener('click', async () => {
+      if (!await confirmDialog(t('confirm_clear_search'))) return;
+      clearRecentSearches();
+      showIdle();
+    });
     const chips = h('<div class="chips"></div>');
     recent.forEach((q) => {
       const chip = h(`<button class="chip">${esc(q)}</button>`);

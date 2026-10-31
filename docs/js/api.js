@@ -72,8 +72,8 @@ const usesBlob = (() => {
 export const api = {
   hasServer: () => !!base,
   usesBlob,
-  async audioBlob(id) {
-    const res = await fetch(`${base}/api/stream/${id}?t=${encodeURIComponent(streamToken)}`, {
+  async audioBlob(id, fx = 'normal-off') {
+    const res = await fetch(api.streamUrl(id, fx), {
       headers: { 'ngrok-skip-browser-warning': '1' },
     });
     if (!res.ok) throw new Error(`http-${res.status}`);
@@ -84,7 +84,8 @@ export const api = {
     streamToken = data.token;
     return data.user;
   },
-  streamUrl: (id) => `${base}/api/stream/${id}?t=${encodeURIComponent(streamToken)}`,
+  /** fx: "<speed>-<reverb>"; anything but plain is a file the server renders (slowed, 45 rpm, reverb). */
+  streamUrl: (id, fx = 'normal-off') => `${base}/api/stream/${id}?t=${encodeURIComponent(streamToken)}${fx === 'normal-off' ? '' : `&fx=${fx}`}`,
   /** Start /api/home during boot; the first home() call takes the request already in flight. */
   preloadHome() { homeRequest = get('/api/home'); homeRequest.catch(() => {}); },
   home() { const r = homeRequest || get('/api/home'); homeRequest = null; return r; },
@@ -114,7 +115,7 @@ export const api = {
   addHistory: (track) => post('/api/history', { track }),
   clearHistory: () => del('/api/history'),
   send: (track) => post('/api/send', { track }),
-  prefetch: (track) => post('/api/prefetch', { track }),
+  prefetch: (track, fx = 'normal-off') => post('/api/prefetch', { track, fx }),
   /** { lyrics: string | null, source }; asked once per track per session. A failed request is forgotten, so it is retried. */
   lyrics(track) {
     if (!lyricsCache.has(track.id)) {
