@@ -4,7 +4,9 @@ import { settings, updateSettings } from './store.js';
 import { initSfx } from './sfx.js';
 import { esc, h, haptic, sheet } from './ui.js';
 
-/** Five-band equalizer. Its filters live in the shared audio graph (graph.js); this is the panel and the presets. */
+/** The control panel: speed (slowed / 33 / 45), reverb, the five-band equalizer and the record noise, in one window.
+ *  The equalizer's filters live in the shared audio graph (graph.js); speed and reverb are rendered by the server
+ *  (the player reloads the track when they change). */
 
 export { BANDS };
 const MAX_DB = 12;
@@ -61,10 +63,19 @@ function ticks() {
 
 const fmtDb = (g) => (g > 0 ? `+${g}` : `${g}`);
 
-export function openEqualizer() {
+const SEG = (name, opts) => `<div class="seg" role="group" data-seg="${name}">${opts.map(([v, label, sub]) =>
+  `<button data-v="${v}"><b>${esc(label)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</button>`).join('')}</div>`;
+
+export function openControlPanel() {
   const panel = h(`<div class="eqp">
+    <div class="eqp__title">${esc(t('panel_title'))}</div>
+    <div class="fx__label">${esc(t('sound_speed'))}</div>
+    ${SEG('speed', [['slow', t('sound_slow'), '0.85×'], ['normal', '33⅓', t('sound_rpm')], ['fast', '45', t('sound_rpm')]])}
+    <div class="fx__label">${esc(t('sound_reverb'))}</div>
+    ${SEG('reverb', [['off', t('sound_off')], ['room', t('sound_room')], ['hall', t('sound_hall')]])}
+    <div class="eqp__eq">
     <div class="eqp__head">
-      <span class="eqp__title">${esc(t('eq_title'))}</span>
+      <span class="eqp__sub">${esc(t('eq_title'))}</span>
       <label class="eqp__power"><span>${esc(t('eq_on'))}</span><input type="checkbox" class="switch"></label>
     </div>
     <svg class="eqp__curve" viewBox="0 0 300 80" preserveAspectRatio="none" aria-hidden="true">
@@ -80,19 +91,20 @@ export function openEqualizer() {
       </div>`).join('')}
     </div>
     <div class="eqp__presets">${Object.keys(PRESETS).map((k) => `<button class="eqp__preset" data-p="${k}">${esc(t('eq_' + k))}</button>`).join('')}</div>
+    </div>
     <div class="eqp__noise">
       <div class="eqp__noise-label"><span>${esc(t('settings_noise'))}</span><small>${esc(t('settings_noise_hint'))}</small></div>
       <div class="seg seg--5" role="group">${NOISE.map(([v, key]) => `<button data-n="${v}"><b>${esc(t(key))}</b></button>`).join('')}</div>
     </div>
   </div>`);
-  const power = panel.querySelector('input');
+  const power = panel.querySelector('.eqp__power input');
   const line = panel.querySelector('.eqp__line');
   const faders = [...panel.querySelectorAll('.fader')];
 
   function draw() {
     const { on, gains, preset } = settings.eq;
     power.checked = on;
-    panel.classList.toggle('is-off', !on);
+    panel.querySelector('.eqp__eq').classList.toggle('is-off', !on); // only the equalizer dims, not speed or reverb
     line.setAttribute('d', curvePath(on ? gains : PRESETS.flat));
     faders.forEach((el, i) => {
       el.style.setProperty('--v', gains[i] / MAX_DB);
@@ -101,6 +113,19 @@ export function openEqualizer() {
     });
     panel.querySelectorAll('.eqp__preset').forEach((b) => b.classList.toggle('is-on', b.dataset.p === preset));
   }
+
+  const drawSound = () => panel.querySelectorAll('[data-seg]').forEach((g) => g.querySelectorAll('button').forEach((b) => {
+    const on = b.dataset.v === settings[g.dataset.seg];
+    b.classList.toggle('is-on', on);
+    b.setAttribute('aria-pressed', on);
+  }));
+  panel.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-seg] button');
+    if (!b) return;
+    haptic('select');
+    updateSettings({ [b.closest('[data-seg]').dataset.seg]: b.dataset.v }); // the player loads the track rendered this way
+    drawSound();
+  });
 
   const drawNoise = () => panel.querySelectorAll('[data-n]').forEach((b) => {
     const on = b.dataset.n === String(settings.vinylNoise || 0);
@@ -155,6 +180,7 @@ export function openEqualizer() {
   });
 
   draw();
+  drawSound();
   drawNoise();
-  return sheet({ content: panel, done: true });
+  return sheet({ content: panel, done: true, cls: 'sheet--panel' });
 }

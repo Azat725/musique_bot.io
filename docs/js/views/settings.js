@@ -1,7 +1,7 @@
 import { api } from '../api.js';
 import { t } from '../i18n.js';
 import { heard, settings, updateSettings } from '../store.js';
-import { openEqualizer } from '../eq.js';
+import { openControlPanel } from '../eq.js';
 import { showStories } from '../stories.js';
 import { CLASSIC_SWATCH, DECK_COLORS, RECORD_COLORS, THEMES } from '../themes.js';
 import { clearAll as clearDownloads, offline, savingId, stopReason, usage as savedUsage } from '../offline.js';
@@ -95,7 +95,7 @@ export async function render() {
     <section class="group">
       <div class="group__label">${esc(t('settings_sound'))}</div>
       <button class="group__item" data-eq>
-        <span><span class="group__name">${esc(t('eq_title'))}</span><span class="group__hint" data-eq-state></span></span>${icon('right', 'group__chev')}
+        <span><span class="group__name">${esc(t('panel_title'))}</span><span class="group__hint" data-eq-state></span></span>${icon('right', 'group__chev')}
       </button>
       <div class="group__item group__item--stack">
         <span><span class="group__name">${esc(t('settings_noise'))}</span><span class="group__hint">${esc(t('settings_noise_hint'))}</span></span>
@@ -233,7 +233,12 @@ export async function render() {
   });
 
   const eqState = root.querySelector('[data-eq-state]');
-  const syncEqState = () => { eqState.textContent = settings.eq.on ? t('eq_' + settings.eq.preset) : t('eq_off'); };
+  const syncEqState = () => {
+    const sound = [settings.speed === 'slow' ? t('sound_slow_tag') : settings.speed === 'fast' ? t('sound_fast_tag') : '',
+      settings.reverb !== 'off' ? t('sound_reverb_tag') : ''].filter(Boolean).join(' + ');
+    const eq = settings.eq.on ? `${t("eq_title").toLowerCase()}: ${t("eq_" + settings.eq.preset)}` : t("panel_eq_off");
+    eqState.textContent = sound ? `${sound} · ${eq}` : eq;
+  };
   syncEqState();
   // the equalizer panel also sets the record noise: show what it left
   const syncNoise = () => root.querySelectorAll('[data-name="vinylNoise"] button').forEach((b) => {
@@ -241,7 +246,7 @@ export async function render() {
     b.classList.toggle('is-on', on);
     b.setAttribute('aria-checked', on);
   });
-  root.querySelector('[data-eq]').addEventListener('click', async () => { haptic('light'); await openEqualizer(); syncEqState(); syncNoise(); });
+  root.querySelector('[data-eq]').addEventListener('click', async () => { haptic('light'); await openControlPanel(); syncEqState(); syncNoise(); });
   root.querySelector('[data-stories]').addEventListener('click', () => { haptic('light'); showStories(); });
   // ---------- favourites without a network ----------
   const offState = root.querySelector('[data-offline-state]');

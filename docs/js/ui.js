@@ -518,7 +518,7 @@ export async function trackMenu(track, context = null) {
   // the full player's menu: the track already plays, and the turntable's own switches join in
   if (context?.player) {
     actions.splice(2, 1);
-    actions.push({ icon: 'moon', label: context.player.sleep, run: 'sleep' }, { icon: 'speed', label: context.player.sound, run: 'sound' });
+    actions.push({ icon: 'moon', label: context.player.sleep, run: 'sleep' });
   }
   if (context?.playlistId) actions.push({ icon: 'trash', label: t('menu_remove'), run: 'remove', danger: true });
   const head = h(`<div class="sheet__track">${cover(track.cover)}<div><div class="track__title">${esc(track.title)}</div><div class="track__artist">${esc(track.artist)}</div></div></div>`);
@@ -538,7 +538,7 @@ export async function trackMenu(track, context = null) {
       case 'next': player.playNext(track); toast(t('toast_next'), 'next'); break;
       case 'artist': await openArtist(track); break;
       case 'send': await api.send(track); toast(t('toast_sending'), 'send'); break;
-      case 'sleep': case 'sound': return actions[i].run; // the player handles its own switches
+      case 'sleep': return actions[i].run; // the player handles its own switches
       case 'remove':
         await api.removeFromPlaylist(context.playlistId, track.id);
         invalidatePlaylists();

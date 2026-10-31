@@ -321,6 +321,7 @@ body.player-open .eq i { animation-play-state: paused; } /* hidden under the ful
 .artist__fav.is-on { color: var(--accent-text); border-color: var(--accent-text); }
 .artist__fav.is-on .ic { animation: like-pop .3s var(--ease); }
 .tile:active { opacity: .88; }
+.tile.is-opening { opacity: .88; transform: scale(.985); transition: transform .5s var(--ease), opacity .5s var(--ease); pointer-events: none; }
 
 .playlists { display: flex; flex-direction: column; }
 .pl-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; text-align: left; width: 100%; }
@@ -453,26 +454,35 @@ body.player-open .mini { opacity: 0; pointer-events: none; }
 .group__chev { width: 20px; height: 20px; color: var(--text-3); }
 .eqp { margin: 2px 0 6px; padding: 14px 14px 16px; background: var(--surface); border: 3px double var(--line); border-radius: var(--r-md); }
 .eqp__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-.eqp__title { font: 600 19px/1 var(--font-serif); font-variant: small-caps; letter-spacing: .06em; }
+.eqp__title { font: 600 19px/1 var(--font-serif); font-variant: small-caps; letter-spacing: .06em; margin-bottom: 2px; }
+.eqp__sub { font: 600 12px/1 var(--font-serif); font-variant: small-caps; letter-spacing: .1em; color: var(--text-2); text-transform: none; }
+.eqp__eq { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
+.eqp .fx__label { margin: 14px 0 8px; }
+.eqp .fx__label:first-of-type { margin-top: 12px; }
 .eqp__power { display: flex; align-items: center; gap: 8px; font: 600 12px/1 var(--font-serif); font-variant: small-caps; letter-spacing: .06em; color: var(--text-2); }
 .eqp__curve { display: block; width: 100%; height: 64px; margin: 4px 0 8px; overflow: visible; }
 .eqp__zero { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 4; fill: none; vector-effect: non-scaling-stroke; }
 .eqp__line { stroke: var(--accent-text); stroke-width: 2; fill: none; stroke-linejoin: round; vector-effect: non-scaling-stroke; transition: stroke .3s var(--ease-io); }
 .eqp.is-off .eqp__line { stroke: var(--text-3); }
 .eqp__faders { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
-.fader { display: flex; flex-direction: column; align-items: center; gap: 6px; --v: 0; }
+.fader { display: flex; flex-direction: column; align-items: center; gap: 6px; --v: 0; --h: 168px; }
 .fader__db { font: 500 12px/1 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--text-2); min-height: 12px; }
-.fader__track { position: relative; width: 44px; height: 168px; touch-action: none; cursor: ns-resize; outline-offset: 4px; }
+.fader__track { position: relative; width: 44px; height: var(--h); touch-action: none; cursor: ns-resize; outline-offset: 4px; }
 .fader__ticks { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
 .fader__ticks line { stroke: var(--text-3); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .fader__ticks line.zero { stroke: var(--text-2); stroke-width: 1.5; }
 .fader__slot { position: absolute; left: 50%; top: 8px; bottom: 8px; width: 4px; margin-left: -2px; border-radius: 2px; background: var(--text); opacity: .85; }
 /* the cap sits at --v (-1 .. 1): +12 dB at the top, -12 dB at the bottom */
 .fader__cap { position: absolute; left: 50%; top: 50%; width: 30px; height: 18px; margin: -9px 0 0 -15px; border-radius: 4px; background: var(--accent);
-  box-shadow: 0 2px 0 var(--accent-press); transform: translateY(calc(var(--v) * -75px)); transition: transform .12s var(--ease-io); }
+  box-shadow: 0 2px 0 var(--accent-press); transform: translateY(calc(var(--v) * (var(--h) / -2 + 9px))); transition: transform .12s var(--ease-io); }
 .fader__cap::before, .fader__cap::after { content: ''; position: absolute; left: 6px; right: 6px; height: 1px; background: rgba(255, 255, 255, .55); }
 .fader__cap::before { top: 6px; } .fader__cap::after { bottom: 6px; }
-.fader.is-drag .fader__cap { transition: none; transform: translateY(calc(var(--v) * -75px)) scale(1.08); }
+.fader.is-drag .fader__cap { transition: none; transform: translateY(calc(var(--v) * (var(--h) / -2 + 9px))) scale(1.08); }
+
+/* the control panel holds more than the equalizer did: a taller sheet and a more compact equalizer */
+.sheet--panel .sheet__panel { max-height: 90vh; }
+.sheet--panel .fader { --h: 128px; }
+.sheet--panel .eqp__curve { height: 44px; margin: 2px 0 4px; }
 .fader__label { font: 600 12.5px/1 var(--font-serif); font-variant: small-caps; letter-spacing: .04em; color: var(--text-2); }
 .eqp.is-off .fader__cap { background: var(--text-3); box-shadow: 0 2px 0 var(--text-2); }
 .eqp__presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }

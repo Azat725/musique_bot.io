@@ -1,7 +1,9 @@
 import { api } from '../api.js';
 import { plural, t } from '../i18n.js';
-import { favArtists, getPlaylists, invalidatePlaylists, likes, loadFavArtists, settings, updateSettings } from '../store.js';
+import { favArtists, getPlaylists, invalidatePlaylists, likedList, likes, loadFavArtists, settings, updateSettings } from '../store.js';
 import { EASE_IO, esc, h, haptic, icon, loader, promptName, reducedMotion, sheet, thumb, toast } from '../ui.js';
+
+const OPEN_DELAY_MS = 520; // how long the tile's icon plays before its list opens
 
 // playlist ids grow with creation time, so the id stands in for the date added
 const SORTS = {
@@ -36,8 +38,22 @@ export async function render(_, nav) {
     </section>
   </div>`);
 
-  root.querySelector('[data-go="likes"]').addEventListener('click', () => nav.push('playlist', { kind: 'likes', title: t('lib_likes') }));
-  root.querySelector('[data-go="history"]').addEventListener('click', () => nav.push('playlist', { kind: 'history', title: t('lib_history') }));
+  // Favourites and History open a beat after the tap, so the icon's little motion (the heart beating, the clock
+  // running back) is seen before the screen moves; what the list needs is loaded meanwhile
+  let opening = false;
+  const openSlowly = (tile, params, warm) => tile.addEventListener('click', () => {
+    if (opening) return;
+    opening = true;
+    tile.classList.add('is-opening');
+    warm?.().catch(() => {});
+    setTimeout(() => {
+      opening = false;
+      tile.classList.remove('is-opening');
+      nav.push('playlist', params);
+    }, reducedMotion() ? 0 : OPEN_DELAY_MS);
+  });
+  openSlowly(root.querySelector('[data-go="likes"]'), { kind: 'likes', title: t('lib_likes') }, likedList);
+  openSlowly(root.querySelector('[data-go="history"]'), { kind: 'history', title: t('lib_history') }, () => api.history());
   root.querySelector('[data-go="artists"]').addEventListener('click', () => nav.push('artists'));
   const artistsSub = root.querySelector('[data-go="artists"] .tile__sub');
   const syncArtists = () => { artistsSub.textContent = t('artists_count', { n: favArtists.size }); };
