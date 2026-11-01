@@ -1,5 +1,5 @@
 import { api } from './api.js';
-import { heard, onSettings, settings } from './store.js';
+import { heard, onSettings, phonoMode, settings } from './store.js';
 import { audioUrl as savedUrl, isSaved } from './offline.js';
 
 export const RATES = { slow: 0.85, normal: 1, fast: 45 / (100 / 3) }; // fast = 1.35: a 45 rpm record played at 45 instead of 33⅓
@@ -100,6 +100,8 @@ class Player extends EventTarget {
   }
 
   playQueue(tracks, start = 0, { shuffle = false } = {}) {
+    // a player may refuse a track (the phonograph plays only its cylinders): app.js sets the guard
+    if (this.guard && !this.guard(tracks, start)) return;
     this.queue = tracks.slice();
     this.original = null;
     this.index = start;
@@ -163,6 +165,7 @@ class Player extends EventTarget {
   _fxFor(track) {
     // without a network a saved track plays as it was saved: the server cannot render effects now
     if (track.id === this._plainFor || (!navigator.onLine && isSaved(track.id))) return PLAIN;
+    if (phonoMode()) return 'phono'; // Edison's phonograph: narrow, crackling, unsteady, rendered by the server
     return chosenFx();
   }
 

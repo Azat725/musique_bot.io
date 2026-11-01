@@ -1,15 +1,15 @@
 import { api, inTelegram } from './api.js';
 import { setLang, setTape, t } from './i18n.js';
 import { player } from './player.js';
-import { likes, loadHeard, loadLikes, onSettings, settings, syncCloudSettings, tapeMode, toggleLike } from './store.js';
-import { EASE_IO, cover, esc, fitMarquee, h, haptic, icon, loader, markPlaying, openArtist, reducedMotion, tg, toast } from './ui.js';
+import { likes, loadHeard, loadLikes, onSettings, phonoMode, settings, syncCloudSettings, tapeMode, toggleLike, updateSettings } from './store.js';
+import { EASE_IO, confirmSheet, cover, esc, fitMarquee, h, haptic, icon, loader, markPlaying, openArtist, reducedMotion, tg, toast } from './ui.js';
 import { initFx } from './graph.js';
 import { initOffline, syncOffline } from './offline.js';
 import { initSync } from './sync.js';
-import { syncVinylNoise, tapeKey } from './sfx.js';
+import { syncVinylNoise } from './sfx.js';
 import { maybeShowStories } from './stories.js';
 import { CLASSIC_BG, THEMES } from './themes.js';
-import { closePlayer, initFullPlayer, isPlayerOpen, openPlayer, translate as translatePlayer } from './vinyl.js';
+import { closePlayer, deviceKey, initFullPlayer, isPlayerOpen, openPlayer, translate as translatePlayer } from './vinyl.js';
 import * as artist from './views/artist.js';
 import * as artists from './views/artists.js';
 import * as home from './views/home.js';
@@ -49,13 +49,16 @@ function applyTheme() {
   else delete doc.dataset.vinyl;
   if (settings.deckColor && settings.deckColor !== 'walnut') doc.dataset.deck = settings.deckColor;
   else delete doc.dataset.deck;
-  // the cassette view: CSS anywhere in the app can tell (covers, loaders, the launch screen)
-  if (tapeMode()) doc.dataset.player = 'cassette';
-  else delete doc.dataset.player;
+  // the player, and its family: CSS anywhere in the app can tell (covers, loaders, the launch screen are tapes for the
+  // cassette deck and the reels)
+  doc.dataset.player = settings.playerMode;
+  if (tapeMode()) doc.dataset.family = 'tape';
+  else delete doc.dataset.family;
   if (settings.tapeColor && settings.tapeColor !== 'black') doc.dataset.tape = settings.tapeColor;
   else delete doc.dataset.tape;
   if (settings.recorderColor && settings.recorderColor !== 'silver') doc.dataset.recorder = settings.recorderColor;
   else delete doc.dataset.recorder;
+  doc.dataset.lid = settings.lidColor === 'silver' ? 'silver' : 'clear'; // the CD player's lid
   const color = custom ? custom[mode].bg : COLORS[mode];
   try {
     if (tg?.isVersionAtLeast?.('6.1')) { tg.setHeaderColor(color); tg.setBackgroundColor(color); }
@@ -308,7 +311,7 @@ function renderMini() {
 }
 
 mini.addEventListener('click', (e) => {
-  if (e.target.closest('[data-mini-play]')) { haptic('light'); tapeKey(player.playing ? 'pause' : 'play'); player.toggle(); return; }
+  if (e.target.closest('[data-mini-play]')) { haptic('light'); deviceKey(player.playing ? 'pause' : 'play'); player.toggle(); return; }
   if (e.target.closest('[data-mini-like]')) {
     haptic('light');
     toggleLike(player.current).then(() => document.dispatchEvent(new CustomEvent('likes-changed')), () => toast(t('toast_error'), 'error'));
@@ -320,6 +323,23 @@ mini.addEventListener('click', (e) => {
   haptic('light');
   openPlayer();
 });
+
+// the phonograph plays only its own cylinders: anything else asks to change the player first
+let cylinderIds = null;
+export function cylinders() {
+  return api.phonograph().then(({ tracks }) => { cylinderIds = new Set(tracks.map((tr) => tr.id)); return tracks; });
+}
+player.guard = (tracks, start) => {
+  if (!phonoMode()) return true;
+  if (!cylinderIds) { cylinders().catch(() => {}); return true; } // not known yet: no reason to refuse
+  if (cylinderIds.has(tracks[start]?.id)) return true;
+  confirmSheet({ title: t('phono_only_title'), text: t('phono_only_text'), action: t('phono_switch'), icon: 'pm_record' }).then((yes) => {
+    if (!yes) return;
+    updateSettings({ playerMode: 'record' });
+    player.playQueue(tracks, start);
+  });
+  return false;
+};
 
 player.addEventListener('track', () => { renderMini(); markPlaying(main); });
 document.addEventListener('likes-changed', renderMini);
@@ -376,16 +396,16 @@ function noServer() {
   nav.hidden = true;
 }
 
-let shownLang = null, shownTape = null;
+let shownLang = null, shownMode = null; // a new player brings other icons, texts and (the phonograph) its own shelf
 
 onSettings(() => {
   applyTheme(); // CSS-only, no re-render needed
   noiseOn();
-  if (settings.lang === shownLang && tapeMode() === shownTape) return;
+  if (settings.lang === shownLang && settings.playerMode === shownMode) return;
   shownLang = settings.lang;
-  shownTape = tapeMode();
+  shownMode = settings.playerMode;
   setLang(settings.lang);
-  setTape(shownTape); // records or cassettes: icons, texts and pictures all change
+  setTape(tapeMode()); // records or tapes: icons, texts and pictures all change
   translatePlayer();
   renderNav(true);
   // re-render views in the new language (or with the new pictures), keeping navigation and the place on the screen
@@ -407,9 +427,9 @@ async function boot() {
   if (me) { me.catch(() => {}); api.preloadHome(); }
   await syncCloudSettings();
   shownLang = settings.lang;
-  shownTape = tapeMode();
+  shownMode = settings.playerMode;
   setLang(settings.lang);
-  setTape(shownTape);
+  setTape(tapeMode());
   applyTheme();
   tg?.onEvent?.('themeChanged', applyTheme);
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', applyTheme);

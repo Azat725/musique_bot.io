@@ -1,7 +1,8 @@
 import { api, inTelegram } from '../api.js';
 import { openLogin } from '../login.js';
 import { t } from '../i18n.js';
-import { heard, settings, tapeMode, updateSettings } from '../store.js';
+import { heard, settings, updateSettings } from '../store.js';
+import { PLAYER_MODES } from '../devices/index.js';
 import { openControlPanel } from '../eq.js';
 import { showStories } from '../stories.js';
 import { CLASSIC_SWATCH, DECK_COLORS, RECORDER_COLORS, RECORD_COLORS, TAPE_COLORS, THEMES } from '../themes.js';
@@ -45,6 +46,52 @@ function tapeRows() {
     </div>
   </div>`;
   return row('custom_tape', 'tapeColor', TAPE_COLORS, 'tape', 'tc_') + row('custom_recorder', 'recorderColor', RECORDER_COLORS, 'recorder', 'rcd_');
+}
+
+/** The players as cards, like the colour themes: a tap switches at once (the screen re-renders with the new one). */
+function openPlayerPicker() {
+  const list = h(`<div class="themes">${PLAYER_MODES.map((m) => `
+    <button class="theme-card player-card ${m === settings.playerMode ? 'is-on' : ''}" data-mode="${m}">
+      <span class="player-card__icon">${icon('pm_' + m)}</span>
+      <span class="theme-card__text"><span class="theme-card__name">${esc(t('player_' + m))}</span>
+        <span class="theme-card__desc">${esc(t('pm_desc_' + m))}</span></span>${icon('check', 'theme-card__check')}
+    </button>`).join('')}</div>`);
+  list.addEventListener('click', (e) => {
+    const card = e.target.closest('[data-mode]');
+    if (!card) return;
+    haptic('select');
+    list.querySelectorAll('.theme-card').forEach((c) => c.classList.toggle('is-on', c === card));
+    updateSettings({ playerMode: card.dataset.mode });
+  });
+  return sheet({ title: esc(t('custom_player')), content: list, done: true });
+}
+
+/** The colours that belong to the chosen player: the record's (and the turntable's), the cassette's and its deck's,
+ *  the CD player's lid; the reels and the phonograph come as they are. */
+function colourRows() {
+  const mode = settings.playerMode;
+  if (mode === 'cassette') return tapeRows();
+  if (mode === 'cd') {
+    return `<div class="group__item group__item--stack">
+      <span class="group__name">${esc(t('custom_lid'))}</span>
+      ${segmented('lidColor', [['clear', t('lid_clear')], ['silver', t('lid_silver')]], settings.lidColor)}
+    </div>`;
+  }
+  if (mode === 'reel' || mode === 'phonograph') return '';
+  return `<div class="group__item group__item--stack">
+        <span><span class="group__name">${esc(t('custom_record'))}</span><span class="group__hint" data-record-state></span></span>
+        <div class="swatches" role="radiogroup" aria-label="${esc(t('custom_record'))}">
+          ${Object.entries(RECORD_COLORS).map(([k, c]) => `<button class="swatch ${k === settings.recordColor ? 'is-on' : ''}" role="radio"
+            aria-checked="${k === settings.recordColor}" aria-label="${esc(t('rc_' + k))}" data-color="${k}" style="--c:${c}"></button>`).join('')}
+        </div>
+      </div>
+      <div class="group__item group__item--stack" data-deck-row>
+        <span><span class="group__name">${esc(t('custom_deck'))}</span><span class="group__hint" data-deck-state></span></span>
+        <div class="swatches swatches--deck" role="radiogroup" aria-label="${esc(t('custom_deck'))}">
+          ${Object.entries(DECK_COLORS).map(([k, [body, plate]]) => `<button class="swatch swatch--deck ${k === settings.deckColor ? 'is-on' : ''}" role="radio"
+            aria-checked="${k === settings.deckColor}" aria-label="${esc(t('dc_' + k))}" data-deck="${k}" style="--c:${body};--c2:${plate}"></button>`).join('')}
+        </div>
+      </div>`;
 }
 
 function segmented(name, options, value) {
@@ -99,24 +146,15 @@ export async function render() {
         <span class="group__name">${esc(t('settings_theme'))}</span>
         ${segmented('theme', [['system', t('theme_system')], ['light', t('theme_light')], ['dark', t('theme_dark')]], settings.theme)}
       </div>
-      <div class="group__item group__item--stack">
-        <span class="group__name">${esc(t('custom_player'))}</span>
-        ${segmented('playerMode', [['record', t('player_record')], ['turntable', t('player_turntable')], ['cassette', t('player_cassette')]], settings.playerMode)}
-      </div>
-      ${tapeMode() ? tapeRows() : `<div class="group__item group__item--stack">
-        <span><span class="group__name">${esc(t('custom_record'))}</span><span class="group__hint" data-record-state></span></span>
-        <div class="swatches" role="radiogroup" aria-label="${esc(t('custom_record'))}">
-          ${Object.entries(RECORD_COLORS).map(([k, c]) => `<button class="swatch ${k === settings.recordColor ? 'is-on' : ''}" role="radio"
-            aria-checked="${k === settings.recordColor}" aria-label="${esc(t('rc_' + k))}" data-color="${k}" style="--c:${c}"></button>`).join('')}
-        </div>
-      </div>
-      <div class="group__item group__item--stack" data-deck-row>
-        <span><span class="group__name">${esc(t('custom_deck'))}</span><span class="group__hint" data-deck-state></span></span>
-        <div class="swatches swatches--deck" role="radiogroup" aria-label="${esc(t('custom_deck'))}">
-          ${Object.entries(DECK_COLORS).map(([k, [body, plate]]) => `<button class="swatch swatch--deck ${k === settings.deckColor ? 'is-on' : ''}" role="radio"
-            aria-checked="${k === settings.deckColor}" aria-label="${esc(t('dc_' + k))}" data-deck="${k}" style="--c:${body};--c2:${plate}"></button>`).join('')}
-        </div>
-      </div>`}
+      <button class="group__item" data-player-pick>
+        <span class="theme-row"><span class="theme-dots player-dot">${icon('pm_' + settings.playerMode)}</span>
+          <span><span class="group__name">${esc(t('custom_player'))}</span><span class="group__hint">${esc(t('player_' + settings.playerMode))}</span></span></span>${icon('right', 'group__chev')}
+      </button>
+      <label class="group__item">
+        <span><span class="group__name">${esc(t('custom_bare'))}</span><span class="group__hint">${esc(t('custom_bare_hint'))}</span></span>
+        <input type="checkbox" class="switch" data-bare ${settings.bareDeck ? 'checked' : ''}>
+      </label>
+      ${colourRows()}
       <div class="group__item group__item--stack">
         <span><span class="group__name">${esc(t('custom_idle'))}</span><span class="group__hint">${esc(t('custom_idle_hint'))}</span></span>
         ${segmented('idleDelay', [['0', t('idle_off')], ...[10, 20, 40, 60].map((n) => [String(n), t('idle_s', { n })])], String(settings.idleDelay))}
@@ -169,7 +207,7 @@ export async function render() {
           ${[['search', 'about_f_search'], ['vinyl', 'about_f_vinyl'], ['shelf', 'about_f_library'], ['eq', 'about_f_sound'], ['palette', 'about_f_custom'], ['send', 'about_f_chat']]
             .map(([ic, key]) => `<li>${icon(ic)}<span>${esc(t(key))}</span></li>`).join('')}
         </ul>
-        ${tapeMode() ? `<p class="about__credit">${esc(t('about_sfx'))}</p>` : ''}
+        ${settings.playerMode === 'cassette' ? `<p class="about__credit">${esc(t('about_sfx'))}</p>` : ''}
       </div>
       <button class="group__item" data-stories>
         <span class="group__name">${esc(t('about_stories'))}</span>${icon('right', 'group__chev')}
@@ -210,6 +248,11 @@ export async function render() {
   root.querySelector('[data-sounds]').addEventListener('change', (e) => {
     haptic('select');
     updateSettings({ sounds: e.target.checked });
+  });
+  root.querySelector('[data-player-pick]').addEventListener('click', () => { haptic('light'); openPlayerPicker(); });
+  root.querySelector('[data-bare]').addEventListener('change', (e) => {
+    haptic('select');
+    updateSettings({ bareDeck: e.target.checked });
   });
   root.querySelector('[data-sleeve]').addEventListener('change', (e) => {
     haptic('select');

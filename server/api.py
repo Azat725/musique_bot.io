@@ -1,5 +1,6 @@
 """HTTP API for the Mini App."""
 import asyncio
+import hashlib
 import json
 import logging
 import secrets
@@ -11,7 +12,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import auth, config, db, importer, lyrics, music, weblogin
+from . import auth, config, db, importer, lyrics, music, sources, weblogin
 
 log = logging.getLogger("musique.api")
 
@@ -195,6 +196,33 @@ async def login_poll(code: str, user=User):
 async def home(user=User):
     data = await music.home()
     return {**data, "recent": await db.history(user["id"], 12)}
+
+
+# ---------- the phonograph's shelf: 50 cylinders and early records, 1897–1925 (public domain, archive.org) ----------
+
+_PHONO: list[dict] = []
+
+
+async def _phonograph() -> list[dict]:
+    """The shelf, read once; the archive.org files are registered as sources (ia.<key>) so they play like any track."""
+    if not _PHONO:
+        rows = json.loads((config.ROOT / "phonograph.json").read_text(encoding="utf-8"))
+        refs = []
+        for r in rows:
+            tid = "ia." + hashlib.sha1(r["ref"].encode()).hexdigest()[:16]
+            refs.append((tid, r["ref"]))
+            _PHONO.append({**r, "id": tid})
+        await db.save_sources(refs)
+        sources.remember_refs(refs)
+    return _PHONO
+
+
+@app.get("/api/phonograph")
+async def phonograph(user=User):
+    lang = "ru" if (user.get("language_code") or "").startswith(("ru", "uk", "be", "kk")) else "en"
+    return {"tracks": [{"id": r["id"], "title": r["title"], "artist": r["artist"], "duration": r["duration"], "cover": r["cover"],
+                        "artist_id": "", "year": r["year"], "country": r["country"][lang], "genre": r["genre"][lang]}
+                       for r in await _phonograph()]}
 
 
 @app.get("/api/recommend")

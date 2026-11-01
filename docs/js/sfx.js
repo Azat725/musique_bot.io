@@ -1,4 +1,4 @@
-import { settings, tapeMode } from './store.js';
+import { phonoMode, settings, tapeMode } from './store.js';
 
 /** Sound effects through Web Audio, so they mix with the music instead of interrupting it.
  *  The context is created lazily (only with sounds on) and suspended whenever nothing is playing:
@@ -22,7 +22,8 @@ function context() {
   return ctx;
 }
 
-const wanted = () => settings.sounds || settings.vinylNoise > 0;
+// the phonograph's crackle is part of its sound, not an effect: it plays even with the sounds switched off
+const wanted = () => settings.sounds || settings.vinylNoise > 0 || phonoMode();
 
 /** Call from a user gesture: iOS only unlocks audio there, so a silent sample is played right away. */
 export function initSfx() {
@@ -144,17 +145,19 @@ export function startSpinNoise(volume = 1, background = false) {
 const NOISE_LEVELS = [0, 0.45, 0.8, 1.3, 0.16];
 let bgNoise = null; // { level, stop }
 
-/** Keep the background crackle (or the tape hiss, in the cassette view) in step with playback and the chosen level. */
+/** Keep the noise under the music in step with playback and the chosen level: a record's crackle, a tape's hiss
+ *  (cassette and reels), nothing from a CD, and always the wax crackle of the phonograph, whatever the setting. */
 export function syncVinylNoise(playing) {
-  const level = playing ? NOISE_LEVELS[settings.vinylNoise] || 0 : 0;
-  const tape = tapeMode();
-  if (bgNoise && bgNoise.level === level && bgNoise.tape === tape) return;
+  const kind = phonoMode() ? 'phono' : tapeMode() ? 'tape' : settings.playerMode === 'cd' ? 'none' : 'vinyl';
+  const level = !playing || kind === 'none' ? 0 : kind === 'phono' ? 1 : NOISE_LEVELS[settings.vinylNoise] || 0;
+  if (bgNoise && bgNoise.level === level && bgNoise.kind === kind) return;
   bgNoise?.stop();
-  bgNoise = level ? { level, tape, stop: tape ? startTapeNoise(level, true) : startSpinNoise(level, true) } : null;
+  const start = { phono: startPhonoNoise, tape: startTapeNoise, vinyl: startSpinNoise }[kind];
+  bgNoise = level ? { level, kind, stop: start(level, true) } : null;
 }
 
 // the first tap of a session unlocks audio for the background noise even if the player is never opened
-document.addEventListener('pointerdown', () => { if (settings.vinylNoise > 0) initSfx(); }, { once: true, capture: true });
+document.addEventListener('pointerdown', () => { if (settings.vinylNoise > 0 || phonoMode()) initSfx(); }, { once: true, capture: true });
 
 /** A hand on the record: noise whose pitch and loudness follow the speed of the finger. */
 export function startScratch() {
@@ -346,8 +349,154 @@ export function tapeWind(forward = true) {
   setTimeout(() => playSfx('tape-stop', 0.45), 520);
 }
 
+// ---------- small synthesised parts for the other players ----------
 
-/** A key of the tape deck clicks: 'play', 'pause', 'stop' (only in the cassette view). */
-export function tapeKey(name) {
-  if (tapeMode()) playSfx('tape-' + name, 0.6);
+/** A burst of filtered noise: the body of most mechanical sounds. */
+function burst(t, { freq, q = 1, dur, gain, type = 'bandpass' }) {
+  const src = noise();
+  const f = ctx.createBiquadFilter();
+  f.type = type; f.frequency.value = freq; f.Q.value = q;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(gain, t);
+  g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+  src.connect(f).connect(g).connect(ctx.destination);
+  src.start(t, Math.random());
+  src.stop(t + dur + 0.02);
+  return src;
+}
+
+/** A short tone that dies away. */
+function tone(t, { freq, dur, gain, type = 'sine', to = null }) {
+  const o = ctx.createOscillator();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0008, t);
+  g.gain.linearRampToValueAtTime(gain, t + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+  o.connect(g).connect(ctx.destination);
+  o.start(t);
+  o.stop(t + dur + 0.02);
+  return o;
+}
+
+/** One sound made of parts started now; the context is held until the last part ends. */
+function play(parts, total) {
+  if (!hold()) return;
+  const t = ctx.currentTime;
+  parts(t);
+  setTimeout(release, total * 1000 + 60);
+}
+
+// reel-to-reel: the metal toggle, and the motor
+export function clack() {
+  play((t) => { burst(t, { freq: 2600, q: 1.4, dur: 0.05, gain: 0.5 }); tone(t, { freq: 140, dur: 0.07, gain: 0.25, type: 'triangle' }); }, 0.1);
+}
+
+/** The capstan motor spinning up: a low hum rising to speed, and the click of the pinch roller. */
+export function motorStart() {
+  play((t) => {
+    tone(t, { freq: 30, to: 100, dur: 0.9, gain: 0.12, type: 'sawtooth' });
+    burst(t, { freq: 400, q: 0.8, dur: 0.9, gain: 0.08 });
+    burst(t + 0.85, { freq: 3000, q: 1.6, dur: 0.04, gain: 0.35 });
+  }, 1);
+}
+
+export function motorStop() {
+  play((t) => {
+    burst(t, { freq: 2600, q: 1.4, dur: 0.04, gain: 0.35 });
+    tone(t, { freq: 100, to: 28, dur: 0.7, gain: 0.1, type: 'sawtooth' });
+  }, 0.75);
+}
+
+// portable CD player: the button beep, the lid, the disc spinning up, and the digital whirr of seeking
+export function beep(freq = 2400) {
+  play((t) => tone(t, { freq, dur: 0.07, gain: 0.08, type: 'square' }), 0.1);
+}
+
+export function lidClick() {
+  play((t) => { burst(t, { freq: 3500, q: 2, dur: 0.035, gain: 0.45 }); burst(t + 0.09, { freq: 1800, q: 1.2, dur: 0.05, gain: 0.3 }); }, 0.2);
+}
+
+export function spinUp() {
+  play((t) => {
+    tone(t, { freq: 180, to: 1900, dur: 0.75, gain: 0.035, type: 'sine' });
+    burst(t, { freq: 900, q: 3, dur: 0.75, gain: 0.04 });
+    burst(t + 0.05, { freq: 5000, q: 4, dur: 0.02, gain: 0.12 }); // the laser sled ticking
+    burst(t + 0.2, { freq: 5000, q: 4, dur: 0.02, gain: 0.1 });
+  }, 0.8);
+}
+
+/** Holding a CD player's search key: a quick ticking, faster with speed. Same interface as startScratch(). */
+export function startCdSeek() {
+  if (!hold()) return null;
+  let speed = 0, done = false, timer = 0;
+  const tick = () => {
+    if (done) return;
+    if (speed > 0.05) burst(ctx.currentTime, { freq: 4200, q: 5, dur: 0.018, gain: 0.08 });
+    timer = setTimeout(tick, speed > 0.05 ? Math.max(45, 160 - speed * 60) : 120);
+  };
+  tick();
+  return {
+    update(v) { speed = Math.min(Math.abs(v), 2); },
+    stop() { if (done) return; done = true; clearTimeout(timer); release(); },
+  };
+}
+
+// the phonograph: the crank being wound, the stylus put down and lifted, and the noise of wax
+export function crank() {
+  play((t) => {
+    for (let i = 0; i < 9; i++) burst(t + i * 0.065, { freq: 1500 + (i % 2) * 400, q: 3, dur: 0.03, gain: 0.22 });
+    tone(t, { freq: 70, to: 110, dur: 0.6, gain: 0.06, type: 'triangle' });
+  }, 0.7);
+}
+
+export function needleDrop() {
+  play((t) => { tone(t, { freq: 90, dur: 0.12, gain: 0.3, type: 'triangle' }); burst(t, { freq: 1200, q: 0.7, dur: 0.25, gain: 0.25 }); }, 0.3);
+}
+
+export function needleLift() {
+  play((t) => burst(t, { freq: 1800, q: 1, dur: 0.12, gain: 0.2 }), 0.15);
+}
+
+/** The surface of a wax cylinder: heavy hiss in a narrow band, dense crackle, the rumble of the mandrel and the
+ *  governor's whirr. Returns stop(). Always under the phonograph's music (syncVinylNoise). */
+export function startPhonoNoise(volume = 1, background = false) {
+  if (!hold(background)) return () => {};
+  const t = ctx.currentTime;
+  const out = ctx.createGain();
+  out.gain.setValueAtTime(0, t);
+  out.gain.linearRampToValueAtTime(volume, t + (background ? 1 : 0.3));
+  out.connect(ctx.destination);
+  const hiss = noise();
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = 2200; bp.Q.value = 0.9;
+  const hissGain = ctx.createGain(); hissGain.gain.value = 0.05;
+  hiss.connect(bp).connect(hissGain).connect(out);
+  const dust = crackles();
+  dust.playbackRate.value = 1.8; // twice the crackle of a record
+  const dbp = ctx.createBiquadFilter();
+  dbp.type = 'bandpass'; dbp.frequency.value = 1600; dbp.Q.value = 0.6;
+  const dustGain = ctx.createGain(); dustGain.gain.value = 0.5;
+  dust.connect(dbp).connect(dustGain).connect(out);
+  const whirr = ctx.createOscillator(); // the governor balls spinning
+  whirr.type = 'triangle'; whirr.frequency.value = 118;
+  const wg = ctx.createGain(); wg.gain.value = 0.012;
+  const wob = ctx.createOscillator(); wob.frequency.value = 2.7;
+  const wobDepth = ctx.createGain(); wobDepth.gain.value = 0.008;
+  wob.connect(wobDepth).connect(wg.gain);
+  whirr.connect(wg).connect(out);
+  const sources = [hiss, dust, whirr, wob];
+  sources.forEach((src) => src.start(t, src === hiss || src === dust ? Math.random() : 0));
+  let stopped = false;
+  return () => {
+    if (stopped) return;
+    stopped = true;
+    const now = ctx.currentTime;
+    out.gain.cancelScheduledValues(now);
+    out.gain.setValueAtTime(out.gain.value, now);
+    out.gain.linearRampToValueAtTime(0, now + 0.4);
+    sources.forEach((src) => src.stop(now + 0.45));
+    whirr.onended = release;
+  };
 }

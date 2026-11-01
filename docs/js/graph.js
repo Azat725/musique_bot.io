@@ -1,6 +1,6 @@
 import { t } from './i18n.js';
 import { player } from './player.js';
-import { settings, updateSettings } from './store.js';
+import { onSettings, phonoMode, settings, updateSettings } from './store.js';
 import { toast } from './ui.js';
 
 /** The Web Audio graph of the equalizer. A media element can be routed only once, so it lives here.
@@ -66,7 +66,8 @@ function syncContext() {
 /** Make the filters match the settings. Safe to call at any time. */
 export function applyFx() {
   if (!filters) return;
-  const { on, gains } = settings.eq;
+  const { gains } = settings.eq;
+  const on = settings.eq.on && !phonoMode(); // the phonograph sounds as it is: no equalizer
   filters.forEach((f, i) => f.gain.setTargetAtTime(on ? gains[i] : 0, ctx.currentTime, 0.04));
 }
 
@@ -81,6 +82,8 @@ export function enableFx() {
 }
 
 /** On launch with the EQ left on: route on the first tap (iOS only starts audio inside a gesture). */
+onSettings(() => applyFx()); // the player changed (the phonograph sets the equalizer aside), or the bands did
+
 export function initFx() {
   if (settings.eq.on) document.addEventListener('pointerdown', () => { if (connect()) applyFx(); }, { once: true, capture: true });
 }

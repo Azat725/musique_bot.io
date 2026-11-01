@@ -1,0 +1,238 @@
+/* The players beyond the record (js/devices/*.js), "only the machine" mode, and the parts every device shares.
+   Every deck is placed in units of --size (S), the width of its medium, around the centre of the stage. Flat colours only. */
+
+/* ---------- shared ---------- */
+
+.dev { display: contents; } /* each device's deck, in one wrapper per device: vinyl.js finds its speed label and printing */
+.dk { position: absolute; inset: 0; display: none; pointer-events: none; }
+.dk > * { position: absolute; }
+.fp.is-reel .dk--reel, .fp.is-cd .dk--cd, .fp.is-phonograph .dk--phonograph { display: block; }
+/* a device's own keys work: play, pause, a tap on ◀◀ / ▶▶ changes the track, holding one winds (vinyl.js keyDown) */
+.dev [data-key] { pointer-events: auto; cursor: pointer; touch-action: none; -webkit-tap-highlight-color: transparent; }
+.rec__key.is-down { transform: translateY(calc(var(--size) * .012)); box-shadow: 0 calc(var(--size) * .002) 0 var(--rc-key-down); background: var(--rc-key-down); }
+
+/* the heart that flashes over the device after a double tap */
+.fp__heart { position: absolute; left: 50%; top: 50%; z-index: 6; width: 104px; height: 104px; color: var(--accent); opacity: 0; pointer-events: none;
+  transform: translate(-50%, -50%); }
+.fp__heart .ic { width: 100%; height: 100%; }
+.fp__heart.is-off { color: var(--text-2); }
+
+/* the title printed on the record's label, for when nothing else on screen names the track */
+.record__print { display: none; }
+.fp.is-bare .record__print { display: block; position: absolute; left: 22%; right: 22%; top: 71%; text-align: center; pointer-events: none;
+  font: 500 calc(var(--size) * .028)/1.25 var(--font-sans); color: rgba(255, 245, 230, .82); text-shadow: 0 0 2px rgba(0, 0, 0, .7);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.record__print b { display: block; font: 600 calc(var(--size) * .036)/1.2 var(--font-serif); overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- only the machine: no title, bar or buttons; the device grows into the room ---------- */
+.fp.is-bare :is(.fp__info, .progress, .controls) { display: none; }
+.fp.is-bare { --size: min(88vw, 54vh, 460px); }
+.fp.is-bare.is-turntable { --size: min(62vw, 46vh, 340px); }
+.fp.is-bare.is-cassette { --size: min(72vw, 46vh, 380px); }
+.fp.is-bare .fp__extra { margin-top: auto; }
+
+/* ---------- the reels ----------
+   The medium is the pair of reels (S × .5 S), its top .55 S above the stage's centre; the deck is 1.16 S × 1.2 S around it. */
+.fp.is-reel { --size: min(76vw, 34vh, 340px); }
+.fp.is-bare.is-reel { --size: min(80vw, 48vh, 400px); }
+.fp.is-reel .fp__stage { min-height: calc(var(--size) * 1.2 + 16px); }
+.record.reel { inset: auto; left: calc(50% - var(--size) / 2); top: calc(50% - var(--size) * .55); margin: 0; height: calc(var(--size) * .5);
+  border-radius: 0; box-shadow: none; }
+:root[data-mode="dark"] .record.reel { box-shadow: none; }
+.reel__body { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.rl__flange { fill: #D3D6DA; stroke: #8E9298; stroke-width: .8; }
+.rl__hub { fill: #9EA2A8; }
+.rl__slot { fill: #3A3B3E; }
+.rl__spindle { fill: #2A2B2E; }
+.rl__pack { fill: #3B2A20; }
+.rl__tape { fill: none; stroke: #4A3426; stroke-width: 1.4; }
+.rl__reel { transform-box: fill-box; transform-origin: center; }
+.reel__tag { position: absolute; left: 50%; top: 92%; transform: translateX(-50%); max-width: 46%; padding: .2em .6em; border-radius: 2px;
+  background: #F2EBD8; color: #2A2220; font: italic 500 calc(var(--size) * .03)/1.15 var(--font-serif); text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; display: none; }
+.reel__tag small { display: block; font: 500 .8em/1.2 var(--font-sans); font-style: normal; opacity: .7; overflow: hidden; text-overflow: ellipsis; }
+.fp.is-bare .reel__tag { display: block; }
+
+.dk--reel::before { content: ''; position: absolute; left: 50%; top: 50%; width: calc(var(--size) * 1.16); height: calc(var(--size) * 1.2);
+  margin: calc(var(--size) * -.6) 0 0 calc(var(--size) * -.58); border-radius: 10px; background: #C5C8CC;
+  box-shadow: 0 16px 40px var(--shadow), inset 0 0 0 1px rgba(0, 0, 0, .15), inset 0 0 0 calc(var(--size) * .02) #B6B9BE; }
+.rl__heads { left: 50%; top: 50%; width: calc(var(--size) * .5); height: calc(var(--size) * .12); margin: calc(var(--size) * -.07) 0 0 calc(var(--size) * -.25);
+  border-radius: 5px; background: #2B2C2F; display: flex; align-items: flex-start; justify-content: center; gap: calc(var(--size) * .03); padding-top: 3px; }
+.rl__head { position: relative; width: calc(var(--size) * .045); height: calc(var(--size) * .045); border-radius: 2px; background: #9DA1A7; }
+.rl__guide { position: relative; width: calc(var(--size) * .03); height: calc(var(--size) * .03); border-radius: 50%; background: #E6E8EB; margin-top: 1px; }
+.rl__capstan { position: absolute; right: 8%; bottom: 14%; width: calc(var(--size) * .018); height: calc(var(--size) * .018); border-radius: 50%; background: #E6E8EB; }
+.rl__roller { position: absolute; right: 2%; bottom: 8%; width: calc(var(--size) * .04); height: calc(var(--size) * .04); border-radius: 50%; background: #1A1A1C;
+  box-shadow: 0 0 0 2px #55575B; }
+.rl__panel { left: 50%; top: 50%; width: calc(var(--size) * 1.02); height: calc(var(--size) * .24); margin: calc(var(--size) * .08) 0 0 calc(var(--size) * -.51);
+  border-radius: 6px; background: #2A2B2E; display: flex; align-items: center; justify-content: space-around; padding: 0 calc(var(--size) * .03); }
+.rl__counter { position: relative; display: flex; gap: 2px; padding: 3px; border-radius: 3px; background: #121214; }
+.rl__drum { width: calc(var(--size) * .06); height: calc(var(--size) * .085); overflow: hidden; border-radius: 2px; background: #F2EEE4; }
+.rl__digits { display: flex; flex-direction: column; transition: transform .35s var(--ease-io); }
+.rl__digits i { height: calc(var(--size) * .085); display: grid; place-items: center; font: 600 calc(var(--size) * .06)/1 ui-monospace, Menlo, monospace;
+  font-style: normal; color: #1A1A1A; }
+.rl__vu { position: relative; width: calc(var(--size) * .3); height: calc(var(--size) * .18); border-radius: 4px; background: #F1E5C2; overflow: hidden;
+  box-shadow: inset 0 0 0 2px #8E7F55; }
+.rl__scale { position: absolute; left: 8%; right: 8%; top: 8%; display: flex; justify-content: space-between;
+  font: 600 calc(var(--size) * .026)/1 var(--font-sans); color: #2A2220; }
+.rl__scale i { font-style: normal; }
+.rl__scale b { color: #B3241C; }
+.rl__vu small { position: absolute; left: 0; right: 0; bottom: 8%; text-align: center; font: 700 calc(var(--size) * .024)/1 var(--font-sans); letter-spacing: .1em; color: #6E6046; }
+.rl__needle { position: absolute; left: 50%; bottom: -12%; width: 2px; height: 92%; margin-left: -1px; background: #1A1A1A; transform-origin: 50% 100%;
+  transform: rotate(var(--vu, -48deg)); transition: transform .14s linear; }
+.rl__controls { left: 50%; top: 50%; width: calc(var(--size) * 1.02); height: calc(var(--size) * .17); margin: calc(var(--size) * .36) 0 0 calc(var(--size) * -.51);
+  display: flex; align-items: center; justify-content: space-around; }
+.rl__toggle { position: relative; width: calc(var(--size) * .15); height: calc(var(--size) * .15); display: grid; place-items: center; }
+.rl__toggle::before { content: ''; position: absolute; width: 58%; height: 58%; border-radius: 50%; background: #E6E8EB; box-shadow: 0 2px 0 #8E9298, inset 0 0 0 2px #B6B9BE; }
+.rl__lever { position: absolute; left: 50%; top: 4%; width: 14%; height: 46%; margin-left: -7%; border-radius: 99px; background: #F6F7F8;
+  box-shadow: 0 0 0 1px #8E9298; transform-origin: 50% 100%; transform: rotate(-24deg); transition: transform .18s var(--ease); }
+.rl__sign { position: absolute; bottom: -18%; width: 46%; height: 30%; color: #3A3B3E; }
+.rl__sign svg { width: 100%; height: 100%; fill: currentColor; }
+.rl__toggle.is-down .rl__lever, .fp.is-rolling .rl__toggle[data-k="play"] .rl__lever, .fp:not(.is-rolling) .rl__toggle[data-k="stop"] .rl__lever { transform: rotate(24deg); }
+.rl__speed { position: relative; display: flex; align-items: center; gap: 6px; font: 700 calc(var(--size) * .036)/1 var(--font-sans); color: #2A2B2E; }
+.rl__lamp { width: calc(var(--size) * .03); height: calc(var(--size) * .03); border-radius: 50%; background: #5A1A1E; transition: background .3s; }
+.fp.is-rolling .rl__lamp { background: #FF4A3D; }
+.rl__brand { left: 50%; top: 50%; margin: calc(var(--size) * -.58) 0 0 calc(var(--size) * -.54); font: 700 calc(var(--size) * .028)/1 var(--font-sans);
+  letter-spacing: .14em; color: #55575B; }
+.fp.is-reel .sleeve.is-box { inset: auto; left: calc(50% - var(--size) * .36); top: calc(50% - var(--size) * .66); width: calc(var(--size) * .72); height: calc(var(--size) * .72); }
+.sleeve.is-box { background: #8A6A44; border-radius: 3px; }
+
+/* ---------- the portable CD player ----------
+   The disc (S) sits .18 S above the stage's centre: the round body (1.24 S) around it, the lid over it, the front strip
+   with the display and the buttons below. */
+.fp.is-cd { --size: min(68vw, 29vh, 300px); }
+.fp.is-bare.is-cd { --size: min(72vw, 44vh, 360px); }
+.fp.is-cd .fp__stage { min-height: calc(var(--size) * 1.62 + 16px); }
+.record.cd { inset: auto; left: calc(50% - var(--size) / 2); top: calc(50% - var(--size) * .68); margin: 0; box-shadow: 0 2px 8px rgba(0, 0, 0, .3); }
+:root[data-mode="dark"] .record.cd { box-shadow: 0 2px 8px rgba(0, 0, 0, .45); }
+.cd__disc { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cd__silver { fill: #D9DDE2; }
+.cd__hue { opacity: .3; }
+.cd__track { fill: none; stroke: rgba(255, 255, 255, .35); stroke-width: .8; }
+.cd__clear { fill: #EEF1F4; }
+.cd__stack { fill: none; stroke: rgba(0, 0, 0, .12); stroke-width: 1.2; }
+.cd__hole { fill: var(--bg); }
+.cd__glare { fill: rgba(255, 255, 255, .3); }
+.cd__spin { transform-box: fill-box; transform-origin: center; }
+
+.cd__body { left: 50%; top: calc(50% - var(--size) * .18); width: calc(var(--size) * 1.24); height: calc(var(--size) * 1.24); transform: translate(-50%, -50%);
+  border-radius: 50%; background: #C9CDD3; box-shadow: 0 16px 40px var(--shadow), inset 0 0 0 calc(var(--size) * .02) #B4B9C0; }
+:root[data-mode="dark"] .cd__body { background: #9EA3AA; box-shadow: 0 16px 40px var(--shadow), inset 0 0 0 calc(var(--size) * .02) #8A9097; }
+/* the lid over the disc (above it on the stage): clear, or silver with the disc showing through its window */
+.cd__lid { z-index: 3; left: 50%; top: calc(50% - var(--size) * .18); width: calc(var(--size) * 1.1); height: calc(var(--size) * 1.1); transform: translate(-50%, -50%);
+  border-radius: 50%; background: rgba(210, 228, 255, .1); border: 2px solid rgba(255, 255, 255, .55); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
+:root[data-lid="silver"] .cd__lid { background: rgba(210, 228, 255, .06); border: calc(var(--size) * .22) solid #B9BEC5; box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .18); }
+.cd__hinge { position: absolute; left: 50%; top: -4%; width: 22%; height: 5%; margin-left: -11%; border-radius: 3px; background: #9EA3AA; }
+.cd__brand { position: absolute; left: 0; right: 0; bottom: 8%; text-align: center; font: 700 calc(var(--size) * .04)/1 var(--font-sans); letter-spacing: .18em; color: rgba(40, 44, 52, .75); }
+.cd__brand small { display: block; margin-top: 2px; font-size: .55em; letter-spacing: .3em; }
+:root[data-lid="silver"] .cd__brand { bottom: -14%; }
+.cd__front { left: 50%; top: calc(50% + var(--size) * .42); width: calc(var(--size) * 1.06); height: calc(var(--size) * .38); margin-left: calc(var(--size) * -.53);
+  border-radius: calc(var(--size) * .06); background: #C9CDD3; box-shadow: 0 10px 24px var(--shadow), inset 0 0 0 1px rgba(0, 0, 0, .12);
+  display: flex; align-items: center; gap: calc(var(--size) * .04); padding: 0 calc(var(--size) * .04); }
+:root[data-mode="dark"] .cd__front { background: #9EA3AA; }
+.cd__lcd { position: relative; flex: 1.4; min-width: 0; height: 74%; border-radius: 4px; background: #A4B591; color: #1C2716;
+  box-shadow: inset 0 0 0 2px #6F7D61; padding: 4% 5%; display: flex; flex-direction: column; justify-content: space-between;
+  font: 600 calc(var(--size) * .045)/1 ui-monospace, Menlo, monospace; }
+.cd__row { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.cd__row--small { font-size: .62em; letter-spacing: .04em; }
+.cd__tr { font-weight: 700; }
+.cd__bat { display: flex; gap: 1px; padding: 1px; border: 1px solid currentColor; border-radius: 1px; }
+.cd__bat i { width: 3px; height: 6px; background: currentColor; }
+.cd__title { overflow: hidden; white-space: nowrap; font-size: .78em; }
+.cd__title span { display: inline-block; }
+.cd__title.is-long span { animation: cd-run 9s linear infinite; padding-left: 100%; }
+@keyframes cd-run { to { transform: translateX(-100%); } }
+.cd__as { padding: 0 2px; border: 1px solid currentColor; border-radius: 1px; }
+.cd__esp { display: flex; gap: 1px; }
+.cd__esp i { width: 4px; height: 6px; background: currentColor; opacity: .25; }
+.fp.is-loading .cd__esp i { animation: cd-esp .8s steps(1) infinite; }
+.fp.is-rolling .cd__esp i { opacity: .9; }
+.fp.is-loading .cd__esp i:nth-child(2) { animation-delay: .2s; }
+.fp.is-loading .cd__esp i:nth-child(3) { animation-delay: .4s; }
+.fp.is-loading .cd__esp i:nth-child(4) { animation-delay: .6s; }
+@keyframes cd-esp { 50% { opacity: .9; } }
+.cd__buttons { flex: 1; display: grid; grid-template-columns: repeat(2, 1fr); gap: calc(var(--size) * .025); justify-items: center; align-items: center; }
+.cd__btn { width: calc(var(--size) * .11); height: calc(var(--size) * .11); border-radius: 50%; display: grid; place-items: center; background: #E8EBEF;
+  color: #2B2E33; box-shadow: 0 3px 0 #8F959C; transition: transform .1s, box-shadow .1s; }
+.cd__btn svg { width: 52%; height: 52%; fill: currentColor; }
+.cd__btn--big { background: #3A3F47; color: #E8EBEF; box-shadow: 0 3px 0 #1E2126; }
+.cd__btn.is-down { transform: translateY(2px); box-shadow: 0 1px 0 #8F959C; }
+.fp.is-cd .sleeve.is-jewel { inset: auto; left: calc(50% - var(--size) * .52); top: calc(50% - var(--size) * .7); width: calc(var(--size) * 1.04); height: calc(var(--size) * 1.04); }
+.sleeve.is-jewel { border-radius: 3px; background: #1E2228; }
+.sleeve.is-jewel::after { box-shadow: inset 0 0 0 calc(var(--size) * .03) rgba(255, 255, 255, .35); }
+
+/* ---------- the phonograph ----------
+   The cylinder (S × .3 S) sits .09 S below the stage's centre; the horn (.9 S wide) rises above it, the wooden case below. */
+.fp.is-phonograph { --size: min(76vw, 30vh, 320px); }
+.fp.is-bare.is-phonograph { --size: min(78vw, 42vh, 380px); }
+.fp.is-phonograph .fp__stage { min-height: calc(var(--size) * 1.56 + 16px); }
+.record.phonograph { inset: auto; left: calc(50% - var(--size) / 2); top: calc(50% + var(--size) * .09); margin: 0; height: calc(var(--size) * .3);
+  border-radius: calc(var(--size) * .03); box-shadow: 0 6px 14px rgba(0, 0, 0, .35); }
+:root[data-mode="dark"] .record.phonograph { box-shadow: 0 6px 14px rgba(0, 0, 0, .5); }
+.ph__cylinder { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.ph__wax { fill: #5C3B24; }
+.ph__groove { stroke: rgba(0, 0, 0, .28); stroke-width: .7; }
+.ph__glint { fill: rgba(255, 228, 190, .3); }
+.ph__end { fill: #8C6A2A; }
+.dk--phonograph .ph__horn { left: 50%; top: calc(50% - var(--size) * .765); width: calc(var(--size) * .9); height: calc(var(--size) * .765);
+  margin-left: calc(var(--size) * -.54); overflow: visible; }
+.ph__bell { fill: #C9A04A; stroke: #8C6A2A; stroke-width: 1.2; }
+.ph__shine { fill: rgba(255, 244, 210, .45); }
+.ph__mouth { fill: #3A2810; }
+.ph__lip { fill: none; stroke: #8C6A2A; stroke-width: 3; }
+.ph__neck { fill: #8C6A2A; }
+.ph__carriage { left: calc(50% - var(--size) * .4 + var(--size) * .8 * var(--at, 0)); top: calc(50% - var(--size) * .02); width: calc(var(--size) * .12);
+  height: calc(var(--size) * .13); margin-left: calc(var(--size) * -.06); z-index: 2; transition: left .6s linear; }
+.ph__reproducer { position: absolute; left: 0; right: 0; top: 0; height: 62%; border-radius: 50%; background: #B08A3E; box-shadow: inset 0 0 0 3px #8C6A2A; }
+.ph__stylus { position: absolute; left: 46%; top: 58%; width: 8%; height: 46%; background: #3A2A14; border-radius: 0 0 2px 2px; }
+.ph__mandrel { left: 50%; top: calc(50% + var(--size) * .225); width: calc(var(--size) * 1.08); height: calc(var(--size) * .03); margin: calc(var(--size) * -.015) 0 0 calc(var(--size) * -.54);
+  border-radius: 99px; background: #6E5326; }
+.ph__case { left: 50%; top: calc(50% + var(--size) * .36); width: calc(var(--size) * 1.2); height: calc(var(--size) * .42); margin-left: calc(var(--size) * -.6);
+  border-radius: 6px; background: #6B3E22; box-shadow: 0 16px 36px var(--shadow), inset 0 calc(var(--size) * .05) 0 #4A2A16; }
+.ph__case::before, .ph__case::after { content: ''; position: absolute; left: 6%; right: 6%; height: 1px; background: rgba(0, 0, 0, .22); } /* the wood's grain */
+.ph__case::before { top: 38%; }
+.ph__case::after { top: 72%; left: 14%; right: 22%; }
+.ph__plate { position: absolute; left: 6%; top: 34%; padding: 3% 4%; border-radius: 3px; background: #C9A04A; color: #3A2414;
+  box-shadow: inset 0 0 0 1px #8C6A2A; display: flex; flex-direction: column; gap: 2px; }
+.ph__plate b { font: 700 calc(var(--size) * .05)/1 var(--font-serif); font-variant: small-caps; letter-spacing: .06em; }
+.ph__plate small { font: italic 500 calc(var(--size) * .028)/1 var(--font-serif); }
+/* the paper card with the cylinder's title, year and country */
+.ph__card { position: absolute; right: 9%; top: 22%; width: 40%; padding: 3% 4%; background: #EADBB8; color: #3A2414; transform: rotate(-2.5deg);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, .3); display: flex; flex-direction: column; gap: 3px; }
+.ph__card b { font: italic 600 calc(var(--size) * .036)/1.15 var(--font-serif); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ph__card small { font: 500 calc(var(--size) * .025)/1.2 var(--font-serif); font-variant: small-caps; letter-spacing: .04em; opacity: .8; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ph__crank { position: absolute; right: -5%; top: 26%; width: calc(var(--size) * .1); height: calc(var(--size) * .1); border-radius: 50%; background: #8C6A2A; }
+.ph__crank i { position: absolute; left: 45%; top: -60%; width: 10%; height: 110%; background: #3A2A14; border-radius: 99px; transform-origin: 50% 100%; }
+.fp.is-phonograph .sleeve.is-tube { inset: auto; left: calc(50% - var(--size) * .2); top: calc(50% - var(--size) * .1); width: calc(var(--size) * .4); height: calc(var(--size) * .5);
+  border-radius: 6px; background: #A8834E; }
+.sleeve.is-tube .sleeve__brand { font-size: calc(var(--size) * .08); color: #3A2414; }
+.sleeve.is-tube .sleeve__hinge { height: 14%; background: #6B4A26; }
+
+/* ---------- Settings: the players as cards, locked panel for the phonograph ---------- */
+.player-card__icon, .player-dot { display: grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: var(--r-sm); background: var(--surface-2);
+  color: var(--accent-text); box-shadow: 0 0 0 1px var(--line); }
+.player-card__icon .ic, .player-dot .ic { width: 22px; height: 22px; }
+.eqp__lock { margin: 0 0 10px; padding: 10px 12px; border-radius: var(--r-md); background: var(--surface-2); font-size: 13.5px; line-height: 1.35; color: var(--text-2); }
+.eqp.is-locked > :not(.eqp__title):not(.eqp__lock) { opacity: .35; pointer-events: none; }
+
+@media (max-height: 640px) {
+  .fp.is-reel { --size: min(72vw, 30vh); }
+  .fp.is-cd { --size: min(64vw, 26vh); }
+  .fp.is-phonograph { --size: min(72vw, 27vh); }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .fp.is-reel { --size: min(50vh, 26vw); }
+  .fp.is-cd { --size: min(46vh, 24vw); }
+  .fp.is-phonograph { --size: min(46vh, 28vw); }
+  .fp.is-reel .fp__stage { min-height: calc(var(--size) * 1.2 + 16px); }
+  .fp.is-cd .fp__stage { min-height: calc(var(--size) * 1.62 + 16px); }
+  .fp.is-phonograph .fp__stage { min-height: calc(var(--size) * 1.56 + 16px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rl__digits, .rl__needle, .ph__carriage { transition: none; }
+  .cd__title.is-long span { animation: none; padding-left: 0; }
+}
+
+/* the phonograph's shelf on the home screen */
+.shelf__sub { margin: -4px 0 10px; font-size: 13px; color: var(--text-2); }
+.shelf__play { margin-bottom: 12px; display: inline-flex; align-items: center; gap: 8px; }
+.shelf__play .ic { width: 16px; height: 16px; }

@@ -1,7 +1,7 @@
 import { api } from '../api.js';
 import { t } from '../i18n.js';
 import { player } from '../player.js';
-import { onSettings, settings } from '../store.js';
+import { onSettings, phonoMode, settings } from '../store.js';
 import { brandMark, cover, esc, h, haptic, icon, loader, openArtist } from '../ui.js';
 
 /** "Good morning", or "Good morning, Azat" when a name is set in Settings. */
@@ -56,6 +56,19 @@ export async function render(_, nav) {
   const data = await api.home();
   body.innerHTML = '';
   const openList = (title, tracks) => () => nav.push('playlist', { kind: 'tracks', title, tracks });
+
+  // the phonograph's own shelf: what it can play
+  if (phonoMode()) {
+    const shelf = h('<section class="section shelf--phono"></section>');
+    body.append(shelf);
+    api.phonograph().then(({ tracks }) => {
+      if (!tracks?.length) return;
+      const all = h(`<button class="btn btn--accent shelf__play">${icon('play')}<span>${esc(t('phono_play_all'))}</span></button>`);
+      all.addEventListener('click', () => { haptic('light'); player.playQueue(tracks, 0, { shuffle: true }); });
+      const sub = h(`<p class="shelf__sub">${esc(t('phono_count', { n: tracks.length }))}</p>`);
+      shelf.append(sectionHead(t('phono_shelf'), openList(t('phono_shelf'), tracks)), sub, all, cards(tracks));
+    }).catch(() => {});
+  }
 
   if (data.recent?.length) {
     const s = h('<section class="section"></section>');

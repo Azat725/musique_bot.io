@@ -674,7 +674,7 @@ body.player-open .toast { bottom: calc(24px + var(--safe-b)); }
 @keyframes pr-dive { 45% { transform: translateY(3px); } }
 @keyframes pr-upend { 50% { transform: scaleY(-1); } }
 
-/* ---------- the cassette view (Settings → Player → Tape deck; <html data-player="cassette">) ---------- */
+/* ---------- the tape views (the cassette deck and the reels; <html data-family="tape">) ---------- */
 
 /* a cassette whose reels turn: the loader and the launch screen */
 .tl { --s: 150px; width: var(--s); height: calc(var(--s) * .63); }
@@ -688,13 +688,13 @@ body.player-open .toast { bottom: calc(24px + var(--safe-b)); }
 .tl__reel { width: calc(var(--s) * .1); height: calc(var(--s) * .1); border-radius: 50%; border: calc(var(--s) * .022) dotted var(--tp-hub);
   animation: vl-spin 2.4s linear infinite reverse; }
 .boot .tl { display: none; }
-:root[data-player="cassette"] .boot .tl { display: block; }
-:root[data-player="cassette"] .boot .vl { display: none; }
+:root[data-family="tape"] .boot .tl { display: block; }
+:root[data-family="tape"] .boot .vl { display: none; }
 .boot.is-done .tl { animation: vl-away .4s var(--ease-io) both; }
 @media (prefers-reduced-motion: reduce) { .tl__reel { animation: none; } }
 
 /* behind every picture: a cassette instead of a record */
-:root[data-player="cassette"] :is(.cover, .mosaic, .artist__photo) { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A39580' stroke-width='1.3'%3E%3Crect x='2.5' y='6' width='19' height='12' rx='1.5'/%3E%3Ccircle cx='8.5' cy='11.4' r='2'/%3E%3Ccircle cx='15.5' cy='11.4' r='2'/%3E%3Cpath d='M7.5 18 8.6 15.6h6.8L16.5 18'/%3E%3C/svg%3E"); }
+:root[data-family="tape"] :is(.cover, .mosaic, .artist__photo) { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A39580' stroke-width='1.3'%3E%3Crect x='2.5' y='6' width='19' height='12' rx='1.5'/%3E%3Ccircle cx='8.5' cy='11.4' r='2'/%3E%3Ccircle cx='15.5' cy='11.4' r='2'/%3E%3Cpath d='M7.5 18 8.6 15.6h6.8L16.5 18'/%3E%3C/svg%3E"); }
 
 .brand__mark--tape .disc { fill: var(--tp-shell); }
 .brand__mark--tape .label { fill: var(--accent); }
@@ -702,8 +702,8 @@ body.player-open .toast { bottom: calc(24px + var(--safe-b)); }
 .brand__mark--tape .groove { fill: none; stroke: var(--tp-edge); stroke-width: .8; }
 
 /* the boombox's speakers pulse instead of the gramophone horn turning */
-:root[data-player="cassette"] .ic__horn { transform-origin: center; }
-:root[data-player="cassette"] .nav__item.is-on .ic__horn { transform: scale(1.08); }
+:root[data-family="tape"] .ic__horn { transform-origin: center; }
+:root[data-family="tape"] .nav__item.is-on .ic__horn { transform: scale(1.08); }
 
 /* cassette and tape deck colours in Settings */
 .swatches--tape { grid-template-columns: repeat(6, minmax(0, 40px)); }

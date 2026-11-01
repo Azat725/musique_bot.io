@@ -26,6 +26,11 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KH
 _refs: dict[str, str] = {}
 
 
+def remember_refs(rows: list[tuple[str, str]]) -> None:
+    """Tracks known ahead of any search (the phonograph's shelf): their refs, so they play at once."""
+    _refs.update(rows)
+
+
 def is_external(track_id: str) -> bool:
     return bool(ID_RE.match(track_id))
 

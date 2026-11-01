@@ -1,6 +1,7 @@
 import { t } from './i18n.js';
 import { BANDS, applyFx, enableFx } from './graph.js';
-import { settings, tapeMode, updateSettings } from './store.js';
+import { phonoMode, settings, updateSettings } from './store.js';
+import { DEVICES } from './devices/index.js';
 import { initSfx } from './sfx.js';
 import { esc, h, haptic, sheet } from './ui.js';
 
@@ -66,13 +67,22 @@ const fmtDb = (g) => (g > 0 ? `+${g}` : `${g}`);
 const SEG = (name, opts) => `<div class="seg" role="group" data-seg="${name}">${opts.map(([v, label, sub]) =>
   `<button data-v="${v}"><b>${esc(label)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</button>`).join('')}</div>`;
 
+/** The speeds as the chosen player names them: 33⅓ / 45 rpm of a record, cm/s of a tape, 1× of a CD. */
+function speedOptions() {
+  const d = DEVICES[settings.playerMode];
+  if (!d || d.fixedSound) return [['slow', t('sound_slow'), '0.85×'], ['normal', '33⅓', t('sound_rpm')], ['fast', '45', t('sound_rpm')]];
+  const unit = d.speedUnit ? t(d.speedUnit) : '';
+  return [['slow', t('sound_slow'), '0.85×'], ['normal', d.speed.normal, unit], ['fast', d.speed.fast, unit]];
+}
+
 export function openControlPanel() {
-  const panel = h(`<div class="eqp">
+  // the phonograph sounds as it is: everything is shown, nothing can be changed
+  const locked = phonoMode();
+  const panel = h(`<div class="eqp ${locked ? 'is-locked' : ''}">
     <div class="eqp__title">${esc(t('panel_title'))}</div>
+    ${locked ? `<p class="eqp__lock">${esc(t('panel_phono'))}</p>` : ''}
     <div class="fx__label">${esc(t('sound_speed'))}</div>
-    ${SEG('speed', tapeMode()
-      ? [['slow', t('sound_slow'), '0.85×'], ['normal', '4,76', t('sound_rpm')], ['fast', '6,4', t('sound_rpm')]] // cm/s of a cassette
-      : [['slow', t('sound_slow'), '0.85×'], ['normal', '33⅓', t('sound_rpm')], ['fast', '45', t('sound_rpm')]])}
+    ${SEG('speed', speedOptions())}
     <div class="fx__label">${esc(t('sound_reverb'))}</div>
     ${SEG('reverb', [['off', t('sound_off')], ['room', t('sound_room')], ['hall', t('sound_hall')]])}
     <div class="eqp__eq">

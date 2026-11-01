@@ -809,7 +809,7 @@ async def play_file(vid: str, priority: int = PLAY, drop: bool = False) -> Path:
 
 # ---------- slowed, sped up and reverb: rendered here, so phones play a clean file ----------
 
-FX_RE = re.compile(r"^(slow|normal|fast)-(off|room|hall)$")
+FX_RE = re.compile(r"^(?:(slow|normal|fast)-(off|room|hall)|phono)$")  # "phono": Edison's phonograph
 SPEEDS = {"slow": 0.85, "normal": 1.0, "fast": 45 / (100 / 3)}  # 45 rpm on a 33⅓ record
 # tail length (s), how fast it dies, and how loud the room is next to the dry sound
 ROOMS = {"room": (1.3, 2.6, 0.3), "hall": (3.4, 2.1, 0.5)}
@@ -842,8 +842,21 @@ def _impulse(kind: str) -> Path:
 _IR_NORMS = ["irnorm=2", "gtype=rms"]
 
 
+# a phonograph: one channel, nothing below the horn's ~280 Hz or above the wax's ~3 kHz, the horn's own honk around
+# 1.2 kHz, squeezed and slightly overdriven as an acoustic recording is, and the governor's unsteadiness (wow: a chorus
+# with no dry signal is a slow pitch wobble; ffmpeg's own vibrato filter now and then blows up into a full-scale rumble)
+PHONO = ("aformat=channel_layouts=mono,aresample={rate},highpass=f=280:poles=2,lowpass=f=3000:poles=2,"
+         "equalizer=f=1200:t=q:w=1.2:g=6,acompressor=threshold=-20dB:ratio=5:attack=4:release=90,"
+         "asoftclip=type=atan,chorus=0:1:12:1:0.7:2,"
+         # the overdrive makes new highs: the band is closed again after it, steeply
+         "highpass=f=300:poles=2,highpass=f=300:poles=2,lowpass=f=2800:poles=2,lowpass=f=2800:poles=2,lowpass=f=3200:poles=2,"
+         "volume=1.8,alimiter=limit=0.95")
+
+
 def _fx_filter(fx: str, norm: str = _IR_NORMS[0]) -> tuple[list[str], str]:
-    """(extra inputs, filter graph ending in [o]) for an fx key such as 'slow-hall'."""
+    """(extra inputs, filter graph ending in [o]) for an fx key such as 'slow-hall' or 'phono'."""
+    if fx == "phono":
+        return [], f"[0:a]{PHONO.format(rate=FX_RATE)}[o]"
     speed, reverb = FX_RE.match(fx).groups()
     k = SPEEDS[speed]
     # slowed the way records are: slower and lower at once, resampled by soxr so it stays clean

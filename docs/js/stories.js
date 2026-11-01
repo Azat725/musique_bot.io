@@ -2,7 +2,7 @@ import { api } from './api.js';
 import { t } from './i18n.js';
 import { settings, updateSettings } from './store.js';
 import { CLASSIC_SWATCH, THEMES } from './themes.js';
-import { EASE_IO, TAPE_LOADER, brandMark, esc, h, haptic, icon } from './ui.js';
+import { EASE_IO, brandMark, esc, h, haptic, icon } from './ui.js';
 
 /** The product intro shown on the very first launch, as stories: tap the right side for the next one,
  *  the left side for the previous, hold to pause, swipe down or tap the cross to close.
@@ -72,10 +72,8 @@ const SLIDES = [
   {
     key: 'st_tape', // a slide added later: its texts have their own keys, the numbered ones keep theirs
     tone: 'navy',
-    art: () => `<div class="sx-tape">${TAPE_LOADER}
-      <div class="sx-keys">${['M11.5 6v12L3 12zM21 6v12l-8.5-6z', 'M7 5.5v13l11-6.5z', 'M12.5 6v12l8.5-6zM3 6v12l8.5-6z']
-        .map((d, i) => `<span class="sx-key${i === 1 ? ' is-down' : ''}"><svg viewBox="0 0 24 24"><path d="${d}"/></svg></span>`).join('')}</div>
-    </div>`,
+    art: () => `<div class="sx-players">${['record', 'turntable', 'cassette', 'reel', 'cd', 'phonograph']
+      .map((m, i) => `<span class="sx-player" style="--d:${i * 0.1}s">${icon('pm_' + m)}<small>${esc(t('player_' + m))}</small></span>`).join('')}</div>`,
   },
   {
     tone: 'bordeaux',

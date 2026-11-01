@@ -62,6 +62,13 @@ const ICONS = {
   // saved on the phone: an arrow into a circle
   saved: '<circle cx="12" cy="12" r="8.5"/>' + P('M12 7.5v8m0 0-3.2-3.2M12 15.5l3.2-3.2'),
   offline: P('M3 8.5a13 13 0 0 1 18 0M6 12a8.5 8.5 0 0 1 12 0M9 15.5a4 4 0 0 1 6 0') + '<circle class="fill" cx="12" cy="19" r="1.3"/>' + P('M4 4l16 16'),
+  // the players in Settings → Player
+  pm_record: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><circle class="fill" cx="12" cy="12" r=".9"/>',
+  pm_turntable: '<rect x="2.5" y="5" width="19" height="14" rx="1.5"/><circle cx="10" cy="12" r="5"/><circle class="fill" cx="10" cy="12" r=".9"/>' + P('M18.5 7.5v6l-3 2.5'),
+  pm_cassette: '<rect x="2.5" y="6" width="19" height="12" rx="1.5"/><circle cx="8.5" cy="11.4" r="2"/><circle cx="15.5" cy="11.4" r="2"/>' + P('M7.5 18 8.6 15.6h6.8L16.5 18'),
+  pm_reel: '<circle cx="7" cy="9" r="4.5"/><circle cx="17" cy="9" r="4.5"/><circle class="fill" cx="7" cy="9" r="1"/><circle class="fill" cx="17" cy="9" r="1"/>' + P('M7 13.5 9.5 19h5l2.5-5.5'),
+  pm_cd: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.2"/>' + P('M12 5.5a6.5 6.5 0 0 1 6.5 6.5M12 8a4 4 0 0 1 4 4'),
+  pm_phonograph: P('M3 20h11v-4H3z') + '<rect x="4.5" y="12.5" width="8" height="3.5" rx="1"/>' + P('M10 12.5 13 7c1.5-2.6 4.5-4 7.5-3.5l-2.5 6c-2-.2-3.5.6-4.6 2.2L12 13'),
 };
 
 // the cassette view swaps the record-shaped icons for tapes: the same names, the same moving parts (ic__disc slides out,

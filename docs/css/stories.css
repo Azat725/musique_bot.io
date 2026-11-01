@@ -119,7 +119,7 @@
 .sx-disc:first-child { margin-left: 0; }
 .sx-disc::before { content: ""; position: absolute; inset: 14%; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(127, 127, 127, .3); }
 .sx-disc::after { content: ""; position: absolute; inset: 36%; border-radius: 50%; background: var(--bordeaux); box-shadow: 0 0 0 2px rgba(255, 255, 255, .2); }
-.sx-themes { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 270px; } /* twelve themes: two rows of six */
+.sx-themes { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 314px; } /* thirteen themes: two rows of seven */
 .sx-theme { display: grid; grid-template-columns: 1fr 1fr; width: min(9vw, 36px); height: min(9vw, 36px); border-radius: var(--r-sm); overflow: hidden;
   box-shadow: 0 0 0 1px rgba(255, 240, 220, .18); }
 .story.is-active .sx-disc { animation: st-up .5s var(--ease) both; animation-delay: var(--d); }
@@ -141,11 +141,9 @@
   .stories, .stories * { animation: none !important; transition: none !important; }
 }
 
-/* the tape deck slide: a large cassette whose reels turn, and the keys of the deck with play held down */
-.sx-tape { display: flex; flex-direction: column; align-items: center; gap: 26px; }
-.sx-tape .tl { --s: min(62vw, 240px); }
-.sx-keys { display: flex; gap: 10px; }
-.sx-key { width: 58px; height: 40px; display: grid; place-items: center; border-radius: 4px 4px 7px 7px; background: #E1E3E5; color: #2B2B2E;
-  box-shadow: 0 5px 0 #A3A7AC; }
-.sx-key svg { width: 20px; height: 20px; fill: currentColor; }
-.sx-key.is-down { transform: translateY(4px); box-shadow: 0 1px 0 #A3A7AC; background: #C9CCD0; }
+/* the players slide: the six of them, appearing one after another */
+.sx-players { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 22px; }
+.sx-player { display: flex; flex-direction: column; align-items: center; gap: 8px; color: #F3E7D3; }
+.sx-player .ic { width: 52px; height: 52px; stroke-width: 1.3; }
+.sx-player small { font-size: 12px; opacity: .8; }
+.story.is-active .sx-player { animation: st-pop .45s var(--ease) both; animation-delay: var(--d); }

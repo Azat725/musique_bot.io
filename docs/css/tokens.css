@@ -307,6 +307,28 @@
   --seg-on: #FF2E93; --on-seg-on: #1A1033;
 }
 
+/* Great Depression: America in the 1930s; light: dusty newsprint and WPA posters, dark: a night diner */
+:root[data-theme="depression"][data-mode="light"] {
+  --bg: #EDE3CF; --surface: #F6EFE0; --surface-2: #E2D5BA;
+  --text: #2E2418; --text-2: #5E5040; --text-3: #76664F; --line: #D6C8AB;
+  --heading: #24504F;
+  --accent: #A3402A; --accent-text: #93391F; --accent-press: #86331F; --accent-soft: #EBCFC0; --on-accent: #FFF8EC;
+  --tile-navy: #24504F; --mini: #2E2418; --on-mini: #E8B84A; --toast: #24504F; --on-toast: #F6EFE0;
+  --scrim: rgba(46, 36, 24, 0.42); --shade: rgba(46, 36, 24, 0.55); --shadow: rgba(70, 50, 25, 0.24);
+  --vinyl: #14100C; --groove: rgba(255, 255, 255, 0.05); --groove-strong: rgba(255, 255, 255, 0.11); --sheen: rgba(255, 255, 255, 0.07);
+  --seg-on: #24504F; --on-seg-on: #F6EFE0;
+}
+:root[data-theme="depression"][data-mode="dark"] {
+  --bg: #1E1712; --surface: #2A2019; --surface-2: #352920;
+  --text: #F2E3C4; --text-2: #C9B48F; --text-3: #94815F; --line: #3E3026;
+  --heading: #F0B84A;
+  --accent: #B4502F; --accent-text: #E07A55; --accent-press: #984228; --accent-soft: #3E2620; --on-accent: #FFFFFF;
+  --tile-navy: #2F5755; --mini: #352920; --on-mini: #F2E3C4; --toast: #F0B84A; --on-toast: #1E1712;
+  --scrim: rgba(0, 0, 0, 0.6); --shade: rgba(10, 6, 3, 0.6); --shadow: rgba(0, 0, 0, 0.55);
+  --vinyl: #0C0906; --groove: rgba(255, 240, 220, 0.045); --groove-strong: rgba(255, 240, 220, 0.1); --sheen: rgba(255, 240, 220, 0.06);
+  --seg-on: #F0B84A; --on-seg-on: #1E1712;
+}
+
 /* ---------- record colour (Settings → Customization); after the themes so it wins over their --vinyl ---------- */
 :root[data-theme][data-vinyl="bordeaux"] { --vinyl: #5A1420; --groove: rgba(255, 220, 220, 0.06); --groove-strong: rgba(255, 220, 220, 0.13); --sheen: rgba(255, 230, 230, 0.08); }
 :root[data-theme][data-vinyl="brown"] { --vinyl: #4A2E1E; --groove: rgba(255, 235, 210, 0.06); --groove-strong: rgba(255, 235, 210, 0.13); --sheen: rgba(255, 235, 210, 0.08); }

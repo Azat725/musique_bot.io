@@ -37,7 +37,9 @@ export const settings = {
   searchMode: 'all',
   name: '', // optional name for the home greeting
   colorTheme: 'classic', // themes.js; 'classic' follows `theme` (auto / light / dark)
-  playerMode: 'record', // 'record' alone, 'turntable', or 'cassette': a tape recorder, and cassettes all over the app
+  playerMode: 'record', // devices/index.js PLAYER_MODES: record, turntable, cassette, reel, cd, phonograph
+  bareDeck: false, // "only the machine": no title, bar or buttons under it, the device itself is played
+  lidColor: 'clear', // the portable CD player's lid: 'clear' or 'silver'
   recordColor: 'black',
   deckColor: 'walnut', // the turntable's colourway, see css/tokens.css
   tapeColor: 'black', // the cassette's shell, see themes.js TAPE_COLORS
@@ -74,8 +76,11 @@ export function updateSettings(patch, { remote = false } = {}) {
   listeners.forEach((fn) => fn(settings, { remote }));
 }
 
-/** The cassette view: the tape recorder in the player, and cassettes instead of records everywhere else. */
-export const tapeMode = () => settings.playerMode === 'cassette';
+/** The tape views (the cassette deck and the reels): cassettes instead of records all over the app. */
+export const tapeMode = () => settings.playerMode === 'cassette' || settings.playerMode === 'reel';
+
+/** Edison's phonograph: its own shelf of cylinders, its own sound that nothing in the control panel changes. */
+export const phonoMode = () => settings.playerMode === 'phonograph';
 
 export function onSettings(fn) {
   listeners.add(fn);

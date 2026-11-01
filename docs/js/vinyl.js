@@ -1,16 +1,16 @@
 import { t } from './i18n.js';
 import { player } from './player.js';
-import { heard, heardReady, likes, onSettings, settings, tapeMode, toggleLike, updateSettings } from './store.js';
+import { heard, heardReady, likes, onSettings, settings, toggleLike, updateSettings } from './store.js';
 import { EASE_IO, chooseAndAddToPlaylist, esc, fitMarquee, fmt, h, haptic, icon, openArtist, reducedMotion, sheet, toast, trackMenu } from './ui.js';
 import { api } from './api.js';
 import { openControlPanel } from './eq.js';
-import { initSfx, playSfx, rustle, startScratch, startSpinNoise, startTapeNoise, startTapeWhirr, tapeKey, tapeWind, whoosh } from './sfx.js';
+import { initSfx, playSfx, rustle, startScratch, startSpinNoise, whoosh } from './sfx.js';
+import { DEVICES, PLAYER_MODES } from './devices/index.js';
 import { openQueue } from './queue.js';
 import { SLEEP_OPTIONS, setSleep, sleepLeft, sleepMode, sleepTimer } from './sleep.js';
 
 const RPM_MS = 1800; // one revolution at 33⅓ rpm
 const SECONDS_PER_TURN = 15; // turning the record by hand: one revolution moves the track by 15 s
-const TAPE_TURN_MS = 2600; // one turn of a cassette reel at normal speed
 const NS = 'http://www.w3.org/2000/svg';
 
 // ---------- the record ----------
@@ -51,6 +51,7 @@ function makeRecord(track) {
   const el = h(`<div class="record">
     <div class="record__spin">
       <div class="record__label">${track?.cover ? `<img src="${esc(track.cover)}" alt="" referrerpolicy="no-referrer">` : '<span class="record__blank">Musique</span>'}</div>
+      <span class="record__print"><b>${esc(track?.title || '')}</b>${esc(track?.artist || '')}</span>
       <span class="record__hole"></span>
     </div>
   </div>`);
@@ -62,91 +63,27 @@ function makeRecord(track) {
   return { el, anim, track, rate: 0, raf: 0 };
 }
 
-// ---------- the cassette (the "Tape deck" view): two reels behind a window, tape passing from one to the other ----------
+// ---------- the other players (devices/*.js): a cassette deck, reels, a CD player, a phonograph ----------
 
-const REEL_L = 76, REEL_R = 124, REEL_Y = 53, PACK_MIN = 9.5, PACK_MAX = 20; // in the cassette's 200 × 126 drawing
-let cassetteSeq = 0;
+/** The device chosen in Settings, or null for the record and the turntable, which are drawn here. */
+const device = () => DEVICES[settings.playerMode] || null;
+/** The device a medium on the stage belongs to (a cassette stays a cassette while the setting changes). */
+const devOf = (media) => (media?.dev ? DEVICES[media.dev] : null);
 
-function hubSvg(cx) {
-  const teeth = [0, 60, 120, 180, 240, 300].map((a) => `<rect class="cs__tooth" x="${cx - 0.9}" y="${REEL_Y - 7}" width="1.8" height="2.6" transform="rotate(${a} ${cx} ${REEL_Y})"/>`).join('');
-  return `<g class="cs__reel"><circle class="cs__hub" cx="${cx}" cy="${REEL_Y}" r="7.4"/><circle class="cs__core" cx="${cx}" cy="${REEL_Y}" r="4.4"/>${teeth}</g>`;
-}
-
-function cassetteSvg(id) {
-  const svg = document.createElementNS(NS, 'svg');
-  svg.setAttribute('viewBox', '0 0 200 126');
-  svg.classList.add('cassette__body');
-  const screws = [[8, 8], [192, 8], [8, 118], [192, 118], [100, 116]].map(([x, y]) => `<circle class="cs__screw" cx="${x}" cy="${y}" r="2.6"/>`).join('');
-  svg.innerHTML = `<defs><clipPath id="cs-win-${id}"><rect x="58" y="40" width="84" height="26" rx="4"/></clipPath></defs>
-    <rect class="cs__shell" x="1" y="1" width="198" height="124" rx="7"/>
-    <rect class="cs__label" x="13" y="9" width="174" height="74" rx="4"/>
-    <rect class="cs__band" x="13" y="25" width="174" height="5"/>
-    <rect class="cs__window" x="58" y="40" width="84" height="26" rx="4"/>
-    <g clip-path="url(#cs-win-${id})">
-      <circle class="cs__pack" cx="${REEL_L}" cy="${REEL_Y}" r="${PACK_MAX}"/><circle class="cs__pack" cx="${REEL_R}" cy="${REEL_Y}" r="${PACK_MIN}"/>
-    </g>
-    ${hubSvg(REEL_L)}${hubSvg(REEL_R)}
-    <path class="cs__foot" d="M44 125 L53 99 H147 L156 125 Z"/>
-    <circle class="cs__hole" cx="69" cy="113" r="3.6"/><circle class="cs__hole" cx="131" cy="113" r="3.6"/>
-    <rect class="cs__hole" x="88" y="108" width="6" height="6" rx="1"/><rect class="cs__hole" x="106" y="108" width="6" height="6" rx="1"/>
-    ${screws}`;
-  return svg;
-}
-
-/** Both reels as one animation, so the cassette is driven exactly like the record (rampTo, scrubbing). A reel turns
- *  faster the less tape it holds: `k` keeps each reel's share of the speed. */
-function reelsAnim(reels) {
-  const anims = reels.map((r) => r.animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(-360deg)' }], { duration: TAPE_TURN_MS, iterations: Infinity }));
-  let base = 0;
-  const k = [1, 1];
-  const apply = () => anims.forEach((a, i) => { a.playbackRate = base * k[i]; });
-  return {
-    get playbackRate() { return base; },
-    set playbackRate(v) { base = v; apply(); },
-    get playState() { return anims[0].playState; },
-    get currentTime() { return anims[0].currentTime; },
-    set currentTime(v) { anims.forEach((a) => { a.currentTime = v; }); },
-    play() { anims.forEach((a) => a.play()); },
-    pause() { anims.forEach((a) => a.pause()); },
-    setShares(l, r) { k[0] = l; k[1] = r; apply(); },
-  };
-}
-
-function makeCassette(track) {
-  const id = ++cassetteSeq;
-  const el = h(`<div class="record cassette">
-    <span class="cassette__title">${esc(track?.title || 'Musique')}</span>
-    <span class="cassette__art">${track?.cover ? `<img src="${esc(track.cover)}" alt="" referrerpolicy="no-referrer">` : ''}</span>
-    <span class="cassette__side">A</span>
-  </div>`);
-  el.prepend(cassetteSvg(id));
-  const anim = reelsAnim([...el.querySelectorAll('.cs__reel')]);
-  anim.playbackRate = 0;
-  anim.pause();
-  const media = { el, anim, track, rate: 0, raf: 0, tape: true, packs: [...el.querySelectorAll('.cs__pack')], shown: -1 };
-  windTape(media, 0);
+function makeMedia(track) {
+  const d = device();
+  if (!d) return makeRecord(track);
+  const media = d.media(track);
+  media.dev = d.id;
   return media;
 }
 
-/** The tape moves from the left reel to the right one as the track plays (p from 0 to 1). */
-function windTape(media, p) {
-  const q = Math.round(Math.min(1, Math.max(0, p)) * 200) / 200;
-  if (q === media.shown) return;
-  media.shown = q;
-  // the same length of tape on both sides: areas, not radii, are shared
-  const area = (share) => Math.sqrt(PACK_MIN ** 2 + (PACK_MAX ** 2 - PACK_MIN ** 2) * share);
-  const l = area(1 - q), r = area(q);
-  media.packs[0].setAttribute('r', l.toFixed(2));
-  media.packs[1].setAttribute('r', r.toFixed(2));
-  const mid = (PACK_MIN + PACK_MAX) / 2;
-  media.anim.setShares(mid / l, mid / r);
-}
+const turnMs = () => devOf(rec)?.turnMs || RPM_MS;
 
-function makeMedia(track) {
-  return tapeMode() ? makeCassette(track) : makeRecord(track);
+/** The sound of the chosen device's key ('play', 'pause', 'prev', 'next'); nothing for the record. */
+export function deviceKey(name) {
+  device()?.sounds.key?.(name);
 }
-
-const turnMs = () => (rec?.tape ? TAPE_TURN_MS : RPM_MS);
 
 function rampTo(rec, target, ms) {
   cancelAnimationFrame(rec.raf);
@@ -187,12 +124,8 @@ export function initFullPlayer() {
         <div class="deck__platter"></div>
         <div class="deck__arm"><span class="arm__weight"></span><span class="arm__tube"></span><span class="arm__head"></span><span class="arm__base"></span></div>
       </div>
-      <div class="recorder" aria-hidden="true">
-        <div class="rec__top"><span class="rec__counter">000</span><span class="rec__brand">Musique-302 <small class="rec__stereo"></small></span>
-          <span class="rec__speed"></span><span class="rec__led"></span></div>
-        <div class="rec__bay"></div>
-        <div class="rec__keys"><span class="rec__key" data-k="rec"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/></svg></span><span class="rec__key" data-k="rew"><svg viewBox="0 0 24 24"><path d="M11.5 6v12L3 12zM21 6v12l-8.5-6z"/></svg></span><span class="rec__key" data-k="play"><svg viewBox="0 0 24 24"><path d="M7 5.5v13l11-6.5z"/></svg></span><span class="rec__key" data-k="ff"><svg viewBox="0 0 24 24"><path d="M12.5 6v12l8.5-6zM3 6v12l8.5-6z"/></svg></span><span class="rec__key" data-k="stop"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></svg></span><span class="rec__key" data-k="eject"><svg viewBox="0 0 24 24"><path d="M12 5l7 8H5zM5 15.5h14V19H5z"/></svg></span></div>
-      </div>
+      ${Object.values(DEVICES).map((d) => `<div class="dev" data-dev="${d.id}">${d.deck()}</div>`).join('')}
+      <span class="fp__heart" aria-hidden="true"></span>
       <div class="scrub" aria-hidden="true"><b class="scrub__time"></b><span class="scrub__delta"></span></div>
     </div>
     <div class="fp__info">
@@ -226,7 +159,7 @@ export function initFullPlayer() {
   const $ = (s) => root.querySelector(s);
   $('[data-close]').addEventListener('click', closePlayer);
   $('.fp__artist').addEventListener('click', () => openArtist(player.current));
-  $('[data-play]').addEventListener('click', () => { haptic('medium'); tapeKey(player.playing ? 'pause' : 'play'); player.toggle(); });
+  $('[data-play]').addEventListener('click', () => { haptic('medium'); deviceKey(player.playing ? 'pause' : 'play'); player.toggle(); });
   $('[data-next]').addEventListener('click', () => { haptic('light'); player.next(); });
   $('[data-prev]').addEventListener('click', () => { haptic('light'); player.prev(); });
   $('[data-shuffle]').addEventListener('click', () => { haptic('select'); player.toggleShuffle(); });
@@ -286,7 +219,7 @@ export function translate() {
   root.querySelector('[data-add] span').textContent = t('pill_playlist');
   root.querySelector('[data-send] span').textContent = t('pill_send');
   root.querySelector('[data-lyrics] span').textContent = t('pill_lyrics');
-  root.querySelector('.rec__stereo').textContent = t('rec_stereo');
+  root.querySelectorAll('.dev [data-t]').forEach((n) => { n.textContent = t(n.dataset.t); }); // the decks' own printing
   syncInfo();
   syncMarker();
 }
@@ -317,7 +250,6 @@ async function openSleep() {
 // ---------- the sound: speed and reverb are set in the control panel (eq.js); the marker names what is on ----------
 
 const DECK_RPM = { slow: '28', normal: '33', fast: '45' }; // slowed: 33⅓ × 0.85 ≈ 28
-const TAPE_SPEED = { slow: '4,0', normal: '4,76', fast: '6,4' }; // cm/s: 4.76 is the cassette standard
 
 /** What the current sound is called: "slowed + reverb", "45 rpm", "reverb"… or '' when it is plain. */
 function soundTag() {
@@ -330,7 +262,10 @@ function soundTag() {
 function syncSpeed() {
   if (!root) return;
   root.querySelector('.deck__speed').textContent = DECK_RPM[settings.speed] || '33';
-  root.querySelector('.rec__speed').textContent = `${TAPE_SPEED[settings.speed] || '4,76'} ${t('sound_rpm_tape')}`;
+  root.querySelectorAll('.dev').forEach((box) => { // each deck shows its speed in its own units
+    const d = DEVICES[box.dataset.dev], label = box.querySelector('[data-speed]');
+    if (label) label.textContent = `${d.speed[settings.speed] || d.speed.normal}${d.speedUnit ? ` ${t(d.speedUnit)}` : ''}`;
+  });
   syncMarker();
   syncState(); // the record speeds up or slows down to the new rate
 }
@@ -362,6 +297,7 @@ export function openPlayer() {
   root.classList.add('is-open');
   root.setAttribute('aria-hidden', 'false');
   if (!rec || rec.track?.id !== player.current.id) placeRecord(player.current);
+  device()?.show?.(root, player.current);
   // a first listen opens in its sleeve; otherwise the record flies out of the mini player
   if (takeSleeve(player.current)) unsleeve(++swapping, 200);
   else if (fromMini) fly(fromMini, true).then(syncState);
@@ -420,6 +356,7 @@ function placeRecord(track) {
 
 function onTrack({ track, dir }) {
   notePending(track);
+  device()?.show?.(root, track);
   syncInfo();
   syncLike();
   syncTime();
@@ -431,7 +368,7 @@ function onTrack({ track, dir }) {
 }
 
 function swapRecord(track, dir, sleeved = false) {
-  if (tapeMode()) { swapCassette(track, sleeved); return; }
+  if (device() || rec?.dev) { swapDevice(track, sleeved); return; }
   const my = ++swapping;
   // finish any half-done swap immediately
   stage.querySelectorAll('.record.is-leaving, .sleeve').forEach((el) => el.remove());
@@ -465,33 +402,31 @@ function swapRecord(track, dir, sleeved = false) {
     }).catch(() => { if (my === swapping) { armLifted = false; syncArm(); } });
 }
 
-/** The cassette pops up out of the bay and goes; the next one drops in and the lid clicks shut. */
-function swapCassette(track, cased) {
+/** A device's medium leaves the way it does (a cassette is ejected, reels lifted off, a disc taken out, a cylinder
+ *  slid off the mandrel) and the next one arrives; the first listen of a track comes out of its case instead. */
+function swapDevice(track, cased) {
   const my = ++swapping;
   stage.querySelectorAll('.record.is-leaving, .sleeve').forEach((el) => el.remove());
-  const old = rec;
+  const old = rec, gone = devOf(old) || device();
   old.el.classList.add('is-leaving');
   const from = old.el.style.transform || 'none';
   old.el.style.transform = '';
   rampTo(old, 0, 200);
-  playSfx('tape-eject', 0.7);
-  old.el.animate([
-    { transform: from, opacity: 1 },
-    { transform: 'translateY(-14%)', opacity: 1, offset: 0.3 },
-    { transform: 'translateY(-120%) scale(.9)', opacity: 0 },
-  ], { duration: 520, easing: 'cubic-bezier(.55,0,.8,.3)', fill: 'forwards' }).finished
+  gone.sounds.leave?.();
+  old.el.animate([{ transform: from, opacity: 1 }, ...gone.leave], { duration: 520, easing: 'cubic-bezier(.55,0,.8,.3)', fill: 'forwards' }).finished
     .then(() => { cancelAnimationFrame(old.raf); old.el.remove(); }).catch(() => {});
   rec = makeMedia(track);
   stage.append(rec.el);
+  const d = devOf(rec);
+  if (!d) { // the setting went back to the record meanwhile: it slides in as records do
+    rec.el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, delay: 200, fill: 'backwards' });
+    return;
+  }
   if (cased) { unsleeve(my, 260); return; }
-  rec.el.animate([
-    { transform: 'translateY(-110%) scale(.92)', opacity: 0 },
-    { transform: 'translateY(4%) scale(1)', opacity: 1, offset: 0.78 },
-    { transform: 'none', opacity: 1 },
-  ], { duration: 600, delay: 260, easing: 'cubic-bezier(.2,.75,.25,1)', fill: 'backwards' }).finished
+  rec.el.animate(d.arrive, { duration: 600, delay: 260, easing: 'cubic-bezier(.2,.75,.25,1)', fill: 'backwards' }).finished
     .then(() => {
       if (my !== swapping) return;
-      playSfx('tape-insert', 0.6);
+      d.sounds.arrive?.();
       syncState();
     }).catch(() => {});
 }
@@ -518,7 +453,7 @@ const IO = 'cubic-bezier(.65, 0, .35, 1)';
 function unsleeve(my, delay = 0) {
   const r = rec;
   if (!r) return;
-  if (r.tape) { uncase(my, delay); return; }
+  if (r.dev) { uncase(my, delay); return; }
   stage.querySelectorAll('.sleeve').forEach((s) => s.remove());
   const tr = r.track;
   const sleeve = h(`<div class="sleeve" aria-hidden="true">
@@ -562,15 +497,12 @@ function unsleeve(my, delay = 0) {
   });
 }
 
-/** The cassette's case rises with the cover in it, the cassette slides up out of it and down into the bay. */
+/** A device's case (a cassette box, a reel's carton, a jewel case, a cylinder's tube) rises, the medium slides up out
+ *  of it and down into its place. */
 function uncase(my, delay = 0) {
-  const r = rec;
+  const r = rec, d = devOf(r);
   stage.querySelectorAll('.sleeve').forEach((s) => s.remove());
-  const tr = r.track;
-  const box = h(`<div class="sleeve is-case" aria-hidden="true">
-    ${tr?.cover ? `<img src="${esc(tr.cover)}" alt="" referrerpolicy="no-referrer">` : '<span class="sleeve__brand">Musique</span>'}
-    <span class="sleeve__hinge"></span>
-  </div>`);
+  const box = h(d.caseHtml(r.track));
   stage.append(box);
   const kicker = root.querySelector('.fp__kicker');
   kicker.textContent = t('player_new');
@@ -590,12 +522,12 @@ function uncase(my, delay = 0) {
     { offset: 0.62, transform: 'translateY(-78%) scale(.84)', opacity: 1, easing: IO },
     { offset: 1, transform: 'translateY(0) scale(1)', opacity: 1 },
   ], { ...opts, fill: 'backwards' });
-  setTimeout(() => { if (my === swapping) playSfx('tape-eject', 0.6); }, delay + SLEEVE_MS * 0.3);
+  setTimeout(() => { if (my === swapping) d.sounds.open?.(); }, delay + SLEEVE_MS * 0.3);
   anim.finished.then(() => {
     box.remove();
     if (my !== swapping) return;
     kicker.textContent = t('player_now');
-    playSfx('tape-insert', 0.6);
+    d.sounds.arrive?.();
     syncState();
   }).catch(() => {
     box.remove();
@@ -691,17 +623,19 @@ function turntable() { return settings.playerMode === 'turntable'; }
 
 function applyMode() {
   if (!root) return;
-  const on = turntable(), tape = tapeMode();
-  if (root.classList.contains('is-turntable') === on && root.classList.contains('is-cassette') === tape) return;
-  root.classList.toggle('is-turntable', on);
-  root.classList.toggle('is-cassette', tape);
+  root.classList.toggle('is-bare', !!settings.bareDeck); // "only the machine": no title, bar or buttons under it
+  const mode = PLAYER_MODES.includes(settings.playerMode) ? settings.playerMode : 'record';
+  if (root.classList.contains(`is-${mode}`)) return;
+  PLAYER_MODES.forEach((m) => root.classList.toggle(`is-${m}`, m === mode));
   armShown = '';
   syncArm();
   fitMarquee(el.title);
-  // a record and a cassette are different things: the one on the stage is replaced
-  if (rec && !!rec.tape !== tape) {
-    if (open && player.current) { placeRecord(player.current); syncState(); syncTime(); } else { rec = null; clearRecords(); }
+  // a record, a cassette, a reel, a disc and a cylinder are different things: the one on the stage is replaced
+  if (rec && (rec.dev || null) !== (device()?.id || null)) {
+    if (open && player.current) { placeRecord(player.current); device()?.show?.(root, player.current); syncState(); syncTime(); }
+    else { rec = null; clearRecords(); }
   }
+  syncState();
 }
 
 /** The arm rests beside the record unless the music really plays; on the record it creeps inwards with the track. */
@@ -738,12 +672,13 @@ let shownPlaying = null;
 /** The quiet crackle of a spinning record (or the hiss of a running tape) while the track is still loading. */
 function syncSpinNoise() {
   const want = open && player.loading && !!player.current;
-  if (want && !stopSpinNoise) stopSpinNoise = tapeMode() ? startTapeNoise() : startSpinNoise();
+  if (want && !stopSpinNoise) stopSpinNoise = device() ? device().sounds.loading() : startSpinNoise();
   else if (!want && stopSpinNoise) { stopSpinNoise(); stopSpinNoise = null; }
 }
 
 function syncState() {
   syncArm();
+  device()?.sync?.(root, { open, playing: player.playing, loading: player.loading });
   if (!open || scrubbing) return; // while scrubbing the hand, not the player, drives the record
   syncSpinNoise();
   if (shownPlaying !== player.playing) {
@@ -769,10 +704,7 @@ function syncTime() {
   setText(el.cur, fmt(dragging ? dragValue * d : c));
   setText(el.dur, fmt(d));
   syncArm();
-  if (rec?.tape) {
-    windTape(rec, d ? c / d : 0);
-    setText(root.querySelector('.rec__counter'), String(Math.floor(c) % 1000).padStart(3, '0')); // the tape counter
-  }
+  devOf(rec)?.wind?.(rec, d ? c / d : 0, root, c); // tape between reels, the counter, the stylus along the cylinder
 }
 
 function syncModes() {
@@ -803,7 +735,7 @@ function enterIdle() {
   if (!open || !player.playing || player.loading || dragging) return;
   // move the stage so the record sits in the middle of the screen, slightly larger
   const r = stage.getBoundingClientRect();
-  const size = (rec?.el.offsetWidth || r.width) * (turntable() ? 1.5 : rec?.tape ? 1.3 : 1); // the whole deck must fit
+  const size = (rec?.el.offsetWidth || r.width) * (turntable() ? 1.5 : devOf(rec)?.idleScale || 1); // the whole deck must fit
   root.style.setProperty('--idle-dy', `${Math.round(innerHeight / 2 - (r.top + r.height / 2))}px`);
   root.style.setProperty('--idle-scale', Math.min(1.16, (innerWidth * 0.94) / size).toFixed(3));
   idle = true;
@@ -886,7 +818,7 @@ function setupSeek(bar) {
     dragging = false;
     progress.classList.remove('is-drag');
     const target = dragValue * player.duration;
-    if (Math.abs(target - player.time) > 3) (tapeMode() ? tapeWind : whoosh)(target > player.time);
+    if (Math.abs(target - player.time) > 3) (device()?.sounds.wind || whoosh)(target > player.time);
     player.seek(target);
   };
   bar.addEventListener('pointerup', end);
@@ -907,7 +839,7 @@ function beginScrub(x, y) {
   const r = rec.el.getBoundingClientRect();
   scrub = { cx: r.left + r.width / 2, cy: r.top + r.height / 2, radius: r.width / 2, turns: 0, start: player.time,
     target: player.time, wasPlaying: player.playing, lastT: performance.now(), anim0: Number(rec.anim.currentTime) || 0,
-    step: Math.floor(player.time / 5), quiet: 0, sound: rec.tape ? startTapeWhirr() : startScratch(), lastX: x };
+    step: Math.floor(player.time / 5), quiet: 0, sound: devOf(rec)?.sounds.scrub?.() ?? startScratch(), lastX: x };
   scrub.last = angleAt(x, y);
   scrubbing = true;
   syncArm(); // the arm lifts off while the record is turned by hand
@@ -922,7 +854,7 @@ function beginScrub(x, y) {
 
 function moveScrub(e) {
   let d;
-  if (rec.tape) { // a cassette is wound by dragging sideways: half its width is one turn of a reel
+  if (devOf(rec)?.scrub === 'x') { // tape is wound (and a stylus moved) by dragging sideways: half the width is one turn
     d = ((e.clientX - scrub.lastX) / scrub.radius) * 360;
     scrub.lastX = e.clientX;
   } else {
@@ -934,16 +866,21 @@ function moveScrub(e) {
     if (d < -180) d += 360;
     scrub.last = a;
   }
+  turnBy(d, performance.now() - scrub.lastT);
+}
+
+/** Move the track by `d` degrees of turning, made over `dt` ms: by a hand on the medium or by a held key. */
+function turnBy(d, dt) {
   scrub.turns += d / 360; // clockwise (the way the record plays) or to the right (the way the tape runs) is forward
   const now = performance.now();
-  scrub.sound?.update(d / 360 / (Math.max(8, now - scrub.lastT) / 1000));
+  scrub.sound?.update(d / 360 / (Math.max(8, dt) / 1000));
   scrub.lastT = now;
   clearTimeout(scrub.quiet);
   scrub.quiet = setTimeout(() => scrub?.sound?.update(0), 70); // the finger stopped: so does the sound
   const ms = turnMs();
   rec.anim.currentTime = (((scrub.anim0 + scrub.turns * ms) % ms) + ms) % ms; // the record (or the reels) follow the finger
   scrub.target = Math.min(Math.max(0, scrub.start + scrub.turns * SECONDS_PER_TURN), Math.max(0, player.duration - 1));
-  if (rec.tape) windTape(rec, player.duration ? scrub.target / player.duration : 0);
+  devOf(rec)?.wind?.(rec, player.duration ? scrub.target / player.duration : 0, root, scrub.target);
   const step = Math.floor(scrub.target / 5);
   if (step !== scrub.step) { scrub.step = step; seekHaptic('select'); }
   showBubble();
@@ -952,6 +889,7 @@ function moveScrub(e) {
 function endScrub() {
   const s = scrub;
   scrub = null;
+  clearInterval(s.keyTimer);
   scrubbing = false;
   clearTimeout(s.quiet);
   s.sound?.stop();
@@ -971,9 +909,77 @@ function showBubble() {
 
 // ---------- swipe the record to change tracks, tap to pause ----------
 
+// ---------- the device's own keys: play, pause, a tap on ◀◀ / ▶▶ changes the track, holding one winds ----------
+
+let keyHold = null;
+
+function keyDown(k, e) {
+  e.stopPropagation();
+  try { k.setPointerCapture(e.pointerId); } catch {}
+  haptic('light');
+  k.classList.add('is-down');
+  const action = k.dataset.key;
+  keyHold = { action, k, timer: action === 'rew' || action === 'ff' ? setTimeout(() => beginKeyWind(action === 'ff' ? 1 : -1), 320) : 0 };
+}
+
+function keyUp() {
+  const hold = keyHold;
+  keyHold = null;
+  clearTimeout(hold.timer);
+  hold.k.classList.remove('is-down');
+  if (scrub?.byKey) { endScrub(); return; }
+  pressKey(hold.action);
+}
+
+function pressKey(action) {
+  const playing = player.playing;
+  if (action === 'like') { likeCurrent(); return; }
+  if (action === 'play' && playing) return;
+  if ((action === 'pause' || action === 'stop') && !playing) return;
+  if (['play', 'pause', 'stop', 'toggle'].includes(action)) { deviceKey(playing ? 'pause' : 'play'); player.toggle(); return; }
+  deviceKey(action === 'rew' || action === 'prev' ? 'prev' : 'next');
+  if (action === 'rew' || action === 'prev') player.prev(); else player.next();
+}
+
+/** Holding ◀◀ or ▶▶: the medium winds faster and faster until the key is let go. */
+function beginKeyWind(dir) {
+  const r = rec?.el.getBoundingClientRect();
+  if (!r) return;
+  beginScrub(r.left + r.width / 2, r.top + r.height / 2);
+  if (!scrub) return;
+  scrub.byKey = true;
+  let n = 0;
+  scrub.keyTimer = setInterval(() => { n += 1; turnBy(dir * Math.min(10 + n * 1.5, 48), 60); showBubble(); }, 60);
+}
+
+// ---------- liking without the heart button: a double tap on the device ----------
+
+async function likeCurrent() {
+  if (!player.current) return;
+  haptic('success');
+  let liked = likes.has(player.current.id);
+  try {
+    liked = await toggleLike(player.current);
+    document.dispatchEvent(new CustomEvent('likes-changed'));
+  } catch { toast(t('toast_error'), 'error'); return; }
+  const heart = root.querySelector('.fp__heart');
+  heart.innerHTML = icon(liked ? 'heartFill' : 'heart');
+  heart.classList.toggle('is-off', !liked);
+  heart.getAnimations().forEach((a) => a.cancel());
+  heart.animate([
+    { opacity: 0, transform: 'translate(-50%, -50%) scale(.4)' },
+    { opacity: 1, transform: 'translate(-50%, -50%) scale(1.15)', offset: 0.3 },
+    { opacity: 1, transform: 'translate(-50%, -50%) scale(1)', offset: 0.6 },
+    { opacity: 0, transform: 'translate(-50%, -80%) scale(1)' },
+  ], { duration: 900, easing: 'ease-out' });
+  syncLike();
+}
+
 function setupGestures() {
-  let x0 = null, y0 = 0, dx = 0, moved = false, holdTimer = 0;
+  let x0 = null, y0 = 0, dx = 0, moved = false, holdTimer = 0, tapTimer = 0;
   stage.addEventListener('pointerdown', (e) => {
+    const k = e.target.closest('[data-key]');
+    if (k) { keyDown(k, e); return; }
     if (!rec) return;
     x0 = e.clientX; y0 = e.clientY; dx = 0; moved = false;
     stage.setPointerCapture(e.pointerId);
@@ -989,11 +995,20 @@ function setupGestures() {
     if (moved) rec.el.style.transform = `translateX(${dx * 0.7}px) rotate(${dx * 0.08}deg)`;
   });
   const end = () => {
+    if (keyHold) { keyUp(); return; }
     clearTimeout(holdTimer);
     if (x0 === null || !rec) return;
     x0 = null;
     if (scrub) { endScrub(); return; }
-    if (!moved) { haptic('medium'); tapeKey(player.playing ? 'pause' : 'play'); player.toggle(); return; }
+    if (!moved) {
+      // with nothing but the machine on screen a double tap likes the track: a single one waits a moment to be sure
+      if (settings.bareDeck) {
+        if (tapTimer) { clearTimeout(tapTimer); tapTimer = 0; likeCurrent(); return; }
+        tapTimer = setTimeout(() => { tapTimer = 0; haptic('medium'); deviceKey(player.playing ? 'pause' : 'play'); player.toggle(); }, 260);
+        return;
+      }
+      haptic('medium'); deviceKey(player.playing ? 'pause' : 'play'); player.toggle(); return;
+    }
     if (Math.abs(dx) > 70 && player.queue.length > 1) {
       haptic('light');
       if (dx < 0) player.next(); else player.prev();

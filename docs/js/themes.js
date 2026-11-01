@@ -27,6 +27,8 @@ export const THEMES = {
     dark: { bg: '#151515', swatch: ['#151515', '#D91E24', '#FFCE00', '#F2EDE0'] } },
   eighties: { light: { bg: '#FFEFF6', swatch: ['#FFEFF6', '#2A1245', '#D6246E', '#2DE2E6'] },
     dark: { bg: '#1A1033', swatch: ['#1A1033', '#FF2E93', '#2DE2E6', '#FFE45E'] } },
+  depression: { light: { bg: '#EDE3CF', swatch: ['#EDE3CF', '#24504F', '#A3402A', '#E8B84A'] },
+    dark: { bg: '#1E1712', swatch: ['#1E1712', '#B4502F', '#F0B84A', '#2F5755'] } },
 };
 
 /** The mode each theme was first drawn in. Before light and dark came to every theme a person's Auto / Light / Dark
