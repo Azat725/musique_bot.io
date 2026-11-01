@@ -1,5 +1,5 @@
 import { api, inTelegram } from './api.js';
-import { setLang, setTape, t } from './i18n.js';
+import { setLang, setLook, t } from './i18n.js';
 import { player } from './player.js';
 import { likes, loadHeard, loadLikes, onSettings, phonoMode, settings, syncCloudSettings, tapeMode, toggleLike, updateSettings } from './store.js';
 import { EASE_IO, confirmSheet, cover, esc, fitMarquee, h, haptic, icon, loader, markPlaying, openArtist, reducedMotion, tg, toast } from './ui.js';
@@ -405,7 +405,7 @@ onSettings(() => {
   shownLang = settings.lang;
   shownMode = settings.playerMode;
   setLang(settings.lang);
-  setTape(tapeMode()); // records or tapes: icons, texts and pictures all change
+  setLook(settings.playerMode); // records, tapes or discs: icons, texts and pictures all change
   translatePlayer();
   renderNav(true);
   // re-render views in the new language (or with the new pictures), keeping navigation and the place on the screen
@@ -429,7 +429,7 @@ async function boot() {
   shownLang = settings.lang;
   shownMode = settings.playerMode;
   setLang(settings.lang);
-  setTape(tapeMode());
+  setLook(settings.playerMode);
   applyTheme();
   tg?.onEvent?.('themeChanged', applyTheme);
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', applyTheme);

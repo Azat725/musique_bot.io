@@ -70,6 +70,8 @@ const SEG = (name, opts) => `<div class="seg" role="group" data-seg="${name}">${
 /** The speeds as the chosen player names them: 33⅓ / 45 rpm of a record, cm/s of a tape, 1× of a CD. */
 function speedOptions() {
   const d = DEVICES[settings.playerMode];
+  // a CD player does not turn at 33 or 45: it plays slower or faster, and says so
+  if (d?.id === 'cd') return [['slow', t('sound_slow'), '0.85×'], ['normal', t('sound_normal'), '1×'], ['fast', t('sound_fast'), '1.35×']];
   if (!d || d.fixedSound) return [['slow', t('sound_slow'), '0.85×'], ['normal', '33⅓', t('sound_rpm')], ['fast', '45', t('sound_rpm')]];
   const unit = d.speedUnit ? t(d.speedUnit) : '';
   return [['slow', t('sound_slow'), '0.85×'], ['normal', d.speed.normal, unit], ['fast', d.speed.fast, unit]];
@@ -106,7 +108,8 @@ export function openControlPanel() {
     </div>
     <div class="eqp__noise">
       <div class="eqp__noise-label"><span>${esc(t('settings_noise'))}</span><small>${esc(t('settings_noise_hint'))}</small></div>
-      <div class="seg seg--5" role="group">${NOISE.map(([v, key]) => `<button data-n="${v}"><b>${esc(t(key))}</b></button>`).join('')}</div>
+      ${settings.playerMode === 'cd' ? ''
+        : `<div class="seg seg--5" role="group">${NOISE.map(([v, key]) => `<button data-n="${v}"><b>${esc(t(key))}</b></button>`).join('')}</div>`}
     </div>
   </div>`);
   const power = panel.querySelector('.eqp__power input');

@@ -151,6 +151,18 @@ const DICT = {
     phono_shelf: 'Цилиндры', phono_play_all: 'Играть все', phono_count: '{n} записей 1890–1920-х',
     phono_only_title: 'Фонограф играет только цилиндры', phono_only_text: 'Чтобы слушать этот трек, выберите другой вид плеера.',
     phono_switch: 'Сменить вид плеера',
+    // ---------- the control panel and the texts of the reels and the CD player ----------
+    sound_normal: 'Обычная', sound_fast: 'Быстрее',
+    sound_speed_tape: 'Скорость ленты', sound_speed_cd: 'Скорость воспроизведения',
+    eq_warm_tape: 'Тёплая плёнка', eq_warm_cd: 'Тёплый звук',
+    settings_noise_cd: 'Шум', settings_noise_hint_cd: 'У CD-плеера звук цифровой: ни треска, ни шипения',
+    settings_noise_hint_reel: 'Тихое шипение магнитной ленты под музыку',
+    settings_sounds_cd: 'Звук CD-плеера', settings_sounds_hint_cd: 'Писк кнопок, раскрутка диска, щелчок крышки',
+    settings_sounds_reel: 'Звук катушечника', settings_sounds_hint_reel: 'Щелчки тумблеров, запуск мотора, перемотка ленты',
+    search_hint_cd: 'Найти диск', player_new_cd: 'Новый диск', player_new_reel: 'Новая бобина',
+    custom_sleeve_cd: 'Бокс для новых треков', custom_sleeve_hint_cd: 'Диск достаётся из бокса, когда трек звучит впервые',
+    custom_sleeve_reel: 'Коробка для новых треков', custom_sleeve_hint_reel: 'Бобина достаётся из картонной коробки, когда трек звучит впервые',
+    custom_idle_hint_cd: 'Через сколько секунд останется только плеер', custom_haptic_hint_cd: 'Лёгкие щелчки под пальцем на полосе и диске',
   },
   en: {
     nav_home: 'Home', nav_search: 'Search', nav_library: 'Library', nav_settings: 'Settings',
@@ -304,6 +316,18 @@ const DICT = {
     phono_shelf: 'Cylinders', phono_play_all: 'Play all', phono_count: '{n} recordings of the 1890s–1920s',
     phono_only_title: 'The phonograph plays only cylinders', phono_only_text: 'To hear this track, choose another player.',
     phono_switch: 'Change player',
+    // ---------- the control panel and the texts of the reels and the CD player ----------
+    sound_normal: 'Normal', sound_fast: 'Faster',
+    sound_speed_tape: 'Tape speed', sound_speed_cd: 'Playback speed',
+    eq_warm_tape: 'Warm tape', eq_warm_cd: 'Warm',
+    settings_noise_cd: 'Noise', settings_noise_hint_cd: 'A CD player is digital: no crackle, no hiss',
+    settings_noise_hint_reel: 'Soft magnetic-tape hiss under the music',
+    settings_sounds_cd: 'CD player sound', settings_sounds_hint_cd: 'Button beeps, the disc spinning up, the lid clicking',
+    settings_sounds_reel: 'Reel deck sound', settings_sounds_hint_reel: 'Toggle clacks, the motor starting, the tape winding',
+    search_hint_cd: 'Find a disc', player_new_cd: 'New disc', player_new_reel: 'New reel',
+    custom_sleeve_cd: 'Jewel case for new tracks', custom_sleeve_hint_cd: 'A disc comes out of its case when a track plays for the first time',
+    custom_sleeve_reel: 'Box for new tracks', custom_sleeve_hint_reel: 'A reel comes out of its cardboard box when a track plays for the first time',
+    custom_idle_hint_cd: 'After how many seconds only the player stays', custom_haptic_hint_cd: 'Light ticks under your finger on the bar and the disc',
   },
 };
 
@@ -314,15 +338,19 @@ export function setLang(value) {
   document.documentElement.lang = lang;
 }
 
-// in the cassette view a text with a "<key>_tape" version is said that way ("Find a tape", "New cassette"…)
-let tape = false;
+// the player gives some texts its own words: "<key>_tape" for the cassette deck and the reels ("Find a tape"), "<key>_reel"
+// for the reels alone, "<key>_cd" for the CD player; a text without such a version is said the usual way
+const LOOKS = { cassette: ['tape'], reel: ['reel', 'tape'], cd: ['cd'] };
+let look = [];
 
-export function setTape(value) {
-  tape = !!value;
+export function setLook(mode) {
+  look = LOOKS[mode] || [];
 }
 
 export function t(key, vars = {}) {
-  const s = (tape ? DICT[lang][key + '_tape'] ?? DICT.en[key + '_tape'] : undefined) ?? DICT[lang][key] ?? DICT.en[key] ?? key;
+  let s;
+  for (const l of look) s ??= DICT[lang][`${key}_${l}`] ?? DICT.en[`${key}_${l}`];
+  s ??= DICT[lang][key] ?? DICT.en[key] ?? key;
   return s.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
 }
 
