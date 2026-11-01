@@ -18,6 +18,12 @@ const record = (cls = '') => `<svg class="sx-record ${cls}" viewBox="0 0 200 200
   <circle class="h" cx="100" cy="100" r="4"/>
 </svg>`;
 
+/** The swatches of every theme in the mode on screen now. */
+function themeSwatches() {
+  const mode = document.documentElement.dataset.mode === 'dark' ? 'dark' : 'light';
+  return [CLASSIC_SWATCH[mode], ...Object.values(THEMES).filter(Boolean).map((th) => th[mode].swatch)];
+}
+
 const SLIDES = [
   { tone: 'navy', art: () => `<div class="sx-turntable">${record('sx-spin')}</div>` },
   {
@@ -59,7 +65,7 @@ const SLIDES = [
     art: () => `<div class="sx-custom">
       <div class="sx-discs">${['#101218', '#5A1420', '#D5BF9B', '#1E3A2C', '#B08D57']
         .map((c, i) => `<span class="sx-disc" style="--c:${c};--d:${i * 0.09}s"></span>`).join('')}</div>
-      <div class="sx-themes">${[CLASSIC_SWATCH, ...Object.values(THEMES).filter(Boolean).map((th) => th.swatch)]
+      <div class="sx-themes">${themeSwatches()
         .map((sw, i) => `<span class="sx-theme" style="--d:${0.5 + i * 0.07}s">${sw.map((c) => `<i style="background:${c}"></i>`).join('')}</span>`).join('')}</div>
     </div>`,
   },

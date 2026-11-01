@@ -1,4 +1,5 @@
 import { api } from './api.js';
+import { NATIVE_MODE } from './themes.js';
 
 const tg = window.Telegram?.WebApp;
 const KEY = 'musique.settings';
@@ -15,6 +16,12 @@ const RENAMED_THEMES = { oldmoney: 'richesse', sky: 'classic' };
 function migrate() {
   const next = RENAMED_THEMES[settings.colorTheme];
   if (next) settings.colorTheme = next;
+  // light and dark came to every colour theme: until then Auto / Light / Dark did nothing for them, so whoever has one
+  // keeps the mode it was drawn in (once; after that the choice is theirs)
+  if (!settings.themeModeSet) {
+    if (NATIVE_MODE[settings.colorTheme]) settings.theme = NATIVE_MODE[settings.colorTheme];
+    settings.themeModeSet = true;
+  }
   // the 33 / 45 switch grew into a speed with a slowed setting
   if (settings.rpm45 && settings.speed === 'normal') settings.speed = 'fast';
   delete settings.rpm45;

@@ -10,10 +10,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- fonts must never block rendering: if Google is unreachable the system fonts are used -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-  <link rel="stylesheet" href="css/tokens.css?v=32">
-  <link rel="stylesheet" href="css/app.css?v=47">
+  <link rel="stylesheet" href="css/tokens.css?v=33">
+  <link rel="stylesheet" href="css/app.css?v=48">
   <link rel="stylesheet" href="css/player.css?v=36">
-  <link rel="stylesheet" href="css/stories.css?v=6">
+  <link rel="stylesheet" href="css/stories.css?v=7">
   <!-- local copy of https://telegram.org/js/telegram-web-app.js?64 (taken 2026-10-29, its two per-event console.log calls removed): telegram.org hangs on some networks/VPNs, and the app module waits for this script -->
   <script src="vendor/telegram-web-app.js?v=2"></script>
   <script>
@@ -23,44 +23,56 @@
       var s = {};
       try { s = JSON.parse(localStorage.getItem('musique.settings')) || {}; } catch (e) {}
       var w = window.Telegram && window.Telegram.WebApp;
-      // custom colour themes: [mode, background] — the same table as THEMES in js/themes.js
+      // custom colour themes: [light background, dark background] — the same table as THEMES in js/themes.js
       var key = { oldmoney: 'richesse' }[s.colorTheme] || s.colorTheme; // a renamed theme (js/store.js migrates the setting itself)
-      var custom = { navy: ['dark', '#0F1A2E'], noir: ['dark', '#121212'], bordo: ['dark', '#4A121C'],
-        green: ['dark', '#12261D'], richesse: ['light', '#F4EFE3'], obsidian: ['dark', '#0D1110'],
-        terracotta: ['dark', '#211714'], tuscan: ['light', '#F2E8D6'], ussr: ['light', '#F1E6CC'] }[key];
-      var theme = custom ? key : s.theme && s.theme !== 'system' ? s.theme
+      var custom = { navy: ['#F3EBDA', '#0F1A2E'],
+        noir: ['#F2F2F0', '#121212'],
+        bordo: ['#F6ECE6', '#4A121C'],
+        green: ['#F1EDDD', '#12261D'],
+        richesse: ['#F4EFE3', '#0F1A14'],
+        obsidian: ['#EEF3F0', '#0D1110'],
+        terracotta: ['#F6EBDD', '#211714'],
+        tuscan: ['#F2E8D6', '#1C231C'],
+        ussr: ['#F1E6CC', '#2A0F10'],
+        ddr: ['#EDE8DC', '#151515'],
+        eighties: ['#FFEFF6', '#1A1033'] }[key];
+      // Auto / Light / Dark applies to every theme; Auto follows Telegram or the system. Until js/store.js has migrated the
+      // settings (once), a theme is shown in the mode it was drawn in, as it always was
+      var mode = s.theme && s.theme !== 'system' ? s.theme
         : (w && w.colorScheme) || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      if (!s.themeModeSet && {navy: 'dark', noir: 'dark', bordo: 'dark', green: 'dark', richesse: 'light', obsidian: 'dark', terracotta: 'dark', tuscan: 'light', ussr: 'light'}[key]) mode = {navy: 'dark', noir: 'dark', bordo: 'dark', green: 'dark', richesse: 'light', obsidian: 'dark', terracotta: 'dark', tuscan: 'light', ussr: 'light'}[key];
+      var theme = custom ? key : mode;
       var root = document.documentElement;
       root.dataset.theme = theme;
-      root.dataset.mode = custom ? custom[0] : theme;
+      root.dataset.mode = mode;
       if (s.recordColor && s.recordColor !== 'black') root.dataset.vinyl = s.recordColor;
       if (s.playerMode === 'cassette') root.dataset.player = 'cassette'; // the launch screen shows a cassette then
       if (s.tapeColor && s.tapeColor !== 'black') root.dataset.tape = s.tapeColor;
-      var bg = custom ? custom[1] : theme === 'dark' ? '#1A1410' : '';
+      var bg = custom ? custom[mode === 'dark' ? 1 : 0] : mode === 'dark' ? '#1A1410' : '';
       if (bg) document.querySelector('meta[name="theme-color"]').content = bg;
     })();
   </script>
   <!-- one version for every module: imports inside the modules are bare, and iOS caches them separately -->
   <script type="importmap">
   { "imports": {
-    "./js/api.js": "./js/api.js?v=58", "./js/i18n.js": "./js/i18n.js?v=58", "./js/player.js": "./js/player.js?v=58",
-    "./js/store.js": "./js/store.js?v=58", "./js/ui.js": "./js/ui.js?v=58", "./js/vinyl.js": "./js/vinyl.js?v=58",
-    "./js/sfx.js": "./js/sfx.js?v=58", "./js/eq.js": "./js/eq.js?v=58",
-    "./js/views/artist.js": "./js/views/artist.js?v=58", "./js/views/artists.js": "./js/views/artists.js?v=58", "./js/views/home.js": "./js/views/home.js?v=58", "./js/views/library.js": "./js/views/library.js?v=58",
-    "./js/views/playlist.js": "./js/views/playlist.js?v=58", "./js/views/search.js": "./js/views/search.js?v=58",
-    "./js/views/settings.js": "./js/views/settings.js?v=58",
-    "./js/stories.js": "./js/stories.js?v=58", "./js/themes.js": "./js/themes.js?v=58",
-    "./js/queue.js": "./js/queue.js?v=58", "./js/sync.js": "./js/sync.js?v=58", "./js/login.js": "./js/login.js?v=58", "./js/offline.js": "./js/offline.js?v=58", "./js/graph.js": "./js/graph.js?v=58", "./js/sleep.js": "./js/sleep.js?v=58"
+    "./js/api.js": "./js/api.js?v=59", "./js/i18n.js": "./js/i18n.js?v=59", "./js/player.js": "./js/player.js?v=59",
+    "./js/store.js": "./js/store.js?v=59", "./js/ui.js": "./js/ui.js?v=59", "./js/vinyl.js": "./js/vinyl.js?v=59",
+    "./js/sfx.js": "./js/sfx.js?v=59", "./js/eq.js": "./js/eq.js?v=59",
+    "./js/views/artist.js": "./js/views/artist.js?v=59", "./js/views/artists.js": "./js/views/artists.js?v=59", "./js/views/home.js": "./js/views/home.js?v=59", "./js/views/library.js": "./js/views/library.js?v=59",
+    "./js/views/playlist.js": "./js/views/playlist.js?v=59", "./js/views/search.js": "./js/views/search.js?v=59",
+    "./js/views/settings.js": "./js/views/settings.js?v=59",
+    "./js/stories.js": "./js/stories.js?v=59", "./js/themes.js": "./js/themes.js?v=59",
+    "./js/queue.js": "./js/queue.js?v=59", "./js/sync.js": "./js/sync.js?v=59", "./js/login.js": "./js/login.js?v=59", "./js/offline.js": "./js/offline.js?v=59", "./js/graph.js": "./js/graph.js?v=59", "./js/sleep.js": "./js/sleep.js?v=59"
   } }
   </script>
-  <link rel="modulepreload" href="js/app.js?v=58">
-  <link rel="modulepreload" href="js/api.js?v=58">
-  <link rel="modulepreload" href="js/player.js?v=58">
-  <link rel="modulepreload" href="js/ui.js?v=58">
-  <link rel="modulepreload" href="js/vinyl.js?v=58">
-  <link rel="modulepreload" href="js/store.js?v=58">
-  <link rel="modulepreload" href="js/i18n.js?v=58">
-  <link rel="modulepreload" href="js/views/home.js?v=58">
+  <link rel="modulepreload" href="js/app.js?v=59">
+  <link rel="modulepreload" href="js/api.js?v=59">
+  <link rel="modulepreload" href="js/player.js?v=59">
+  <link rel="modulepreload" href="js/ui.js?v=59">
+  <link rel="modulepreload" href="js/vinyl.js?v=59">
+  <link rel="modulepreload" href="js/store.js?v=59">
+  <link rel="modulepreload" href="js/i18n.js?v=59">
+  <link rel="modulepreload" href="js/views/home.js?v=59">
 </head>
 <body>
   <!-- launch screen: a record slides out of its sleeve and spins (a cassette's reels turn in the cassette view); app.js puts it back and fades it out -->
@@ -105,6 +117,6 @@
       }, 25000);
     })();
   </script>
-  <script type="module" src="js/app.js?v=58" onerror="window.__musiqueNote('не удалось загрузить js/app.js')"></script>
+  <script type="module" src="js/app.js?v=59" onerror="window.__musiqueNote('не удалось загрузить js/app.js')"></script>
 </body>
 </html>

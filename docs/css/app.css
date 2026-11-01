@@ -376,8 +376,6 @@ body.player-open .eq i { animation-play-state: paused; } /* hidden under the ful
 .about__features { list-style: none; margin: 14px 0 2px; padding: 0; display: grid; gap: 10px; }
 .about__features li { display: flex; gap: 10px; align-items: flex-start; color: var(--text-2); font-size: 14px; line-height: 1.4; }
 /* Customization: theme row, record colour swatches, theme picker */
-.group__item.is-muted .segmented { opacity: .45; }
-.group__item:not(.is-muted) [data-mode-hint] { display: none; }
 .theme-row { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .theme-dots, .theme-card__dots { display: grid; grid-template-columns: 1fr 1fr; width: 34px; height: 34px; flex: none; border-radius: var(--r-sm);
   overflow: hidden; box-shadow: 0 0 0 1px var(--line); }

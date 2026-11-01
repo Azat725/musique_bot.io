@@ -10,9 +10,10 @@ import { brandMark, confirmSheet, esc, h, haptic, icon, promptName, sheet, tg, t
 
 const NUMERIC = new Set(['vinylNoise', 'idleDelay']); // segmented controls that store numbers
 
-/** Four flat stripes of a theme's colours. */
+/** Four flat stripes of a theme's colours, in the mode it is shown in now (app.js sets data-mode before this runs). */
 function swatchDots(key) {
-  const colors = key === 'classic' ? CLASSIC_SWATCH : THEMES[key].swatch;
+  const mode = document.documentElement.dataset.mode === 'dark' ? 'dark' : 'light';
+  const colors = key === 'classic' ? CLASSIC_SWATCH[mode] : THEMES[key][mode].swatch;
   return colors.map((c) => `<i style="background:${c}"></i>`).join('');
 }
 
@@ -94,8 +95,8 @@ export async function render() {
         <span class="theme-row"><span class="theme-dots" data-theme-dots></span>
           <span><span class="group__name">${esc(t('custom_theme'))}</span><span class="group__hint" data-theme-state></span></span></span>${icon('right', 'group__chev')}
       </button>
-      <div class="group__item group__item--stack" data-mode-row>
-        <span><span class="group__name">${esc(t('settings_theme'))}</span><span class="group__hint" data-mode-hint>${esc(t('theme_mode_hint'))}</span></span>
+      <div class="group__item group__item--stack">
+        <span class="group__name">${esc(t('settings_theme'))}</span>
         ${segmented('theme', [['system', t('theme_system')], ['light', t('theme_light')], ['dark', t('theme_dark')]], settings.theme)}
       </div>
       <div class="group__item group__item--stack">
@@ -203,6 +204,7 @@ export async function render() {
       const value = NUMERIC.has(seg.dataset.name) ? Number(btn.dataset.value) : btn.dataset.value;
       seg.querySelectorAll('button').forEach((b) => { b.classList.toggle('is-on', b === btn); b.setAttribute('aria-checked', b === btn); });
       updateSettings({ [seg.dataset.name]: value }); // a new player view re-renders this screen (app.js)
+      if (seg.dataset.name === 'theme') syncThemeRow(); // the theme's other palette: new colours for the dots
     });
   });
   root.querySelector('[data-sounds]').addEventListener('change', (e) => {
@@ -223,8 +225,6 @@ export async function render() {
     const key = THEMES[settings.colorTheme] ? settings.colorTheme : 'classic';
     root.querySelector('[data-theme-state]').textContent = t('theme_' + key);
     root.querySelector('[data-theme-dots]').innerHTML = swatchDots(key);
-    // Auto / Light / Dark only shapes the classic theme
-    root.querySelector('[data-mode-row]').classList.toggle('is-muted', key !== 'classic');
   };
   syncThemeRow();
   root.querySelector('[data-color-theme]').addEventListener('click', async () => {

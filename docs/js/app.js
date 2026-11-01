@@ -38,9 +38,10 @@ function resolvedTheme() {
 
 function applyTheme() {
   const custom = THEMES[settings.colorTheme];
-  // data-theme picks the palette, data-mode tells components whether it is light or dark
-  const theme = custom ? settings.colorTheme : resolvedTheme();
-  const mode = custom ? custom.mode : theme;
+  // data-theme picks the palette, data-mode tells components (and the theme's two palettes) whether it is light or dark:
+  // Auto / Light / Dark applies to every theme
+  const mode = resolvedTheme();
+  const theme = custom ? settings.colorTheme : mode;
   const doc = document.documentElement;
   doc.dataset.theme = theme;
   doc.dataset.mode = mode;
@@ -55,7 +56,7 @@ function applyTheme() {
   else delete doc.dataset.tape;
   if (settings.recorderColor && settings.recorderColor !== 'silver') doc.dataset.recorder = settings.recorderColor;
   else delete doc.dataset.recorder;
-  const color = custom ? custom.bg : COLORS[theme];
+  const color = custom ? custom[mode].bg : COLORS[mode];
   try {
     if (tg?.isVersionAtLeast?.('6.1')) { tg.setHeaderColor(color); tg.setBackgroundColor(color); }
     if (tg?.isVersionAtLeast?.('7.10')) tg.setBottomBarColor(color);

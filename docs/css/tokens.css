@@ -75,10 +75,19 @@
   --on-seg-on: #FFFFFF;
 }
 
-/* ---------- colour themes (Settings → Customization). data-mode tells light from dark for component rules ---------- */
+/* ---------- colour themes (Settings → Theme: Auto / Light / Dark applies to every one of them; each has two palettes) ----------
 
-/* Navy Blue: deep navy, cream text, bordeaux accent, brown tiles */
-:root[data-theme="navy"] {
+/* Navy Blue: deep navy, cream text, bordeaux accent, brown tiles; light: cream paper, navy ink */
+:root[data-theme="navy"][data-mode="light"] {
+  --bg: #F3EBDA; --surface: #FBF6EA; --surface-2: #E8DCC4;
+  --text: #14213D; --text-2: #4F5568; --text-3: #6F7384; --line: #D9CCB0;
+  --accent: #A8394A; --accent-text: #8E2E3D; --accent-press: #7E2735; --accent-soft: #EBD3CC; --on-accent: #FFFFFF;
+  --tile-navy: #6B4A32; --mini: #1E2F4D; --on-mini: #F1E6D2; --toast: #14213D; --on-toast: #F3EBDA;
+  --scrim: rgba(15, 26, 46, 0.45); --shade: rgba(15, 26, 46, 0.55); --shadow: rgba(20, 33, 61, 0.22);
+  --vinyl: #0A0F1A; --groove: rgba(255, 255, 255, 0.05); --groove-strong: rgba(255, 255, 255, 0.11); --sheen: rgba(255, 255, 255, 0.07);
+  --seg-on: #14213D; --on-seg-on: #F3EBDA;
+}
+:root[data-theme="navy"][data-mode="dark"] {
   --bg: #0F1A2E; --surface: #16243D; --surface-2: #1E2F4D;
   --text: #F1E6D2; --text-2: #C2B49C; --text-3: #8C8370; --line: #2A3A58;
   --accent: #A8394A; --accent-text: #DE7883; --accent-press: #8E2E3D; --accent-soft: #3A2430; --on-accent: #FFFFFF;
@@ -88,8 +97,17 @@
   --seg-on: #A8394A; --on-seg-on: #FFFFFF;
 }
 
-/* Noir: graphite and black, white text, bordeaux accent */
-:root[data-theme="noir"] {
+/* Noir: graphite and black, white text, bordeaux accent; light: white and soft grey */
+:root[data-theme="noir"][data-mode="light"] {
+  --bg: #F2F2F0; --surface: #FFFFFF; --surface-2: #E4E4E2;
+  --text: #1A1A1A; --text-2: #555555; --text-3: #737373; --line: #D6D6D3;
+  --accent: #9E2B3C; --accent-text: #9E2B3C; --accent-press: #82222F; --accent-soft: #EBD3D6; --on-accent: #FFFFFF;
+  --tile-navy: #3A3A3A; --mini: #262626; --on-mini: #F5F5F5; --toast: #1A1A1A; --on-toast: #F5F5F5;
+  --scrim: rgba(0, 0, 0, 0.4); --shade: rgba(0, 0, 0, 0.5); --shadow: rgba(0, 0, 0, 0.2);
+  --vinyl: #050505; --groove: rgba(255, 255, 255, 0.05); --groove-strong: rgba(255, 255, 255, 0.11); --sheen: rgba(255, 255, 255, 0.07);
+  --seg-on: #1A1A1A; --on-seg-on: #F5F5F5;
+}
+:root[data-theme="noir"][data-mode="dark"] {
   --bg: #121212; --surface: #1C1C1C; --surface-2: #262626;
   --text: #F5F5F5; --text-2: #B5B5B5; --text-3: #7E7E7E; --line: #2E2E2E;
   --accent: #9E2B3C; --accent-text: #E0707E; --accent-press: #82222F; --accent-soft: #33191D; --on-accent: #FFFFFF;
@@ -99,8 +117,18 @@
   --seg-on: #F5F5F5; --on-seg-on: #121212;
 }
 
-/* Bordo: bordeaux all over, cream fills, navy and brown tiles */
-:root[data-theme="bordo"] {
+/* Bordo: bordeaux all over, cream fills, navy and brown tiles; light: blush paper, bordeaux ink */
+:root[data-theme="bordo"][data-mode="light"] {
+  --bg: #F6ECE6; --surface: #FCF5F0; --surface-2: #EBD9D0;
+  --text: #3A1018; --text-2: #6B4048; --text-3: #85646A; --line: #DFC8C0;
+  --heading: #4A121C;
+  --accent: #6E1A27; --accent-text: #7A1C2B; --accent-press: #591420; --accent-soft: #EFD2CE; --on-accent: #F6ECE6;
+  --tile-navy: #1F2E4D; --mini: #4A121C; --on-mini: #F3E7D3; --toast: #4A121C; --on-toast: #F3E7D3;
+  --scrim: rgba(40, 10, 16, 0.42); --shade: rgba(40, 10, 16, 0.55); --shadow: rgba(74, 18, 28, 0.24);
+  --vinyl: #120707; --groove: rgba(255, 255, 255, 0.05); --groove-strong: rgba(255, 255, 255, 0.11); --sheen: rgba(255, 255, 255, 0.07);
+  --seg-on: #4A121C; --on-seg-on: #F3E7D3;
+}
+:root[data-theme="bordo"][data-mode="dark"] {
   --bg: #4A121C; --surface: #5A1A26; --surface-2: #6A2330;
   --text: #F3E7D3; --text-2: #DCC6A8; --text-3: #B59A80; --line: #742B38;
   --accent: #F3E7D3; --accent-text: #EBC793; --accent-press: #DFD0B8; --accent-soft: #6E2A36; --on-accent: #4A121C;
@@ -110,8 +138,18 @@
   --seg-on: #F3E7D3; --on-seg-on: #4A121C;
 }
 
-/* British Green: racing green, cream text, bordeaux accent, brown tiles */
-:root[data-theme="green"] {
+/* British Green: racing green, cream text, bordeaux accent, brown tiles; light: ivory, green ink */
+:root[data-theme="green"][data-mode="light"] {
+  --bg: #F1EDDD; --surface: #FAF7EC; --surface-2: #E4DEC6;
+  --text: #12261D; --text-2: #4A5648; --text-3: #6C7460; --line: #D3CDB2;
+  --heading: #1F3D30;
+  --accent: #9A2E3D; --accent-text: #8A2937; --accent-press: #7E2532; --accent-soft: #EBD6D0; --on-accent: #FFFFFF;
+  --tile-navy: #5C3F2A; --mini: #1F3D30; --on-mini: #EFE4CF; --toast: #12261D; --on-toast: #EFE4CF;
+  --scrim: rgba(10, 25, 18, 0.42); --shade: rgba(10, 25, 18, 0.55); --shadow: rgba(18, 38, 29, 0.22);
+  --vinyl: #070B09; --groove: rgba(255, 255, 255, 0.05); --groove-strong: rgba(255, 255, 255, 0.11); --sheen: rgba(255, 255, 255, 0.07);
+  --seg-on: #1F3D30; --on-seg-on: #EFE4CF;
+}
+:root[data-theme="green"][data-mode="dark"] {
   --bg: #12261D; --surface: #183126; --surface-2: #1F3D30;
   --text: #EFE4CF; --text-2: #C3B597; --text-3: #8E8670; --line: #29463A;
   --accent: #9A2E3D; --accent-text: #DA7680; --accent-press: #7E2532; --accent-soft: #3A2A27; --on-accent: #FFFFFF;
@@ -121,19 +159,38 @@
   --seg-on: #9A2E3D; --on-seg-on: #FFFFFF;
 }
 
-/* Richesse: ivory, forest green, old gold, a touch of bordeaux */
-:root[data-theme="richesse"] {
+/* Richesse: ivory, forest green, old gold, a touch of bordeaux; dark: black-green with gold */
+:root[data-theme="richesse"][data-mode="light"] {
   --bg: #F4EFE3; --surface: #FBF8F1; --surface-2: #E9E1CF;
   --text: #1F3A2E; --text-2: #5A5244; --text-3: #847965; --line: #DDD3BF;
-  --accent: #2F4B3C; --accent-text: #8A6A2F; --accent-press: #243B2F; --accent-soft: #E2E5D6; --on-accent: #F4EFE3;
+  --accent: #2F4B3C; --accent-text: #856627; --accent-press: #243B2F; --accent-soft: #E2E5D6; --on-accent: #F4EFE3;
   --tile-navy: #2F4B3C; --mini: #2F4B3C; --on-mini: #F4EFE3; --toast: #1F3A2E; --on-toast: #FBF8F1;
   --scrim: rgba(25, 32, 25, 0.4); --shade: rgba(25, 32, 25, 0.5); --shadow: rgba(60, 50, 30, 0.22);
   --vinyl: #101218; --groove: rgba(255, 255, 255, 0.05); --groove-strong: rgba(255, 255, 255, 0.11); --sheen: rgba(255, 255, 255, 0.07);
   --seg-on: #2F4B3C; --on-seg-on: #F4EFE3;
 }
+:root[data-theme="richesse"][data-mode="dark"] {
+  --bg: #0F1A14; --surface: #16241C; --surface-2: #1E3026;
+  --text: #F0E8D0; --text-2: #BFB597; --text-3: #8A8268; --line: #2A3D31;
+  --heading: #D9B567;
+  --accent: #C9A24A; --accent-text: #D9B567; --accent-press: #B38C37; --accent-soft: #26301F; --on-accent: #0F1A14;
+  --tile-navy: #2F4B3C; --mini: #1E3026; --on-mini: #F0E8D0; --toast: #F0E8D0; --on-toast: #0F1A14;
+  --scrim: rgba(0, 0, 0, 0.6); --shade: rgba(2, 10, 6, 0.6); --shadow: rgba(0, 0, 0, 0.55);
+  --vinyl: #070A08; --groove: rgba(255, 240, 210, 0.045); --groove-strong: rgba(255, 240, 210, 0.1); --sheen: rgba(255, 240, 210, 0.06);
+  --seg-on: #C9A24A; --on-seg-on: #0F1A14;
+}
 
-/* Obsidian: near-black with cold emerald accents, like dark glass */
-:root[data-theme="obsidian"] {
+/* Obsidian: near-black with cold emerald accents, like dark glass; light: pale mint */
+:root[data-theme="obsidian"][data-mode="light"] {
+  --bg: #EEF3F0; --surface: #F8FBF9; --surface-2: #DCE6E0;
+  --text: #12201B; --text-2: #4A5C54; --text-3: #6A7B72; --line: #CBD8D1;
+  --accent: #2F7A5E; --accent-text: #2A6F55; --accent-press: #245F49; --accent-soft: #D2E6DC; --on-accent: #FFFFFF;
+  --tile-navy: #1F3B30; --mini: #232D29; --on-mini: #E6ECE7; --toast: #19211E; --on-toast: #E6ECE7;
+  --scrim: rgba(10, 20, 16, 0.4); --shade: rgba(10, 20, 16, 0.5); --shadow: rgba(20, 40, 32, 0.2);
+  --vinyl: #060908; --groove: rgba(255, 255, 255, 0.05); --groove-strong: rgba(255, 255, 255, 0.11); --sheen: rgba(255, 255, 255, 0.07);
+  --seg-on: #19211E; --on-seg-on: #E6ECE7;
+}
+:root[data-theme="obsidian"][data-mode="dark"] {
   --bg: #0D1110; --surface: #19211E; --surface-2: #232D29;
   --text: #E6ECE7; --text-2: #82948A; --text-3: #6A7B72; --line: #27322D;
   --accent: #548C75; --accent-text: #6FAA90; --accent-press: #437260; --accent-soft: #1B2B25; --on-accent: #0D1110;
@@ -143,8 +200,18 @@
   --seg-on: #548C75; --on-seg-on: #0D1110;
 }
 
-/* Terracotta: earth and clay, red-brown tones */
-:root[data-theme="terracotta"] {
+/* Terracotta: earth and clay, red-brown tones; light: clay-cream */
+:root[data-theme="terracotta"][data-mode="light"] {
+  --bg: #F6EBDD; --surface: #FCF5EA; --surface-2: #EBD9C4;
+  --text: #3A241C; --text-2: #6D5244; --text-3: #85695A; --line: #E0CCB3;
+  --heading: #8E493D;
+  --accent: #B4553A; --accent-text: #9C432D; --accent-press: #8F4430; --accent-soft: #F0D3C4; --on-accent: #FFFFFF;
+  --tile-navy: #8E493D; --mini: #432C25; --on-mini: #F0E1D2; --toast: #432C25; --on-toast: #F6EBDD;
+  --scrim: rgba(50, 26, 18, 0.42); --shade: rgba(50, 26, 18, 0.55); --shadow: rgba(90, 45, 25, 0.22);
+  --vinyl: #0E0908; --groove: rgba(255, 255, 255, 0.05); --groove-strong: rgba(255, 255, 255, 0.11); --sheen: rgba(255, 255, 255, 0.07);
+  --seg-on: #8E493D; --on-seg-on: #FBF1E4;
+}
+:root[data-theme="terracotta"][data-mode="dark"] {
   --bg: #211714; --surface: #35231E; --surface-2: #432C25;
   --text: #F0E1D2; --text-2: #C6AE9C; --text-3: #967F70; --line: #4B332B;
   --accent: #C4775E; --accent-text: #DB8F76; --accent-press: #AB6049; --accent-soft: #3E2620; --on-accent: #211714;
@@ -154,20 +221,30 @@
   --seg-on: #C4775E; --on-seg-on: #211714;
 }
 
-/* Tuscan: warm Mediterranean, terracotta and olive on sand */
-:root[data-theme="tuscan"] {
+/* Tuscan: warm Mediterranean, terracotta and olive on sand; dark: olive night */
+:root[data-theme="tuscan"][data-mode="light"] {
   --bg: #F2E8D6; --surface: #E8D8BE; --surface-2: #DCC9A8;
-  --text: #514238; --text-2: #75665A; --text-3: #7F6F62; --line: #D5C3A4;
+  --text: #514238; --text-2: #695A4E; --text-3: #7F6F62; --line: #D5C3A4;
   --heading: #344638;
-  --accent: #A65F43; --accent-text: #94503A; --accent-press: #8D4C33; --accent-soft: #EAD0C0; --on-accent: #FFFFFF;
+  --accent: #A65F43; --accent-text: #8A4833; --accent-press: #8D4C33; --accent-soft: #EAD0C0; --on-accent: #FFFFFF;
   --tile-navy: #344638; --mini: #344638; --on-mini: #F2E8D6; --toast: #344638; --on-toast: #F2E8D6;
   --scrim: rgba(40, 32, 20, 0.4); --shade: rgba(40, 32, 20, 0.5); --shadow: rgba(70, 50, 25, 0.24);
   --vinyl: #14120F; --groove: rgba(255, 255, 255, 0.05); --groove-strong: rgba(255, 255, 255, 0.11); --sheen: rgba(255, 255, 255, 0.07);
   --seg-on: #344638; --on-seg-on: #F2E8D6;
 }
+:root[data-theme="tuscan"][data-mode="dark"] {
+  --bg: #1C231C; --surface: #252E26; --surface-2: #2F3A30;
+  --text: #EFE5D0; --text-2: #BDB296; --text-3: #8A8268; --line: #36423A;
+  --heading: #CFC08F;
+  --accent: #C77A5A; --accent-text: #D98F70; --accent-press: #AF6446; --accent-soft: #3A2C25; --on-accent: #1C231C;
+  --tile-navy: #344638; --mini: #2F3A30; --on-mini: #EFE5D0; --toast: #EFE5D0; --on-toast: #1C231C;
+  --scrim: rgba(0, 0, 0, 0.6); --shade: rgba(6, 10, 6, 0.6); --shadow: rgba(0, 0, 0, 0.55);
+  --vinyl: #0C0E0B; --groove: rgba(255, 240, 220, 0.045); --groove-strong: rgba(255, 240, 220, 0.1); --sheen: rgba(255, 240, 220, 0.06);
+  --seg-on: #C77A5A; --on-seg-on: #1C231C;
+}
 
-/* USSR: banner red and gold on newsprint, a poster of the 80s */
-:root[data-theme="ussr"] {
+/* USSR: banner red and gold on newsprint, a poster of the 80s; dark: deep bordeaux, gold and red */
+:root[data-theme="ussr"][data-mode="light"] {
   --bg: #F1E6CC; --surface: #E7D6B2; --surface-2: #DCC69C;
   --text: #2E1A14; --text-2: #5A4232; --text-3: #6F5847; --line: #D3BC92;
   --heading: #9E1219;
@@ -177,21 +254,73 @@
   --vinyl: #16110E; --groove: rgba(255, 240, 210, 0.05); --groove-strong: rgba(255, 240, 210, 0.11); --sheen: rgba(255, 245, 220, 0.07);
   --seg-on: #B3141C; --on-seg-on: #F6DE9A;
 }
+:root[data-theme="ussr"][data-mode="dark"] {
+  --bg: #2A0F10; --surface: #3A1517; --surface-2: #4A1C1E;
+  --text: #F6E7C6; --text-2: #D2B98F; --text-3: #A28A66; --line: #5A2A28;
+  --heading: #F0C24A;
+  --accent: #D12A2E; --accent-text: #F0646A; --accent-press: #B4191F; --accent-soft: #4A1E1C; --on-accent: #FFF6DC;
+  --tile-navy: #5A1218; --mini: #B3141C; --on-mini: #FBEFCF; --toast: #F6DE9A; --on-toast: #2A0F10;
+  --scrim: rgba(15, 3, 3, 0.62); --shade: rgba(15, 3, 3, 0.6); --shadow: rgba(0, 0, 0, 0.55);
+  --vinyl: #0F0A08; --groove: rgba(255, 240, 220, 0.045); --groove-strong: rgba(255, 240, 220, 0.1); --sheen: rgba(255, 240, 220, 0.06);
+  --seg-on: #D12A2E; --on-seg-on: #FFF6DC;
+}
+
+/* DDR: black, red and gold; light: Radio DDR paper and a black bar, dark: graphite with gold headings */
+:root[data-theme="ddr"][data-mode="light"] {
+  --bg: #EDE8DC; --surface: #F7F3EA; --surface-2: #DDD6C6;
+  --text: #1A1A1A; --text-2: #4F4B42; --text-3: #6F6A5E; --line: #CFC8B6;
+  --accent: #C4161C; --accent-text: #B01217; --accent-press: #A01016; --accent-soft: #F0D4CE; --on-accent: #FFFFFF;
+  --tile-navy: #2A2A2A; --mini: #1A1A1A; --on-mini: #FFCE00; --toast: #1A1A1A; --on-toast: #FFCE00;
+  --scrim: rgba(20, 18, 12, 0.42); --shade: rgba(20, 18, 12, 0.55); --shadow: rgba(40, 35, 20, 0.22);
+  --vinyl: #0D0D0D; --groove: rgba(255, 255, 255, 0.05); --groove-strong: rgba(255, 255, 255, 0.11); --sheen: rgba(255, 255, 255, 0.07);
+  --seg-on: #1A1A1A; --on-seg-on: #FFCE00;
+}
+:root[data-theme="ddr"][data-mode="dark"] {
+  --bg: #151515; --surface: #1F1F1F; --surface-2: #2A2A2A;
+  --text: #F2EDE0; --text-2: #BDB7A8; --text-3: #858074; --line: #343434;
+  --heading: #FFCE00;
+  --accent: #D91E24; --accent-text: #FF5A5F; --accent-press: #B8151B; --accent-soft: #351616; --on-accent: #FFFFFF;
+  --tile-navy: #3A3A3A; --mini: #2A2A2A; --on-mini: #FFCE00; --toast: #FFCE00; --on-toast: #151515;
+  --scrim: rgba(0, 0, 0, 0.65); --shade: rgba(0, 0, 0, 0.6); --shadow: rgba(0, 0, 0, 0.6);
+  --vinyl: #060606; --groove: rgba(255, 255, 255, 0.05); --groove-strong: rgba(255, 255, 255, 0.11); --sheen: rgba(255, 255, 255, 0.06);
+  --seg-on: #FFCE00; --on-seg-on: #151515;
+}
+
+/* Eighties: flat neon; light: Memphis pink paper, dark: violet night with magenta, cyan and yellow */
+:root[data-theme="eighties"][data-mode="light"] {
+  --bg: #FFEFF6; --surface: #FFF9FC; --surface-2: #FFDDEB;
+  --text: #2A1245; --text-2: #5E4A78; --text-3: #7A6892; --line: #F2C6DA;
+  --accent: #D6246E; --accent-text: #C21A5E; --accent-press: #B01C5B; --accent-soft: #FFD0E3; --on-accent: #FFFFFF;
+  --tile-navy: #2A1245; --mini: #2A1245; --on-mini: #FFE45E; --toast: #2A1245; --on-toast: #2DE2E6;
+  --scrim: rgba(42, 18, 69, 0.4); --shade: rgba(42, 18, 69, 0.55); --shadow: rgba(120, 30, 90, 0.2);
+  --vinyl: #120A1E; --groove: rgba(255, 255, 255, 0.05); --groove-strong: rgba(255, 255, 255, 0.11); --sheen: rgba(255, 255, 255, 0.07);
+  --seg-on: #2A1245; --on-seg-on: #FFE45E;
+}
+:root[data-theme="eighties"][data-mode="dark"] {
+  --bg: #1A1033; --surface: #251848; --surface-2: #31215C;
+  --text: #F5EBFF; --text-2: #C3B1E0; --text-3: #8D7AB0; --line: #3E2C6E;
+  --heading: #2DE2E6;
+  --accent: #FF2E93; --accent-text: #FF5CAB; --accent-press: #E01F7E; --accent-soft: #3A1B4E; --on-accent: #1A1033;
+  --tile-navy: #4A2A8A; --mini: #31215C; --on-mini: #FFE45E; --toast: #2DE2E6; --on-toast: #1A1033;
+  --scrim: rgba(8, 3, 20, 0.65); --shade: rgba(8, 3, 20, 0.6); --shadow: rgba(0, 0, 0, 0.55);
+  --vinyl: #0A0614; --groove: rgba(220, 200, 255, 0.05); --groove-strong: rgba(220, 200, 255, 0.11); --sheen: rgba(220, 200, 255, 0.07);
+  --seg-on: #FF2E93; --on-seg-on: #1A1033;
+}
 
 /* ---------- record colour (Settings → Customization); after the themes so it wins over their --vinyl ---------- */
-:root[data-vinyl="bordeaux"] { --vinyl: #5A1420; --groove: rgba(255, 220, 220, 0.06); --groove-strong: rgba(255, 220, 220, 0.13); --sheen: rgba(255, 230, 230, 0.08); }
-:root[data-vinyl="brown"] { --vinyl: #4A2E1E; --groove: rgba(255, 235, 210, 0.06); --groove-strong: rgba(255, 235, 210, 0.13); --sheen: rgba(255, 235, 210, 0.08); }
-:root[data-vinyl="beige"] { --vinyl: #D5BF9B; --groove: rgba(70, 45, 20, 0.08); --groove-strong: rgba(70, 45, 20, 0.16); --sheen: rgba(255, 255, 255, 0.2); }
-:root[data-vinyl="navy"] { --vinyl: #16243F; --groove: rgba(220, 230, 255, 0.06); --groove-strong: rgba(220, 230, 255, 0.13); --sheen: rgba(220, 230, 255, 0.08); }
-:root[data-vinyl="green"] { --vinyl: #1E3A2C; --groove: rgba(220, 255, 235, 0.06); --groove-strong: rgba(220, 255, 235, 0.13); --sheen: rgba(220, 255, 235, 0.08); }
-:root[data-vinyl="grey"] { --vinyl: #55565B; --groove: rgba(255, 255, 255, 0.07); --groove-strong: rgba(255, 255, 255, 0.15); --sheen: rgba(255, 255, 255, 0.1); }
-:root[data-vinyl="ivory"] { --vinyl: #ECE4D4; --groove: rgba(60, 45, 25, 0.07); --groove-strong: rgba(60, 45, 25, 0.15); --sheen: rgba(255, 255, 255, 0.35); }
-:root[data-vinyl="gold"] { --vinyl: #B08D57; --groove: rgba(60, 40, 10, 0.08); --groove-strong: rgba(60, 40, 10, 0.17); --sheen: rgba(255, 245, 220, 0.22); }
-:root[data-vinyl="emerald"] { --vinyl: #1D5944; --groove: rgba(220, 255, 235, 0.07); --groove-strong: rgba(220, 255, 235, 0.14); --sheen: rgba(220, 255, 235, 0.09); }
-:root[data-vinyl="terracotta"] { --vinyl: #A15A45; --groove: rgba(255, 235, 220, 0.07); --groove-strong: rgba(255, 235, 220, 0.15); --sheen: rgba(255, 235, 220, 0.12); }
-:root[data-vinyl="plum"] { --vinyl: #4A2748; --groove: rgba(255, 225, 255, 0.06); --groove-strong: rgba(255, 225, 255, 0.13); --sheen: rgba(255, 225, 255, 0.08); }
-:root[data-vinyl="red"] { --vinyl: #A12331; --groove: rgba(255, 220, 220, 0.08); --groove-strong: rgba(255, 220, 220, 0.16); --sheen: rgba(255, 230, 230, 0.12); }
-:root[data-vinyl="sky"] { --vinyl: #9FBCD4; --groove: rgba(20, 40, 60, 0.09); --groove-strong: rgba(20, 40, 60, 0.17); --sheen: rgba(255, 255, 255, 0.3); }
+:root[data-theme][data-vinyl="bordeaux"] { --vinyl: #5A1420; --groove: rgba(255, 220, 220, 0.06); --groove-strong: rgba(255, 220, 220, 0.13); --sheen: rgba(255, 230, 230, 0.08); }
+:root[data-theme][data-vinyl="brown"] { --vinyl: #4A2E1E; --groove: rgba(255, 235, 210, 0.06); --groove-strong: rgba(255, 235, 210, 0.13); --sheen: rgba(255, 235, 210, 0.08); }
+:root[data-theme][data-vinyl="beige"] { --vinyl: #D5BF9B; --groove: rgba(70, 45, 20, 0.08); --groove-strong: rgba(70, 45, 20, 0.16); --sheen: rgba(255, 255, 255, 0.2); }
+:root[data-theme][data-vinyl="navy"] { --vinyl: #16243F; --groove: rgba(220, 230, 255, 0.06); --groove-strong: rgba(220, 230, 255, 0.13); --sheen: rgba(220, 230, 255, 0.08); }
+:root[data-theme][data-vinyl="green"] { --vinyl: #1E3A2C; --groove: rgba(220, 255, 235, 0.06); --groove-strong: rgba(220, 255, 235, 0.13); --sheen: rgba(220, 255, 235, 0.08); }
+:root[data-theme][data-vinyl="grey"] { --vinyl: #55565B; --groove: rgba(255, 255, 255, 0.07); --groove-strong: rgba(255, 255, 255, 0.15); --sheen: rgba(255, 255, 255, 0.1); }
+:root[data-theme][data-vinyl="ivory"] { --vinyl: #ECE4D4; --groove: rgba(60, 45, 25, 0.07); --groove-strong: rgba(60, 45, 25, 0.15); --sheen: rgba(255, 255, 255, 0.35); }
+:root[data-theme][data-vinyl="gold"] { --vinyl: #B08D57; --groove: rgba(60, 40, 10, 0.08); --groove-strong: rgba(60, 40, 10, 0.17); --sheen: rgba(255, 245, 220, 0.22); }
+:root[data-theme][data-vinyl="emerald"] { --vinyl: #1D5944; --groove: rgba(220, 255, 235, 0.07); --groove-strong: rgba(220, 255, 235, 0.14); --sheen: rgba(220, 255, 235, 0.09); }
+:root[data-theme][data-vinyl="terracotta"] { --vinyl: #A15A45; --groove: rgba(255, 235, 220, 0.07); --groove-strong: rgba(255, 235, 220, 0.15); --sheen: rgba(255, 235, 220, 0.12); }
+:root[data-theme][data-vinyl="plum"] { --vinyl: #4A2748; --groove: rgba(255, 225, 255, 0.06); --groove-strong: rgba(255, 225, 255, 0.13); --sheen: rgba(255, 225, 255, 0.08); }
+:root[data-theme][data-vinyl="red"] { --vinyl: #A12331; --groove: rgba(255, 220, 220, 0.08); --groove-strong: rgba(255, 220, 220, 0.16); --sheen: rgba(255, 230, 230, 0.12); }
+:root[data-theme][data-vinyl="sky"] { --vinyl: #9FBCD4; --groove: rgba(20, 40, 60, 0.09); --groove-strong: rgba(20, 40, 60, 0.17); --sheen: rgba(255, 255, 255, 0.3); }
 
 /* ---------- turntable colours (Settings -> Customization -> Turntable colour): colourways of real decks ----------
    --dk-body the plinth, --dk-panel the plate inside it, --dk-platter the platter and knob, --dk-metal the rings,
