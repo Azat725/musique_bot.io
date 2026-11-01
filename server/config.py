@@ -21,8 +21,9 @@ HOST = os.getenv("HOST", "127.0.0.1")  # 0.0.0.0 inside Docker
 DEBUG = os.getenv("DEBUG", "0") == "1"
 # "ssh" — open a localhost.run tunnel from the server itself (start.ps1 sets it); "none" — PUBLIC_API_URL is given
 TUNNEL = os.getenv("TUNNEL", "none")
-# Bitrate the Mini App stream is re-encoded to (free tunnels are slow); "0" streams the original file
-STREAM_BITRATE = os.getenv("STREAM_BITRATE", "64k")
+# Only for a slow free tunnel from a laptop: the bitrate playback is re-encoded to. Empty or "0" (the VPS) plays the
+# original file, which starts sooner and needs no encoder
+STREAM_BITRATE = os.getenv("STREAM_BITRATE", "0")
 # music beyond YouTube Music, searched in parallel (server/sources); remove a name to switch it off
 SOURCES = os.getenv("SOURCES", "zaycev,bandcamp,jamendo,archive,rutube").lower()
 JAMENDO_CLIENT_ID = os.getenv("JAMENDO_CLIENT_ID", "")  # free key from devportal.jamendo.com; empty = Jamendo off
@@ -39,7 +40,8 @@ SUPPORT_URL = (os.getenv("SUPPORT_URL") or "").strip()
 BACKUP_DIR = DATA_DIR / "backups"
 BACKUP_KEEP = int(os.getenv("BACKUP_KEEP", "14"))  # how many daily copies stay on the server
 CACHE_DIR = DATA_DIR / "cache"
-CACHE_LIMIT_BYTES = int(os.getenv("CACHE_LIMIT_MB", "1500")) * 1024 * 1024
+# downloaded tracks, slowed / reverb versions and offline copies; the least recently heard go first
+CACHE_LIMIT_BYTES = int(os.getenv("CACHE_LIMIT_MB") or "40000") * 1024 * 1024
 # Netscape cookies.txt from a YouTube account — optional, makes YouTube far more reliable
 COOKIES_FILE = ROOT / "cookies.txt"
 

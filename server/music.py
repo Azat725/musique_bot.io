@@ -1,15 +1,20 @@
 """Search (YouTube Music + other sources) and audio resolution (YouTube, then SoundCloud, then other sources)."""
 import array
 import asyncio
+import bisect
+import contextlib
+import itertools
 import logging
+import multiprocessing
+import os
 import random
 import re
 import shutil
 import subprocess
 import time
 import wave
-from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 from difflib import SequenceMatcher
 from pathlib import Path
 from urllib.parse import urljoin
@@ -34,22 +39,13 @@ _yt = YTMusic()
 _meta: dict[str, dict] = {}
 _search_cache: dict[str, tuple[float, list]] = {}
 _home_cache: tuple[float, dict] | None = None
-_url_cache: dict[str, tuple[float, "Source"]] = {}
 _collection_cache: dict[str, tuple[float, list]] = {}
 _artist_cache: dict[str, tuple[float, dict | None]] = {}  # artists, albums and name lookups
 ARTIST_ID_RE = re.compile(r"^[A-Za-z0-9_-]{10,64}$")
 ALBUM_ID_RE = re.compile(r"^MPRE[A-Za-z0-9_-]{5,60}$")
 _locks: dict[str, asyncio.Lock] = {}
 _home_lock = asyncio.Lock()
-# a 2 GB VPS: a burst of prefetches must not run a dozen downloads and encoders at once
-_download_slots = asyncio.Semaphore(2)
-_ffmpeg_slots = asyncio.Semaphore(1)
-# offline copies for phones queue on their own, one at a time for the whole server, at a low CPU priority:
-# however many people download at once, playback keeps the encoder and the download slots first
-_save_slots = asyncio.Semaphore(1)
-# tracks two and three places ahead in someone's queue are prepared the same way: in the background, one at a time
-_ahead_slots = asyncio.Semaphore(1)
-_NICE = shutil.which("nice")  # Linux (the VPS); elsewhere the encoder simply runs at normal priority
+_NICE = shutil.which("nice")  # Linux (the VPS); elsewhere background encodes simply run at normal priority
 FFMPEG_TIMEOUT = 300
 _yt_blocked_until = 0.0
 
@@ -67,13 +63,112 @@ GENRES = {
 }
 
 
-@dataclass
-class Source:
-    kind: str  # "url" (proxy remote) or "file" (serve local file)
-    mime: str
-    url: str = ""
-    headers: dict | None = None
-    path: Path | None = None
+# ---------- who goes first: someone pressing play, then their next track, then work further ahead ----------
+
+PLAY, NEXT, BG = 0, 1, 2
+
+
+class Busy(Exception):
+    """Background work dropped because the line is long: it is done when the track's turn comes."""
+
+
+class Gate:
+    """`size` slots handed out by priority. Background work (BG) takes at most `bg_max` of them, and when `drop` is
+    asked and `bg_line` others already wait, it gives up at once (Busy) instead of queueing: someone pressing play is
+    never stuck behind a crowd of prefetches."""
+
+    def __init__(self, size: int, bg_max: int, bg_line: int = 12):
+        self.free, self.bg_max, self.bg_line = size, bg_max, bg_line
+        self.bg = 0  # background jobs running
+        self._line: list[tuple[int, int, asyncio.Future]] = []  # (priority, order, future), best first
+        self._order = itertools.count()
+
+    def _fits(self, priority: int) -> bool:
+        return self.free > 0 and (priority != BG or self.bg < self.bg_max)
+
+    def _grab(self, priority: int) -> None:
+        self.free -= 1
+        self.bg += priority == BG
+
+    def _leave(self, priority: int) -> None:
+        self.free += 1
+        self.bg -= priority == BG
+        for entry in list(self._line):  # the best waiting jobs that may run now
+            if not self.free:
+                break
+            if self._fits(entry[0]):
+                self._line.remove(entry)
+                self._grab(entry[0])
+                entry[2].set_result(None)
+
+    @contextlib.asynccontextmanager
+    async def take(self, priority: int = PLAY, drop: bool = False):
+        if self._fits(priority):  # whoever waits cannot use this slot (or nobody waits): it is ours
+            self._grab(priority)
+        else:
+            if drop and sum(1 for p, _, _ in self._line if p == BG) >= self.bg_line:
+                raise Busy
+            entry = (priority, next(self._order), asyncio.get_running_loop().create_future())
+            bisect.insort(self._line, entry)
+            try:
+                await entry[2]
+            except asyncio.CancelledError:
+                if entry[2].done() and not entry[2].cancelled():  # the slot was handed over just as we gave up
+                    self._leave(priority)
+                elif entry in self._line:
+                    self._line.remove(entry)
+                raise
+        try:
+            yield
+        finally:
+            self._leave(priority)
+
+
+# sized for the 6-core VPS: six downloads from YouTube at once and four encoders (slowed / reverb renders, offline
+# copies), which leaves two cores for yt-dlp and the API; background work never takes more than two of either
+DOWNLOADS = 6
+downloads = Gate(DOWNLOADS, bg_max=2)
+encoders = Gate(4, bg_max=2)
+# offline copies for phones: at most two at a time for the whole server, always as background work
+_save_slots = asyncio.Semaphore(2)
+
+# YouTube and SoundCloud downloads run in processes of their own: yt-dlp is busy Python (pages, signatures), and in
+# threads it would hold the interpreter lock every other request needs. Tests run without them, in threads.
+_procs: ProcessPoolExecutor | None = None
+
+
+def start_workers() -> None:
+    global _procs
+    if _procs is None:
+        _procs = ProcessPoolExecutor(DOWNLOADS, mp_context=multiprocessing.get_context("spawn"))
+        # start them all now: a worker is otherwise started on its first job, and starting one stalls the server
+        for _ in range(DOWNLOADS):
+            _procs.submit(time.sleep, 2)
+
+
+def stop_workers() -> None:
+    global _procs
+    if _procs:
+        _procs.shutdown(wait=False, cancel_futures=True)
+        _procs = None
+
+
+def _in_worker(fn, *args):
+    try:
+        return fn(*args)
+    except Exception as e:  # yt-dlp's own errors do not always survive the trip between processes; their text does
+        raise RuntimeError(str(e)) from None
+
+
+async def _offload(fn, *args):
+    if _procs:
+        try:
+            return await asyncio.get_running_loop().run_in_executor(_procs, _in_worker, fn, *args)
+        except BrokenProcessPool:  # a worker died (out of memory, killed): start fresh ones, run this one here
+            log.warning("download workers broke, restarting them")
+            stop_workers()
+            start_workers()
+    return await asyncio.to_thread(fn, *args)
 
 
 # ---------- metadata ----------
@@ -279,22 +374,10 @@ def _build_home() -> dict:
     return {"sections": [], "genres": genres}
 
 
-def _safe(fn, *args):
-    try:
-        return fn(*args)
-    except Exception as e:
-        log.warning("%s%s failed: %s", fn.__name__, args, str(e)[:160])
-        return None
-
-
 async def recommend(history: list[dict]) -> list[dict]:
     """'For you': YouTube Music radio from the last tracks played, minus what was already heard."""
     seeds = [t["id"] for t in history if YT_ID_RE.match(t["id"])][:3]
-    if not seeds:  # nothing played yet: start from the top of the Russian chart
-        data = await home()
-        first = next((s["tracks"][0] for s in data["sections"] if s.get("country") == "RU" and s["tracks"]), None)
-        seeds = [first["id"]] if first else []
-    if not seeds:
+    if not seeds:  # nothing played yet
         return []
     heard = {t["id"] for t in history}
 
@@ -468,13 +551,6 @@ def _cached_file(vid: str) -> Path | None:
     return None
 
 
-def _yt_direct(vid: str) -> Source:
-    opts = _yt_opts(skip_download=True, format="140/bestaudio[ext=m4a]/bestaudio")
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(f"https://www.youtube.com/watch?v={vid}", download=False)
-    return Source("url", mime_for(info.get("ext", "m4a")), url=info["url"], headers=info.get("http_headers") or {})
-
-
 def _yt_download(vid: str) -> Path:
     opts = _yt_opts(format="140/bestaudio[ext=m4a]/bestaudio",
                     outtmpl=str(config.CACHE_DIR / f"{vid}.%(ext)s"))
@@ -573,9 +649,11 @@ def _sc_download(vid: str, meta: dict) -> Path:
 
 
 def _prune_cache() -> None:
+    """Delete the files heard longest ago until the cache fits (serving a file marks it as heard, see _touch)."""
     files = []
     for p in config.CACHE_DIR.rglob("*"):
-        if p.is_file() and p.suffix not in (".part", ".raw"):  # never delete a download in progress
+        # never a download in progress, nor the reverb rooms
+        if p.is_file() and p.suffix not in (".part", ".raw") and not p.name.startswith("ir_"):
             st = p.stat()
             files.append((st.st_mtime, st.st_size, p))
     files.sort()
@@ -588,6 +666,30 @@ def _prune_cache() -> None:
             total -= size
         except OSError:  # being served right now (Windows locks open files)
             pass
+
+
+PRUNE_EVERY = 60  # seconds: walking tens of thousands of files after every download would cost more than they do
+_pruned_at = 0.0
+_background: set[asyncio.Task] = set()
+
+
+def _prune_soon() -> None:
+    global _pruned_at
+    if time.time() - _pruned_at < PRUNE_EVERY:
+        return
+    _pruned_at = time.time()
+    task = asyncio.create_task(asyncio.to_thread(_prune_cache))
+    _background.add(task)
+    task.add_done_callback(_background.discard)
+
+
+def _touch(path: Path) -> Path:
+    """Mark a cached file as just heard, so the tidy-up keeps what people listen to."""
+    try:
+        os.utime(path)
+    except OSError:
+        pass
+    return path
 
 
 # why a track could not be played, so the Mini App can say it in words (GET /api/why/{id})
@@ -635,86 +737,73 @@ def _lock(vid: str) -> asyncio.Lock:
     return _locks.setdefault(vid, asyncio.Lock())
 
 
-async def ensure_file(vid: str) -> Path:
-    """Download the track to the local cache (needed for SoundCloud and for sending to chat)."""
-    async with _lock(vid):
-        path = _cached_file(vid)
-        if path:
-            return path
-        async with _download_slots:
-            if sources.is_external(vid):
-                path = await sources.download(vid, config.CACHE_DIR)
-                await asyncio.to_thread(_prune_cache)
-                return path
-            if time.time() > _yt_blocked_until:
-                try:
-                    path = await asyncio.to_thread(_yt_download, vid)
-                except Exception as e:
-                    log.warning("YouTube download failed for %s: %s", vid, str(e)[:160])
-                    _mark_if_blocked(e)
-                    note_failure(vid, e)
-            if not path:
-                meta = await track_meta(vid)
-                if not meta:
-                    raise LookupError("unknown track")
-                try:
-                    path = await asyncio.to_thread(_sc_download, vid, meta)
-                except Exception as e:
-                    log.warning("SoundCloud failed for %s: %s", vid, str(e)[:160])
-                    path = await sources.find_audio(meta, config.CACHE_DIR, vid)
-        await asyncio.to_thread(_prune_cache)
-        return path
-
-
-async def resolve(vid: str, fresh: bool = False) -> Source:
-    """Fastest playable source: cached file → direct YouTube stream → SoundCloud download."""
+async def ensure_file(vid: str, priority: int = PLAY, drop: bool = False) -> Path:
+    """Download the track to the local cache: everything is played, rendered and sent from there."""
     path = _cached_file(vid)
     if path:
-        return Source("file", mime_for(path.suffix.lstrip(".")), path=path)
-    cached = _url_cache.get(vid)
-    if cached and not fresh and time.time() - cached[0] < 4 * 3600:
-        return cached[1]
-    if time.time() > _yt_blocked_until and not sources.is_external(vid):
-        try:
-            src = await asyncio.to_thread(_yt_direct, vid)
-            _url_cache[vid] = (time.time(), src)
-            _trim(_url_cache, 500)
-            return src
-        except Exception as e:
-            log.warning("YouTube resolve failed for %s: %s", vid, str(e)[:160])
-            _mark_if_blocked(e)
-            note_failure(vid, e)
-    path = await ensure_file(vid)
-    return Source("file", mime_for(path.suffix.lstrip(".")), path=path)
+        return _touch(path)
+    # the slot first, then the track's lock: a job waiting in line never holds a track someone wants right now
+    async with downloads.take(priority, drop):
+        async with _lock(vid):
+            path = _cached_file(vid)
+            if path:
+                return path
+            if sources.is_external(vid):
+                path = await sources.download(vid, config.CACHE_DIR)
+            else:
+                if time.time() > _yt_blocked_until:
+                    try:
+                        path = await _offload(_yt_download, vid)
+                    except Exception as e:
+                        log.warning("YouTube download failed for %s: %s", vid, str(e)[:160])
+                        _mark_if_blocked(e)
+                        note_failure(vid, e)
+                if not path:
+                    meta = await track_meta(vid)
+                    if not meta:
+                        raise LookupError("unknown track")
+                    try:
+                        path = await _offload(_sc_download, vid, meta)
+                    except Exception as e:
+                        log.warning("SoundCloud failed for %s: %s", vid, str(e)[:160])
+                        path = await sources.find_audio(meta, config.CACHE_DIR, vid)
+    _prune_soon()
+    return path
 
 
-def _encode_lite(src: Path, dest: Path, bitrate: str = "", background: bool = False) -> None:
+def _encode(src: Path, dest: Path, bitrate: str, background: bool = False) -> None:
     tmp = dest.with_suffix(".part")
     nice = [_NICE, "-n", "15"] if background and _NICE else []
     subprocess.run([*nice, config.FFMPEG, "-y", "-loglevel", "error", "-i", str(src), "-vn", "-c:a", "aac",
-                    "-b:a", bitrate or config.STREAM_BITRATE, "-movflags", "+faststart", "-f", "mp4", str(tmp)], check=True,
+                    "-b:a", bitrate, "-movflags", "+faststart", "-f", "mp4", str(tmp)], check=True,
                    timeout=FFMPEG_TIMEOUT, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     tmp.replace(dest)
 
 
-def lite_enabled() -> bool:
-    return bool(config.FFMPEG) and config.STREAM_BITRATE not in ("", "0")
+PLAY_BITRATE = "128k"  # slowed / reverb renders and anything re-encoded for playback: as good as YouTube's own file
+PLAYABLE = {".m4a", ".mp4", ".mp3", ".aac"}  # plays everywhere, iPhones included
 
 
-async def stream_file(vid: str, background: bool = False) -> Path:
-    """Cached file re-encoded to a low bitrate, so playback keeps up over a slow tunnel.
-    background: prepared ahead of time, at a low priority, outside the playback encoder slot."""
+def _lite() -> str:
+    """The bitrate playback is squeezed to over a slow tunnel (STREAM_BITRATE), or "" to play the original."""
+    return config.STREAM_BITRATE if config.FFMPEG and config.STREAM_BITRATE not in ("", "0") else ""
+
+
+async def play_file(vid: str, priority: int = PLAY, drop: bool = False) -> Path:
+    """What the Mini App plays: the downloaded file as it is (YouTube's AAC 128k), so it starts the moment it is
+    here, with nothing to encode. Re-encoded only when an iPhone could not play it (webm, opus) or over a slow
+    tunnel (STREAM_BITRATE)."""
+    src = await ensure_file(vid, priority, drop)
+    lite = _lite()
+    if not config.FFMPEG or (src.suffix in PLAYABLE and not lite):
+        return src
     dest = LITE_DIR / f"{vid}.m4a"
     if dest.exists():
-        return dest
-    src = await ensure_file(vid)
-    async with _lock("lite:" + vid):
-        if not dest.exists():
-            if background:
-                await asyncio.to_thread(_encode_lite, src, dest, "", True)
-            else:
-                async with _ffmpeg_slots:
-                    await asyncio.to_thread(_encode_lite, src, dest)
+        return _touch(dest)
+    async with encoders.take(priority, drop):
+        async with _lock("lite:" + vid):
+            if not dest.exists():
+                await asyncio.to_thread(_encode, src, dest, lite or PLAY_BITRATE, priority == BG)
     return dest
 
 
@@ -770,7 +859,7 @@ def _fx_filter(fx: str, norm: str = _IR_NORMS[0]) -> tuple[list[str], str]:
 
 
 def _render_fx(src: Path, dest: Path, fx: str, background: bool = False) -> None:
-    bitrate = config.STREAM_BITRATE if config.STREAM_BITRATE not in ("", "0") else "128k"
+    bitrate = _lite() or PLAY_BITRATE
     tmp = dest.with_suffix(".part")
     nice = [_NICE, "-n", "15"] if background and _NICE else []
     for i, norm in enumerate(_IR_NORMS):
@@ -788,22 +877,19 @@ def _render_fx(src: Path, dest: Path, fx: str, background: bool = False) -> None
     tmp.replace(dest)
 
 
-async def fx_file(vid: str, fx: str, background: bool = False) -> Path:
+async def fx_file(vid: str, fx: str, priority: int = PLAY, drop: bool = False) -> Path:
     """The track slowed / sped up / with reverb, rendered once and kept in the cache."""
     if not config.FFMPEG or not FX_RE.match(fx):
         raise LookupError("fx unavailable")
     dest = FX_DIR / f"{vid}.{fx}.m4a"
     if dest.exists():
-        return dest
-    src = await ensure_file(vid)
-    async with _lock(f"fx:{vid}:{fx}"):
-        if not dest.exists():
-            if background:
-                await asyncio.to_thread(_render_fx, src, dest, fx, True)
-            else:
-                async with _ffmpeg_slots:
-                    await asyncio.to_thread(_render_fx, src, dest, fx)
-    await asyncio.to_thread(_prune_cache)
+        return _touch(dest)
+    src = await ensure_file(vid, priority, drop)
+    async with encoders.take(priority, drop):
+        async with _lock(f"fx:{vid}:{fx}"):
+            if not dest.exists():
+                await asyncio.to_thread(_render_fx, src, dest, fx, priority == BG)
+    _prune_soon()
     return dest
 
 
@@ -813,41 +899,33 @@ SAVE_BITRATE = "96k"  # what the Mini App keeps on the phone for listening offli
 
 
 async def save_file(vid: str) -> Path:
-    """A compact copy of the track (AAC 96 kbit/s) for the phone to keep and play without a network."""
+    """A compact copy of the track (AAC 96 kbit/s) for the phone to keep and play without a network. However many
+    phones are filling up at once, this is background work: playback goes first."""
     if not config.FFMPEG:
         return await ensure_file(vid)  # no encoder here: the original is still playable
     dest = SAVE_DIR / f"{vid}.m4a"
     if dest.exists():
-        return dest
-    async with _save_slots:  # the download from YouTube and the encode both happen inside this one slot
-        async with _lock("save:" + vid):
-            if not dest.exists():
-                src = await ensure_file(vid)
-                await asyncio.to_thread(_encode_lite, src, dest, SAVE_BITRATE, True)
-    await asyncio.to_thread(_prune_cache)
+        return _touch(dest)
+    async with _save_slots:
+        src = await ensure_file(vid, BG)
+        async with encoders.take(BG):
+            async with _lock("save:" + vid):
+                if not dest.exists():
+                    await asyncio.to_thread(_encode, src, dest, SAVE_BITRATE, True)
+    _prune_soon()
     return dest
 
 
 async def prefetch(vid: str, fx: str = "", ahead: int = 1) -> None:
-    """Warm the cache for an upcoming track when playback depends on a local file. The very next track is
-    prepared at once; those two or three places ahead wait their turn in the background (one at a time,
-    low priority), so they never hold up what someone is about to hear."""
-    async def warm(background: bool) -> None:
-        if fx and fx != "normal-off":
-            await fx_file(vid, fx, background)
-        elif lite_enabled():
-            await stream_file(vid, background)
-        elif not _cached_file(vid) and (time.time() < _yt_blocked_until or sources.is_external(vid)):
-            await ensure_file(vid)
+    """Have an upcoming track ready before it is asked for. The very next one waits its turn after whatever someone
+    is starting right now; those two or three places ahead are background work, dropped when the line is long."""
+    priority, drop = (NEXT, False) if ahead <= 1 else (BG, True)
     try:
-        if ahead <= 1:
-            await warm(False)
+        if fx and fx != "normal-off":
+            await fx_file(vid, fx, priority, drop)
         else:
-            async with _ahead_slots:
-                await warm(True)
+            await play_file(vid, priority, drop)
+    except Busy:
+        pass
     except Exception as e:
         log.info("prefetch failed for %s: %s", vid, str(e)[:120])
-
-
-def forget_url(vid: str) -> None:
-    _url_cache.pop(vid, None)

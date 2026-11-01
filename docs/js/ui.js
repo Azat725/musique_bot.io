@@ -289,13 +289,6 @@ export async function confirmSheet({ title, text = '', action, icon: ic = 'trash
   return i === 0;
 }
 
-export function confirmDialog(text) {
-  return new Promise((resolve) => {
-    if (tg?.showConfirm && tg.isVersionAtLeast?.('6.2')) tg.showConfirm(text, resolve);
-    else resolve(window.confirm(text));
-  });
-}
-
 // ---------- track list ----------
 
 export function trackRow(track, { index = null } = {}) {

@@ -50,9 +50,6 @@ function connect() {
   return true;
 }
 
-/** For diagnostics: whether the music is routed through the filters and the context is running. */
-export const fxStatus = () => ({ routed: !!filters, state: ctx?.state || 'none' });
-
 function wakeContext() {
   clearTimeout(sleepTimer);
   sleepTimer = 0;

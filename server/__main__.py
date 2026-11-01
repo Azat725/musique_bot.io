@@ -1,11 +1,12 @@
 import asyncio
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 import uvicorn
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 
-from . import api, backup, bot, config, db, tunnel
+from . import api, backup, bot, config, db, music, tunnel
 
 
 async def main() -> None:
@@ -14,6 +15,9 @@ async def main() -> None:
     if not config.FFMPEG:
         logging.warning("ffmpeg not found — SoundCloud fallback may fail for HLS tracks")
 
+    # asyncio.to_thread is shared by encoders, lyrics, database backups and the cache tidy-up: room for all of them
+    asyncio.get_running_loop().set_default_executor(ThreadPoolExecutor(32))
+    music.start_workers()
     await db.init()
     server = uvicorn.Server(uvicorn.Config(api.app, host=config.HOST, port=config.PORT, log_level="warning"))
     web = asyncio.create_task(server.serve())
@@ -49,6 +53,7 @@ async def main() -> None:
             task.cancel()
         await tg.session.close()
         await db.close()
+        music.stop_workers()
 
 
 if __name__ == "__main__":

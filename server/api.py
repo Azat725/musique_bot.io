@@ -5,13 +5,11 @@ import logging
 import secrets
 import time
 
-import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
-from starlette.background import BackgroundTask
 
 from . import auth, config, db, importer, lyrics, music, weblogin
 
@@ -26,7 +24,6 @@ app.add_middleware(
     expose_headers=["Content-Range", "Content-Length", "Accept-Ranges"],
 )
 
-_http = httpx.AsyncClient(timeout=httpx.Timeout(20, read=60), follow_redirects=True)
 _background: set[asyncio.Task] = set()
 send_track = None  # set by __main__: async (chat_id, track_id, lang) -> None
 
@@ -413,12 +410,12 @@ async def track_lyrics(track_id: str, title: str = "", artist: str = "", duratio
 
 # ---------- audio ----------
 
-def _file_response(src: music.Source) -> FileResponse:
-    return FileResponse(src.path, media_type=src.mime)
+# the file for a track (and an effect) never changes: a phone replaying or seeking in it need not fetch it again
+_STREAM_HEADERS = {"Cache-Control": "private, max-age=86400"}
 
 
 @app.get("/api/stream/{vid}")
-async def stream(vid: str, request: Request, t: str = "", fx: str = "", q: str = ""):
+async def stream(vid: str, t: str = "", fx: str = "", q: str = ""):
     """q=save: a compact file the Mini App keeps for listening offline."""
     if not music.ID_RE.match(vid):
         raise HTTPException(404)
@@ -431,30 +428,11 @@ async def stream(vid: str, request: Request, t: str = "", fx: str = "", q: str =
     try:
         if q == "save":
             path = await music.save_file(vid)
-            return FileResponse(path, media_type=music.mime_for(path.suffix.lstrip(".")))
-        if fx and fx != "normal-off":  # slowed / sped up / reverb: a file rendered by ffmpeg
-            return FileResponse(await music.fx_file(vid, fx), media_type="audio/mp4")
-        if music.lite_enabled():
-            return FileResponse(await music.stream_file(vid), media_type="audio/mp4")
-        for attempt in range(2):
-            src = await music.resolve(vid, fresh=attempt > 0)
-            if src.kind == "file":
-                return _file_response(src)
-            headers = {k: v for k, v in (src.headers or {}).items()
-                       if k.lower() in ("user-agent", "accept-language", "origin", "referer")}
-            if rng := request.headers.get("range"):
-                headers["Range"] = rng
-            resp = await _http.send(_http.build_request("GET", src.url, headers=headers), stream=True)
-            if resp.status_code in (403, 410) or resp.status_code >= 500:
-                await resp.aclose()
-                music.forget_url(vid)
-                continue
-            out = {k: resp.headers[k] for k in ("content-length", "content-range") if k in resp.headers}
-            out["Accept-Ranges"] = "bytes"
-            return StreamingResponse(resp.aiter_raw(), status_code=resp.status_code, media_type=src.mime,
-                                     headers=out, background=BackgroundTask(resp.aclose))
-        path = await music.ensure_file(vid)
-        return _file_response(music.Source("file", music.mime_for(path.suffix.lstrip(".")), path=path))
+        elif fx and fx != "normal-off":  # slowed / sped up / reverb: a file rendered by ffmpeg
+            path = await music.fx_file(vid, fx)
+        else:
+            path = await music.play_file(vid)
+        return FileResponse(path, media_type=music.mime_for(path.suffix.lstrip(".")), headers=_STREAM_HEADERS)
     except Exception as e:
         log.exception("stream failed for %s", vid)
         music.note_failure(vid, e)

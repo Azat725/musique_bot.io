@@ -11,6 +11,8 @@ services:
     environment:
       # the public address of this server; ngrok's domain is used while API_DOMAIN is not set
       PUBLIC_API_URL: https://${API_DOMAIN:-${NGROK_DOMAIN}}
+      # the server's own link is fast: the original files are played, with nothing to re-encode (wins over server/.env)
+      STREAM_BITRATE: "0"
     volumes:
       - musique-data:/data
       # optional YouTube cookies (see README): uncomment after creating server/cookies.txt

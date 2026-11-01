@@ -19,7 +19,6 @@ log = logging.getLogger("musique.sources")
 
 # order = priority when the same song comes from several places (audio sites before video sites)
 PROVIDERS = {p.PREFIX: p for p in (zaycev, bandcamp, jamendo, archive, rutube)}
-NAMES = {p.PREFIX: p.NAME for p in PROVIDERS.values()}
 ID_RE = re.compile(r"^(?:%s)\.[A-Za-z0-9_-]{1,40}$" % "|".join(PROVIDERS))
 SEARCH_TIMEOUT = 5
 HEADERS = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"}
