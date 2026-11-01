@@ -1,10 +1,10 @@
 import { api, inTelegram } from '../api.js';
 import { openLogin } from '../login.js';
 import { t } from '../i18n.js';
-import { heard, settings, updateSettings } from '../store.js';
+import { heard, settings, tapeMode, updateSettings } from '../store.js';
 import { openControlPanel } from '../eq.js';
 import { showStories } from '../stories.js';
-import { CLASSIC_SWATCH, DECK_COLORS, RECORD_COLORS, THEMES } from '../themes.js';
+import { CLASSIC_SWATCH, DECK_COLORS, RECORDER_COLORS, RECORD_COLORS, TAPE_COLORS, THEMES } from '../themes.js';
 import { clearAll as clearDownloads, offline, savingId, stopReason, usage as savedUsage } from '../offline.js';
 import { brandMark, confirmSheet, esc, h, haptic, icon, promptName, sheet, tg, toast } from '../ui.js';
 
@@ -34,8 +34,22 @@ function openThemePicker() {
   return sheet({ title: esc(t('custom_theme')), content: grid, done: true });
 }
 
+/** In the cassette view the record and turntable colours give way to the cassette's and the tape deck's. */
+function tapeRows() {
+  const row = (name, key, colors, cls, prefix) => `<div class="group__item group__item--stack">
+    <span><span class="group__name">${esc(t(name))}</span><span class="group__hint" data-${key}-state>${esc(t(prefix + settings[key]))}</span></span>
+    <div class="swatches swatches--${cls}" role="radiogroup" aria-label="${esc(t(name))}" data-${key}>
+      ${Object.entries(colors).map(([k, [c, c2]]) => `<button class="swatch swatch--${cls} ${k === settings[key] ? 'is-on' : ''}" role="radio"
+        aria-checked="${k === settings[key]}" aria-label="${esc(t(prefix + k))}" data-value="${k}" style="--c:${c};--c2:${c2}"></button>`).join('')}
+    </div>
+  </div>`;
+  return row('custom_tape', 'tapeColor', TAPE_COLORS, 'tape', 'tc_') + row('custom_recorder', 'recorderColor', RECORDER_COLORS, 'recorder', 'rcd_');
+}
+
 function segmented(name, options, value) {
-  return `<div class="segmented ${options.length >= 5 ? 'segmented--dense' : ''}" role="radiogroup" data-name="${name}">
+  // five options, or long words (Пластинка / Проигрыватель / Магнитофон), need the tighter type on a 375 px phone
+  const dense = options.length >= 5 || options.reduce((n, [, label]) => n + label.length, 0) > 30;
+  return `<div class="segmented ${dense ? 'segmented--dense' : ''}" role="radiogroup" data-name="${name}">
     ${options.map(([v, label]) => `<button role="radio" aria-checked="${v === value}" data-value="${v}" class="${v === value ? 'is-on' : ''}">${esc(label)}</button>`).join('')}
   </div>`;
 }
@@ -86,9 +100,9 @@ export async function render() {
       </div>
       <div class="group__item group__item--stack">
         <span class="group__name">${esc(t('custom_player'))}</span>
-        ${segmented('playerMode', [['record', t('player_record')], ['turntable', t('player_turntable')]], settings.playerMode)}
+        ${segmented('playerMode', [['record', t('player_record')], ['turntable', t('player_turntable')], ['cassette', t('player_cassette')]], settings.playerMode)}
       </div>
-      <div class="group__item group__item--stack">
+      ${tapeMode() ? tapeRows() : `<div class="group__item group__item--stack">
         <span><span class="group__name">${esc(t('custom_record'))}</span><span class="group__hint" data-record-state></span></span>
         <div class="swatches" role="radiogroup" aria-label="${esc(t('custom_record'))}">
           ${Object.entries(RECORD_COLORS).map(([k, c]) => `<button class="swatch ${k === settings.recordColor ? 'is-on' : ''}" role="radio"
@@ -101,7 +115,7 @@ export async function render() {
           ${Object.entries(DECK_COLORS).map(([k, [body, plate]]) => `<button class="swatch swatch--deck ${k === settings.deckColor ? 'is-on' : ''}" role="radio"
             aria-checked="${k === settings.deckColor}" aria-label="${esc(t('dc_' + k))}" data-deck="${k}" style="--c:${body};--c2:${plate}"></button>`).join('')}
         </div>
-      </div>
+      </div>`}
       <div class="group__item group__item--stack">
         <span><span class="group__name">${esc(t('custom_idle'))}</span><span class="group__hint">${esc(t('custom_idle_hint'))}</span></span>
         ${segmented('idleDelay', [['0', t('idle_off')], ...[10, 20, 40, 60].map((n) => [String(n), t('idle_s', { n })])], String(settings.idleDelay))}
@@ -154,6 +168,7 @@ export async function render() {
           ${[['search', 'about_f_search'], ['vinyl', 'about_f_vinyl'], ['shelf', 'about_f_library'], ['eq', 'about_f_sound'], ['palette', 'about_f_custom'], ['send', 'about_f_chat']]
             .map(([ic, key]) => `<li>${icon(ic)}<span>${esc(t(key))}</span></li>`).join('')}
         </ul>
+        ${tapeMode() ? `<p class="about__credit">${esc(t('about_sfx'))}</p>` : ''}
       </div>
       <button class="group__item" data-stories>
         <span class="group__name">${esc(t('about_stories'))}</span>${icon('right', 'group__chev')}
@@ -187,8 +202,7 @@ export async function render() {
       haptic('select');
       const value = NUMERIC.has(seg.dataset.name) ? Number(btn.dataset.value) : btn.dataset.value;
       seg.querySelectorAll('button').forEach((b) => { b.classList.toggle('is-on', b === btn); b.setAttribute('aria-checked', b === btn); });
-      updateSettings({ [seg.dataset.name]: value });
-      if (seg.dataset.name === 'playerMode') syncDeck();
+      updateSettings({ [seg.dataset.name]: value }); // a new player view re-renders this screen (app.js)
     });
   });
   root.querySelector('[data-sounds]').addEventListener('change', (e) => {
@@ -218,15 +232,28 @@ export async function render() {
     await openThemePicker();
     syncThemeRow();
   });
+  // cassette and tape deck colours (the cassette view)
+  root.querySelectorAll('[data-tapeColor], [data-recorderColor]').forEach((box) => {
+    const key = box.hasAttribute('data-tapeColor') ? 'tapeColor' : 'recorderColor';
+    box.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-value]');
+      if (!btn) return;
+      haptic('select');
+      box.querySelectorAll('.swatch').forEach((b) => { b.classList.toggle('is-on', b === btn); b.setAttribute('aria-checked', b === btn); });
+      updateSettings({ [key]: btn.dataset.value });
+      root.querySelector(`[data-${key}-state]`).textContent = t((key === 'tapeColor' ? 'tc_' : 'rcd_') + btn.dataset.value);
+    });
+  });
   // the turntable colour matters only in the turntable view: dimmed otherwise
   const deckRow = root.querySelector('[data-deck-row]');
   const deckState = root.querySelector('[data-deck-state]');
   const syncDeck = () => {
+    if (!deckRow) return;
     deckState.textContent = settings.playerMode === 'turntable' ? t('dc_' + settings.deckColor) : t('custom_deck_hint');
     deckRow.classList.toggle('is-muted', settings.playerMode !== 'turntable');
   };
   syncDeck();
-  root.querySelector('.swatches--deck').addEventListener('click', (e) => {
+  root.querySelector('.swatches--deck')?.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-deck]');
     if (!btn) return;
     haptic('select');
@@ -235,13 +262,13 @@ export async function render() {
     syncDeck();
   });
   const recordState = root.querySelector('[data-record-state]');
-  const syncRecord = () => { recordState.textContent = t('rc_' + settings.recordColor); };
+  const syncRecord = () => { if (recordState) recordState.textContent = t('rc_' + settings.recordColor); };
   syncRecord();
-  root.querySelector('.swatches').addEventListener('click', (e) => {
+  root.querySelector('.swatches:not(.swatches--deck):not(.swatches--tape):not(.swatches--recorder)')?.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-color]');
     if (!btn) return;
     haptic('select');
-    root.querySelectorAll('.swatch').forEach((b) => { b.classList.toggle('is-on', b === btn); b.setAttribute('aria-checked', b === btn); });
+    root.querySelectorAll('.swatch[data-color]').forEach((b) => { b.classList.toggle('is-on', b === btn); b.setAttribute('aria-checked', b === btn); });
     updateSettings({ recordColor: btn.dataset.color });
     syncRecord();
   });

@@ -105,7 +105,7 @@ const DICT = {
     about_f_library: 'Избранное, плейлисты, история и любимые артисты',
     about_f_sound: 'Пульт управления: скорость, реверберация, эквалайзер с пресетами и тихий треск винила',
     about_f_chat: 'Любой трек можно отправить в чат — там он играет даже с выключенным экраном',
-    about_f_custom: 'Гибкая кастомизация: 9 цветовых тем, пластинка или проигрыватель, цвета винила и проигрывателя и автоскрытие интерфейса',
+    about_f_custom: 'Гибкая кастомизация: 10 цветовых тем, пластинка, проигрыватель или магнитофон, цвета винила, кассет и техники и автоскрытие интерфейса',
     about_stories: 'Посмотреть презентацию',
     st_close: 'Закрыть', st_start: 'Начать слушать', st2_q: 'Земфира', st8_query: 'Хочешь?', st8_track: 'Земфира — Хочешь?',
     st1_t: 'Musique', st1_s: 'Вся музыка — на виниловой пластинке. Прямо в Telegram.',
@@ -114,10 +114,28 @@ const DICT = {
     st4_t: 'Всё ваше — в Медиатеке', st4_s: 'Отмечайте треки сердцем, собирайте плейлисты, добавляйте любимых артистов. История сохраняется сама.',
     st5_t: 'Звук как у винила', st5_s: 'Пульт управления: эквалайзер с пресетами — от «Баса» до «Тёплого винила» — и тихий треск пластинки под музыку.',
     st6_t: 'Slowed + reverb', st6_s: 'Замедлите любую песню или разгоните до 45 оборотов и добавьте «Комнату» или «Зал»: кнопка с ползунками в плеере, «Пульт управления». Получится slowed + reverb.',
-    st7_t: 'Сделайте под себя', st7_s: 'Девять цветовых тем, пластинка или проигрыватель, винил любого цвета, автоскрытие интерфейса — всё в Настройках, в разделе «Кастомизация».',
+    st7_t: 'Сделайте под себя', st7_s: 'Десять цветовых тем, пластинка, проигрыватель или магнитофон, винил любого цвета, автоскрытие интерфейса — всё в Настройках, в разделе «Кастомизация».',
     st8_t: 'Экспорт в один тап', st8_s: 'Отправьте трек в чат с ботом: он придёт файлом — его можно сохранить, переслать и слушать даже с выключенным экраном.',
     settings_cleared: 'История очищена',
     no_server_title: 'Сервер недоступен', no_server_text: 'Похоже, сервер был перезапущен. Откройте Musique через кнопку меню в боте или отправьте /start.', retry: 'Повторить',
+    // ---------- the cassette view (Settings → Player → Tape recorder): "<key>_tape" replaces <key> there ----------
+    player_cassette: 'Магнитофон', custom_tape: 'Цвет кассеты', custom_recorder: 'Цвет магнитофона',
+    tc_black: 'Чёрная', tc_grey: 'Серая', tc_cream: 'Кремовая', tc_red: 'Красная', tc_blue: 'Синяя', tc_clear: 'Прозрачная',
+    rcd_silver: 'Серебристый', rcd_black: 'Чёрный', rcd_beige: 'Бежевый', rcd_red: 'Красный', rec_stereo: 'СТЕРЕО',
+    search_hint_tape: 'Найти кассету', player_new_tape: 'Новая кассета',
+    sound_rpm_tape: 'см/с', sound_fast_tag_tape: '6,4 см/с',
+    settings_sounds_tape: 'Звук магнитофона', settings_sounds_hint_tape: 'Щелчки клавиш, перемотка плёнки, вставка кассеты',
+    settings_noise_tape: 'Шипение плёнки', settings_noise_hint_tape: 'Тихое шипение кассеты под музыку',
+    custom_idle_hint_tape: 'Через сколько секунд останется только магнитофон',
+    custom_haptic_hint_tape: 'Лёгкие щелчки под пальцем на полосе и кассете',
+    custom_sleeve_tape: 'Футляр для новых треков', custom_sleeve_hint_tape: 'Кассета достаётся из футляра, когда трек звучит впервые',
+    about_text_tape: 'Musique — музыкальный плеер прямо в Telegram. Музыка из YouTube Music и открытых источников звучит с магнитофонной кассеты.',
+    about_f_vinyl_tape: 'Живая кассета: смахните — сменится трек, зажмите и ведите пальцем — перемотка, коснитесь — пауза; новый трек приходит в футляре',
+    about_f_sound_tape: 'Пульт управления: скорость, реверберация, эквалайзер с пресетами и тихое шипение плёнки',
+    about_sfx: 'Звуки магнитофона: записи Joseph Sardin, BigSoundBank (CC0)',
+    theme_ussr: 'СССР', theme_desc_ussr: 'Кумач, золото и газетная бумага',
+    st_tape_t: 'Кассеты из 80-х', st_tape_s: 'Магнитофон вместо пластинки: щелчки клавиш, перемотка и шипение плёнки. В Настройках → Вид плеера.',
+
   },
   en: {
     nav_home: 'Home', nav_search: 'Search', nav_library: 'Library', nav_settings: 'Settings',
@@ -225,7 +243,7 @@ const DICT = {
     about_f_library: 'Favourites, playlists, history and favourite artists',
     about_f_sound: 'A control panel: speed, reverb, an equalizer with presets and a soft vinyl crackle',
     about_f_chat: 'Send any track to the chat — there it keeps playing with the screen off',
-    about_f_custom: 'Flexible customization: 9 colour themes, a record or a turntable, vinyl and turntable colours and an interface that hides itself',
+    about_f_custom: 'Flexible customization: 10 colour themes, a record, a turntable or a tape deck, vinyl, cassette and deck colours and an interface that hides itself',
     about_stories: 'Watch the intro',
     st_close: 'Close', st_start: 'Start listening', st2_q: 'Daft Punk', st8_query: 'Get Lucky', st8_track: 'Daft Punk — Get Lucky',
     st1_t: 'Musique', st1_s: 'All your music, on a vinyl record. Right inside Telegram.',
@@ -234,10 +252,28 @@ const DICT = {
     st4_t: 'All yours, in the Library', st4_s: 'Heart the tracks you love, build playlists, follow your favourite artists. History keeps itself.',
     st5_t: 'Sound like vinyl', st5_s: 'A control panel: an equalizer with presets — from Bass to Warm vinyl — and a soft record crackle under the music.',
     st6_t: 'Slowed + reverb', st6_s: 'Slow any song down or spin it up to 45 and add a Room or a Hall: the sliders button in the player, “Control panel”. That makes slowed + reverb.',
-    st7_t: 'Make it yours', st7_s: 'Nine colour themes, a record or a turntable, vinyl in any colour, an interface that hides itself — all in Settings, under Customization.',
+    st7_t: 'Make it yours', st7_s: 'Ten colour themes, a record, a turntable or a tape deck, vinyl in any colour, an interface that hides itself — all in Settings, under Customization.',
     st8_t: 'Export in one tap', st8_s: 'Send a track to the chat with the bot: it arrives as a file you can save, forward and play even with the screen off.',
     settings_cleared: 'History cleared',
     no_server_title: 'Server unavailable', no_server_text: 'The server may have restarted. Open Musique from the bot’s menu button or send /start.', retry: 'Retry',
+    // ---------- the cassette view (Settings → Player → Tape recorder): "<key>_tape" replaces <key> there ----------
+    player_cassette: 'Tape deck', custom_tape: 'Cassette colour', custom_recorder: 'Tape deck colour',
+    tc_black: 'Black', tc_grey: 'Grey', tc_cream: 'Cream', tc_red: 'Red', tc_blue: 'Blue', tc_clear: 'Clear',
+    rcd_silver: 'Silver', rcd_black: 'Black', rcd_beige: 'Beige', rcd_red: 'Red', rec_stereo: 'STEREO',
+    search_hint_tape: 'Find a tape', player_new_tape: 'New cassette',
+    sound_rpm_tape: 'cm/s', sound_fast_tag_tape: '6.4 cm/s',
+    settings_sounds_tape: 'Tape deck sound', settings_sounds_hint_tape: 'Key clicks, tape rewinding, a cassette going in',
+    settings_noise_tape: 'Tape hiss', settings_noise_hint_tape: 'Soft cassette hiss under the music',
+    custom_idle_hint_tape: 'After how many seconds only the tape deck stays',
+    custom_haptic_hint_tape: 'Light ticks under your finger on the bar and the cassette',
+    custom_sleeve_tape: 'Case for new tracks', custom_sleeve_hint_tape: 'A cassette comes out of its case when a track plays for the first time',
+    about_text_tape: 'Musique is a music player right inside Telegram. Music from YouTube Music and open sources plays from a cassette tape.',
+    about_f_vinyl_tape: 'A living cassette: swipe it to change the track, hold and drag to wind, tap to pause; a new track arrives in its case',
+    about_f_sound_tape: 'A control panel: speed, reverb, an equalizer with presets and a soft tape hiss',
+    about_sfx: 'Tape deck sounds: recordings by Joseph Sardin, BigSoundBank (CC0)',
+    theme_ussr: 'USSR', theme_desc_ussr: 'Banner red, gold and newsprint',
+    st_tape_t: 'Tapes from the 80s', st_tape_s: 'A tape deck instead of a record: key clicks, rewinding and tape hiss. In Settings → Player.',
+
   },
 };
 
@@ -248,8 +284,15 @@ export function setLang(value) {
   document.documentElement.lang = lang;
 }
 
+// in the cassette view a text with a "<key>_tape" version is said that way ("Find a tape", "New cassette"…)
+let tape = false;
+
+export function setTape(value) {
+  tape = !!value;
+}
+
 export function t(key, vars = {}) {
-  const s = DICT[lang][key] ?? DICT.en[key] ?? key;
+  const s = (tape ? DICT[lang][key + '_tape'] ?? DICT.en[key + '_tape'] : undefined) ?? DICT[lang][key] ?? DICT.en[key] ?? key;
   return s.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
 }
 

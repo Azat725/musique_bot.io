@@ -231,3 +231,74 @@
   .fp.is-idle .fp__stage { transform: none; }
   .fp.is-idle :is(.fp__top, .fp__info, .progress, .controls, .fp__extra) { transform: none; }
 }
+
+/* ---------- tape deck view (Settings → Player → Tape deck) ----------
+   --size is the cassette's width (S); the cassette is .63 S tall. The deck around it: 1.24 S × 1.06 S, its bay centred on
+   the stage (so the cassette sits where a record would), the bay's centre .49 S below the deck's top edge. */
+.recorder { position: absolute; inset: 0; display: none; pointer-events: none; }
+.fp.is-cassette { --size: min(70vw, 38vh, 330px); }
+.fp.is-cassette .recorder { display: block; }
+.fp.is-cassette .fp__stage { min-height: calc(var(--size) * 1.14 + 16px); }
+
+.recorder > * { position: absolute; }
+.recorder::before { content: ''; position: absolute; left: 50%; top: 50%; width: calc(var(--size) * 1.24); height: calc(var(--size) * 1.06);
+  margin: calc(var(--size) * -.49) 0 0 calc(var(--size) * -.62); border-radius: 10px; background: var(--rc-body);
+  box-shadow: 0 16px 40px var(--shadow), inset 0 0 0 1px var(--rc-edge); }
+.rec__top { left: 50%; top: 50%; width: calc(var(--size) * 1.14); height: calc(var(--size) * .1);
+  margin: calc(var(--size) * -.465) 0 0 calc(var(--size) * -.57); display: flex; align-items: center; gap: calc(var(--size) * .03); }
+.rec__counter { padding: calc(var(--size) * .008) calc(var(--size) * .018); border-radius: 3px; background: var(--rc-counter); color: var(--rc-digits);
+  font: 600 calc(var(--size) * .045)/1 ui-monospace, 'SFMono-Regular', Menlo, monospace; letter-spacing: .12em; font-variant-numeric: tabular-nums; }
+.rec__brand { flex: 1; font: 600 calc(var(--size) * .042)/1 var(--font-serif); letter-spacing: .08em; color: var(--rc-text); white-space: nowrap; }
+.rec__brand small { margin-left: .5em; font: 600 .7em/1 var(--font-sans); letter-spacing: .2em; opacity: .75; }
+.rec__speed { font: 600 calc(var(--size) * .034)/1 var(--font-sans); color: var(--rc-text); letter-spacing: .04em; white-space: nowrap; }
+.rec__led { width: calc(var(--size) * .026); height: calc(var(--size) * .026); border-radius: 50%; background: var(--rc-led); transition: background .3s; }
+.fp.is-rolling .rec__led { background: var(--rc-led-on); }
+/* the bay the cassette sits in */
+.rec__bay { left: 50%; top: 50%; width: calc(var(--size) * 1.1); height: calc(var(--size) * .74); margin: calc(var(--size) * -.37) 0 0 calc(var(--size) * -.55);
+  border-radius: 6px; background: var(--rc-bay); box-shadow: inset 0 0 0 calc(var(--size) * .012) var(--rc-panel); }
+/* the piano keys: the play key stays down while the music plays */
+.rec__keys { left: 50%; top: 50%; width: calc(var(--size) * 1.1); height: calc(var(--size) * .13); margin: calc(var(--size) * .42) 0 0 calc(var(--size) * -.55);
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: calc(var(--size) * .014); }
+.rec__key { display: grid; place-items: center; border-radius: 3px 3px 5px 5px; background: var(--rc-key); color: var(--rc-key-text);
+  box-shadow: 0 calc(var(--size) * .014) 0 var(--rc-key-down); transition: transform .12s, box-shadow .12s, background .12s; }
+.rec__key svg { width: calc(var(--size) * .05); height: calc(var(--size) * .05); fill: currentColor; }
+.rec__key[data-k="rec"] { color: #C8261E; }
+.fp.is-rolling .rec__key[data-k="play"], .fp.is-scrubbing .rec__key[data-k="ff"] {
+  transform: translateY(calc(var(--size) * .012)); box-shadow: 0 calc(var(--size) * .002) 0 var(--rc-key-down); background: var(--rc-key-down); }
+
+/* the cassette itself (vinyl.js makeCassette): the shell drawn in SVG, the label written in HTML over it */
+.record.cassette { height: calc(var(--size) * .63); border-radius: calc(var(--size) * .035); box-shadow: 0 6px 16px rgba(0, 0, 0, .35); }
+:root[data-mode="dark"] .record.cassette { box-shadow: 0 6px 16px rgba(0, 0, 0, .45), 0 0 0 1px rgba(255, 240, 220, .06); }
+.cassette__body { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cs__shell { fill: var(--tp-shell); stroke: var(--tp-edge); stroke-width: 1; }
+.cs__label { fill: var(--tp-label); }
+.cs__band { fill: var(--tp-band); }
+.cs__window { fill: var(--tp-window); stroke: rgba(0, 0, 0, .35); stroke-width: 1; }
+.cs__pack { fill: var(--tp-tape); }
+.cs__reel { transform-box: fill-box; transform-origin: center; }
+.cs__hub { fill: var(--tp-hub); }
+.cs__core { fill: var(--tp-window); }
+.cs__tooth { fill: var(--tp-hub); }
+.cs__foot { fill: var(--tp-shell); stroke: var(--tp-edge); stroke-width: 1; }
+.cs__hole { fill: rgba(0, 0, 0, .55); }
+.cs__screw { fill: var(--tp-screw); }
+.cassette__title { position: absolute; left: 10%; right: 10%; top: 8.6%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font: italic 500 calc(var(--size) * .052)/1.1 var(--font-serif); color: var(--tp-ink); pointer-events: none; }
+.cassette__art { position: absolute; left: 9.5%; top: 29%; width: 17%; height: 30%; overflow: hidden; border-radius: 2px; background: var(--tp-band); pointer-events: none; }
+.cassette__art img { width: 100%; height: 100%; object-fit: cover; }
+.cassette__side { position: absolute; right: 10%; top: 31%; font: 700 calc(var(--size) * .11)/1 var(--font-serif); color: var(--tp-band); pointer-events: none; }
+.fp.is-loading .cassette__art img { animation: pulse 1.1s ease-in-out infinite; }
+
+/* the case a new cassette comes out of (vinyl.js uncase) */
+.sleeve.is-case { width: calc(var(--size) * 1.06); height: calc(var(--size) * .7); border-radius: 5px; background: var(--tp-shell); }
+.sleeve.is-case::after { box-shadow: inset 0 0 0 calc(var(--size) * .018) rgba(255, 255, 255, .28), inset 0 0 0 calc(var(--size) * .022) rgba(0, 0, 0, .18); }
+.sleeve__hinge { position: absolute; left: 0; right: 0; top: 0; height: 9%; background: rgba(255, 255, 255, .22); }
+.sleeve.is-case .sleeve__brand { font-size: calc(var(--size) * .1); }
+
+@media (max-height: 640px) {
+  .fp.is-cassette { --size: min(68vw, 33vh); }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .fp.is-cassette { --size: min(56vh, 30vw); }
+  .fp.is-cassette .fp__stage { min-height: calc(var(--size) * 1.14 + 16px); }
+}

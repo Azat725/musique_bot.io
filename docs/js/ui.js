@@ -1,7 +1,7 @@
 import { api } from './api.js';
 import { t } from './i18n.js';
 import { player } from './player.js';
-import { getPlaylists, invalidatePlaylists, likes, toggleLike } from './store.js';
+import { getPlaylists, invalidatePlaylists, likes, tapeMode, toggleLike } from './store.js';
 import { coverUrl as savedCover, isSaved, offline, savingId, savingPct } from './offline.js';
 
 export const tg = window.Telegram?.WebApp;
@@ -64,11 +64,33 @@ const ICONS = {
   offline: P('M3 8.5a13 13 0 0 1 18 0M6 12a8.5 8.5 0 0 1 12 0M9 15.5a4 4 0 0 1 6 0') + '<circle class="fill" cx="12" cy="19" r="1.3"/>' + P('M4 4l16 16'),
 };
 
+// the cassette view swaps the record-shaped icons for tapes: the same names, the same moving parts (ic__disc slides out,
+// ic__rec turns, ic__roll rolls), so the nav and press animations work unchanged
+const TAPE = (x, y, w, cls = '') => {
+  const h = w * 0.62, r = h * 0.17;
+  return `<g class="${cls}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${(w * 0.08).toFixed(2)}"/>`
+    + `<circle cx="${(x + w * 0.32).toFixed(2)}" cy="${(y + h * 0.45).toFixed(2)}" r="${r.toFixed(2)}"/>`
+    + `<circle cx="${(x + w * 0.68).toFixed(2)}" cy="${(y + h * 0.45).toFixed(2)}" r="${r.toFixed(2)}"/></g>`;
+};
+const TAPE_ICONS = {
+  // a boombox: a handle, two speakers, the cassette door between them
+  home: P('M7.5 8.5V6h9v2.5') + '<rect x="2.5" y="8.5" width="19" height="11" rx="1.6"/>'
+    + '<g class="ic__horn"><circle cx="7" cy="14" r="2.6"/><circle cx="17" cy="14" r="2.6"/></g>' + P('M10.5 12h3M10.5 15h3'),
+  search: '<circle cx="10.5" cy="10.5" r="6.5"/>' + `<g class="ic__rec"><rect x="7.2" y="8.4" width="6.6" height="4.2" rx=".6"/><circle class="fill" cx="9.1" cy="10.4" r=".7"/><circle class="fill" cx="11.9" cy="10.4" r=".7"/></g>` + P('m15.4 15.4 4.6 4.6'),
+  library: P('M3.5 6.5h9v13h-9z') + TAPE(8.5, 9, 12, 'ic__disc'),
+  vinyl: TAPE(2.5, 6, 19) + P('M7.5 17.8 8.6 15.4h6.8l1.1 2.4'),
+  // favourites: cassettes stacked on a shelf, the top one rolls; the heart above as before
+  shelf: P('M3 19.5h18M4.5 19.5v1.5M19.5 19.5v1.5') + '<rect x="4" y="15.5" width="12" height="4" rx=".5"/><rect x="5" y="11.5" width="12" height="4" rx=".5"/>'
+    + '<g class="ic__roll"><rect x="4.5" y="7.5" width="12" height="4" rx=".5"/></g>'
+    + '<path class="fill ic__heart" d="M19.6 9.6s-2.5-1.5-2.5-3.2a1.35 1.35 0 0 1 2.5-.7 1.35 1.35 0 0 1 2.5.7c0 1.7-2.5 3.2-2.5 3.2z"/>',
+};
+
 export const EASE_IO = 'cubic-bezier(.65, 0, .35, 1)';
 export const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export function icon(name, cls = '') {
-  return `<svg class="ic ic--${name} ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
+  const art = (tapeMode() && TAPE_ICONS[name]) || ICONS[name];
+  return `<svg class="ic ic--${name} ${cls}" viewBox="0 0 24 24" aria-hidden="true">${art}</svg>`;
 }
 
 // ---------- a small motion of the icon on every press (css: .is-press .ic--<name>) ----------
@@ -89,8 +111,14 @@ export function pressAnim(btn) {
 // one listener for the whole app: every pressable button plays its icon's motion, whatever else the tap does
 document.addEventListener('click', (e) => pressAnim(e.target.closest?.(PRESSABLE)), true);
 
-/** Brand mark: a small vinyl record with a bordeaux label. */
+/** Brand mark: a small vinyl record with a bordeaux label (a cassette with a red label in the cassette view). */
 export function brandMark() {
+  if (tapeMode()) {
+    return `<svg class="brand__mark brand__mark--tape" viewBox="0 0 24 24" aria-hidden="true">
+      <rect class="disc" x="1" y="4.6" width="22" height="14.8" rx="2"/><rect class="label" x="3.2" y="6.6" width="17.6" height="7.4" rx="1"/>
+      <circle class="hole" cx="8.4" cy="10.3" r="1.7"/><circle class="hole" cx="15.6" cy="10.3" r="1.7"/><path class="groove" d="M6.6 19.4 7.9 16.6h8.2l1.3 2.8"/>
+    </svg>`;
+  }
   return `<svg class="brand__mark" viewBox="0 0 24 24" aria-hidden="true">
     <circle class="disc" cx="12" cy="12" r="11.2"/>
     <circle class="groove" cx="12" cy="12" r="9"/><circle class="groove" cx="12" cy="12" r="7"/>
@@ -131,12 +159,14 @@ export function thumb(url, px = 144) {
   return url.replace(/=w\d+-h\d+/, `=w${px}-h${px}`);
 }
 
+// the cassette view: a cassette whose reels turn
+export const TAPE_LOADER = '<div class="tl" aria-hidden="true"><div class="tl__shell"><span class="tl__label"></span><span class="tl__win"><i class="tl__reel"></i><i class="tl__reel"></i></span></div></div>';
 const VINYL = '<div class="vl" aria-hidden="true"><div class="vl__slide"><div class="vl__disc"><span class="vl__groove"></span><span class="vl__label"></span></div></div><div class="vl__sleeve"><span class="vl__brand">Musique</span></div></div>';
 
 /** Loading placeholder: the same record-and-sleeve scene as the launch screen, smaller. It fades in
  *  only after a quarter of a second, so fast screens never flash it. */
 export function loader() {
-  return `<div class="view-loader">${VINYL.replace('class="vl"', 'class="vl vl--sm"')}</div>`;
+  return `<div class="view-loader">${tapeMode() ? TAPE_LOADER.replace('class="tl"', 'class="tl tl--sm"') : VINYL.replace('class="vl"', 'class="vl vl--sm"')}</div>`;
 }
 
 export function cover(url, cls = '', px = 144) {

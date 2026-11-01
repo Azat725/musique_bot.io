@@ -30,9 +30,11 @@ export const settings = {
   searchMode: 'all',
   name: '', // optional name for the home greeting
   colorTheme: 'classic', // themes.js; 'classic' follows `theme` (auto / light / dark)
-  playerMode: 'record', // 'record' alone or 'turntable'
+  playerMode: 'record', // 'record' alone, 'turntable', or 'cassette': a tape recorder, and cassettes all over the app
   recordColor: 'black',
   deckColor: 'walnut', // the turntable's colourway, see css/tokens.css
+  tapeColor: 'black', // the cassette's shell, see themes.js TAPE_COLORS
+  recorderColor: 'silver', // the tape recorder's body
   idleDelay: 20, // seconds before the player's interface fades away; 0 never
   hapticSeek: true, // a tick under the finger while seeking
   sleeve: true, // a track heard for the first time comes out of its sleeve
@@ -64,6 +66,9 @@ export function updateSettings(patch, { remote = false } = {}) {
   try { if (tg?.isVersionAtLeast?.('6.9')) tg.CloudStorage.setItem(KEY, json); } catch {}
   listeners.forEach((fn) => fn(settings, { remote }));
 }
+
+/** The cassette view: the tape recorder in the player, and cassettes instead of records everywhere else. */
+export const tapeMode = () => settings.playerMode === 'cassette';
 
 export function onSettings(fn) {
   listeners.add(fn);

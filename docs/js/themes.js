@@ -12,6 +12,7 @@ export const THEMES = {
   obsidian: { mode: 'dark', bg: '#0D1110', swatch: ['#0D1110', '#19211E', '#E6ECE7', '#548C75'] },
   terracotta: { mode: 'dark', bg: '#211714', swatch: ['#211714', '#8E493D', '#F0E1D2', '#C4775E'] },
   tuscan: { mode: 'light', bg: '#F2E8D6', swatch: ['#F2E8D6', '#344638', '#E8D8BE', '#A65F43'] },
+  ussr: { mode: 'light', bg: '#F1E6CC', swatch: ['#F1E6CC', '#B3141C', '#D9A21B', '#3B1012'] },
 };
 
 export const CLASSIC_BG = { light: '#EFE4CF', dark: '#1A1410' };
@@ -27,4 +28,15 @@ export const RECORD_COLORS = {
 export const DECK_COLORS = {
   walnut: ['#4A3426', '#2A2320'], oak: ['#BF9A6B', '#A67C4F'], cherry: ['#6A2B20', '#47190F'], black: ['#1C1C1E', '#121213'],
   silver: ['#B5B8BD', '#979BA2'], white: ['#ECE8DF', '#D7D2C5'], red: ['#A8242B', '#7B1A20'], cream: ['#E3D1A5', '#C9B685'],
+};
+
+/** Cassette shells (the "Магнитофон" view): [shell, label stripe]; the full set is in css/tokens.css. */
+export const TAPE_COLORS = {
+  black: ['#1E1E20', '#B3141C'], grey: ['#6C6E72', '#E0B33A'], cream: ['#E4D6B6', '#2F5E9E'], red: ['#A3191F', '#F1E6CC'],
+  blue: ['#1F3D74', '#E0B33A'], clear: ['#BFCACD', '#B3141C'],
+};
+
+/** Tape recorders: [body, cassette bay]. Silver and black like the stereo decks of the 80s, beige like a portable. */
+export const RECORDER_COLORS = {
+  silver: ['#BDC0C4', '#2B2B2E'], black: ['#1E1E20', '#0F0F10'], beige: ['#CBB58F', '#3A2E22'], red: ['#9C1E24', '#2B0D0F'],
 };

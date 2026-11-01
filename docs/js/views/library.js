@@ -1,6 +1,6 @@
 import { api } from '../api.js';
 import { plural, t } from '../i18n.js';
-import { favArtists, getPlaylists, invalidatePlaylists, likedList, likes, loadFavArtists, settings, updateSettings } from '../store.js';
+import { favArtists, getPlaylists, invalidatePlaylists, likedList, likes, loadFavArtists, settings, tapeMode, updateSettings } from '../store.js';
 import { EASE_IO, esc, h, haptic, icon, loader, promptName, reducedMotion, sheet, thumb, toast } from '../ui.js';
 
 const OPEN_DELAY_MS = 520; // how long the tile's icon plays before its list opens
@@ -92,7 +92,7 @@ export async function render(_, nav) {
     rows.clear();
     sortBtn.hidden = playlists.length < 2;
     if (!playlists.length) {
-      const empty = h(`<div class="pl-empty">${EMPTY_ART}
+      const empty = h(`<div class="pl-empty">${tapeMode() ? EMPTY_TAPE : EMPTY_ART}
         <div class="pl-empty__title">${esc(t('lib_empty_title'))}</div>
         <div class="pl-empty__text">${esc(t('lib_empty_playlists'))}</div>
         <button class="btn btn--accent" data-new>${icon('plus')}${esc(t('lib_new_playlist'))}</button>
@@ -160,6 +160,13 @@ const IMPORT_ERRORS = ['unrecognized', 'youtube', 'spotify', 'yandex', 'empty'];
 const EMPTY_ART = `<svg class="pl-empty__art" viewBox="0 0 160 120" aria-hidden="true">
   <g class="pl-empty__record"><circle cx="92" cy="58" r="44"/>${[36, 28, 20].map((r) => `<circle class="g" cx="92" cy="58" r="${r}"/>`).join('')}<circle class="l" cx="92" cy="58" r="13"/><circle class="h" cx="92" cy="58" r="2.4"/></g>
   <rect class="pl-empty__sleeve" x="14" y="18" width="84" height="84" rx="4"/><path class="pl-empty__slot" d="M14 34h84"/><circle class="pl-empty__dot" cx="56" cy="68" r="12"/>
+</svg>`;
+
+/** The same in the cassette view: a cassette sliding out of its case. */
+const EMPTY_TAPE = `<svg class="pl-empty__art" viewBox="0 0 160 120" aria-hidden="true">
+  <g class="pl-empty__tape"><rect class="s" x="56" y="34" width="92" height="58" rx="5"/><rect class="l" x="63" y="39" width="78" height="34" rx="2"/>
+    <rect class="b" x="63" y="46" width="78" height="3"/><circle cx="86" cy="60" r="7"/><circle cx="118" cy="60" r="7"/></g>
+  <rect class="pl-empty__sleeve" x="14" y="26" width="84" height="68" rx="4"/><path class="pl-empty__slot" d="M14 36h84"/><circle class="pl-empty__dot" cx="56" cy="66" r="12"/>
 </svg>`;
 
 function importPlaylist(nav) {

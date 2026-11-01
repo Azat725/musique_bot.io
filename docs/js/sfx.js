@@ -1,9 +1,10 @@
-import { settings } from './store.js';
+import { settings, tapeMode } from './store.js';
 
 /** Sound effects through Web Audio, so they mix with the music instead of interrupting it.
  *  The context is created lazily (only with sounds on) and suspended whenever nothing is playing:
  *  a running AudioContext keeps iOS rendering silence for the whole session.
- *  Besides two recorded samples, the vinyl noises (crackle, scratch, rewind) are synthesised. */
+ *  Recorded samples: the needle and the swipe of a record, and the keys and cassette of a tape deck (CC0 recordings by
+ *  Joseph Sardin, bigsoundbank.com: assets/sfx/CREDITS.md). The noises (crackle, scratch, tape hiss, rewinding) are synthesised. */
 
 let ctx = null;
 const buffers = {};
@@ -14,7 +15,7 @@ function context() {
   const Ctx = window.AudioContext || window.webkitAudioContext;
   if (!Ctx) return null;
   ctx = new Ctx();
-  for (const name of ['swipe', 'needle']) {
+  for (const name of ['swipe', 'needle', 'tape-play', 'tape-pause', 'tape-stop', 'tape-eject', 'tape-insert']) {
     fetch(`assets/sfx/${name}.mp3`).then((r) => r.arrayBuffer()).then((d) => ctx.decodeAudioData(d))
       .then((b) => { buffers[name] = b; }).catch(() => {});
   }
@@ -143,12 +144,13 @@ export function startSpinNoise(volume = 1, background = false) {
 const NOISE_LEVELS = [0, 0.45, 0.8, 1.3, 0.16];
 let bgNoise = null; // { level, stop }
 
-/** Keep the background crackle in step with playback and the chosen level. */
+/** Keep the background crackle (or the tape hiss, in the cassette view) in step with playback and the chosen level. */
 export function syncVinylNoise(playing) {
   const level = playing ? NOISE_LEVELS[settings.vinylNoise] || 0 : 0;
-  if (bgNoise && bgNoise.level === level) return;
+  const tape = tapeMode();
+  if (bgNoise && bgNoise.level === level && bgNoise.tape === tape) return;
   bgNoise?.stop();
-  bgNoise = level ? { level, stop: startSpinNoise(level, true) } : null;
+  bgNoise = level ? { level, tape, stop: tape ? startTapeNoise(level, true) : startSpinNoise(level, true) } : null;
 }
 
 // the first tap of a session unlocks audio for the background noise even if the player is never opened
@@ -235,4 +237,117 @@ export function whoosh(forward = true) {
   src.onended = release;
   src.start(t);
   src.stop(t + 0.4);
+}
+
+// ---------- the tape deck ----------
+
+/** Quiet noise of a running cassette: hiss, the wow and flutter of the capstan, a faint mains hum. Returns stop(). */
+export function startTapeNoise(volume = 1, background = false) {
+  if (!hold(background)) return () => {};
+  const t = ctx.currentTime;
+  const out = ctx.createGain();
+  out.gain.setValueAtTime(0, t);
+  out.gain.linearRampToValueAtTime(volume, t + (background ? 1.2 : 0.35));
+  out.connect(ctx.destination);
+
+  const hiss = noise();
+  const hp = ctx.createBiquadFilter();
+  hp.type = 'highpass'; hp.frequency.value = 1800;
+  const air = ctx.createBiquadFilter(); // tape hiss sits high, a soft hump around 6 kHz
+  air.type = 'peaking'; air.frequency.value = 6000; air.Q.value = 0.6; air.gain.value = 5;
+  const hissGain = ctx.createGain(); hissGain.gain.value = 0.026;
+  // wow (slow) and flutter (fast) breathe in the hiss as the tape speed wavers
+  const wow = ctx.createOscillator(); wow.frequency.value = 0.55;
+  const wowDepth = ctx.createGain(); wowDepth.gain.value = 0.004;
+  const flutter = ctx.createOscillator(); flutter.frequency.value = 6.3;
+  const flutterDepth = ctx.createGain(); flutterDepth.gain.value = 0.002;
+  wow.connect(wowDepth).connect(hissGain.gain);
+  flutter.connect(flutterDepth).connect(hissGain.gain);
+  hiss.connect(hp).connect(air).connect(hissGain).connect(out);
+
+  const hum = ctx.createOscillator(); // 50 Hz mains, barely there
+  hum.frequency.value = 50;
+  const humGain = ctx.createGain(); humGain.gain.value = 0.006;
+  hum.connect(humGain).connect(out);
+
+  const sources = [hiss, wow, flutter, hum];
+  sources.forEach((s) => s.start(t, s === hiss ? Math.random() : 0));
+  let stopped = false;
+  return () => {
+    if (stopped) return;
+    stopped = true;
+    const now = ctx.currentTime;
+    out.gain.cancelScheduledValues(now);
+    out.gain.setValueAtTime(out.gain.value, now);
+    out.gain.linearRampToValueAtTime(0, now + 0.4);
+    sources.forEach((s) => s.stop(now + 0.45));
+    hum.onended = release;
+  };
+}
+
+/** The motor and the tape racing past the heads, for winding: a whine and a rush of noise whose pitch follows `speed`. */
+function whirr() {
+  const t = ctx.currentTime;
+  const motor = ctx.createOscillator();
+  motor.type = 'sawtooth'; motor.frequency.value = 90;
+  const motorLp = ctx.createBiquadFilter();
+  motorLp.type = 'lowpass'; motorLp.frequency.value = 1400;
+  const motorGain = ctx.createGain(); motorGain.gain.value = 0;
+  const wobble = ctx.createOscillator(); wobble.frequency.value = 9; // the reels never turn quite evenly
+  const wobbleDepth = ctx.createGain(); wobbleDepth.gain.value = 6;
+  wobble.connect(wobbleDepth).connect(motor.frequency);
+  motor.connect(motorLp).connect(motorGain).connect(ctx.destination);
+  const rush = noise();
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.Q.value = 1.6; bp.frequency.value = 900;
+  const rushGain = ctx.createGain(); rushGain.gain.value = 0;
+  rush.connect(bp).connect(rushGain).connect(ctx.destination);
+  [motor, wobble, rush].forEach((s) => s.start(t));
+  return {
+    set(speed, now, tc) { // speed 0..1: the share of full winding speed
+      motor.frequency.setTargetAtTime(90 + speed * 520, now, tc);
+      motorGain.gain.setTargetAtTime(speed * 0.07, now, tc);
+      bp.frequency.setTargetAtTime(700 + speed * 2600, now, tc);
+      rushGain.gain.setTargetAtTime(speed * 0.22, now, tc);
+    },
+    stop(at) { [motor, wobble, rush].forEach((s) => s.stop(at)); motor.onended = release; },
+  };
+}
+
+/** Winding the tape by hand: the "вжжж" follows the finger. Same interface as startScratch(). */
+export function startTapeWhirr() {
+  if (!hold()) return null;
+  const w = whirr();
+  let done = false;
+  return {
+    /** speed in reel turns per second, negative when wound back */
+    update(speed) {
+      if (done) return;
+      w.set(Math.min(Math.abs(speed) / 2.5, 1), ctx.currentTime, 0.04);
+    },
+    stop() {
+      if (done) return;
+      done = true;
+      const now = ctx.currentTime;
+      w.set(0, now, 0.05);
+      w.stop(now + 0.3);
+    },
+  };
+}
+
+/** A short fast-forward or rewind for a jump made with the progress bar: the motor spins up, races and stops. */
+export function tapeWind(forward = true) {
+  if (!hold()) return;
+  const w = whirr();
+  const t = ctx.currentTime;
+  w.set(forward ? 0.85 : 0.7, t, 0.06);
+  w.set(0, t + 0.45, 0.07);
+  w.stop(t + 0.8);
+  setTimeout(() => playSfx('tape-stop', 0.45), 520);
+}
+
+
+/** A key of the tape deck clicks: 'play', 'pause', 'stop' (only in the cassette view). */
+export function tapeKey(name) {
+  if (tapeMode()) playSfx('tape-' + name, 0.6);
 }

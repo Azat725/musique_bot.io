@@ -10,10 +10,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- fonts must never block rendering: if Google is unreachable the system fonts are used -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-  <link rel="stylesheet" href="css/tokens.css?v=31">
-  <link rel="stylesheet" href="css/app.css?v=46">
-  <link rel="stylesheet" href="css/player.css?v=35">
-  <link rel="stylesheet" href="css/stories.css?v=5">
+  <link rel="stylesheet" href="css/tokens.css?v=32">
+  <link rel="stylesheet" href="css/app.css?v=47">
+  <link rel="stylesheet" href="css/player.css?v=36">
+  <link rel="stylesheet" href="css/stories.css?v=6">
   <!-- local copy of https://telegram.org/js/telegram-web-app.js?64 (taken 2026-10-29, its two per-event console.log calls removed): telegram.org hangs on some networks/VPNs, and the app module waits for this script -->
   <script src="vendor/telegram-web-app.js?v=2"></script>
   <script>
@@ -27,13 +27,15 @@
       var key = { oldmoney: 'richesse' }[s.colorTheme] || s.colorTheme; // a renamed theme (js/store.js migrates the setting itself)
       var custom = { navy: ['dark', '#0F1A2E'], noir: ['dark', '#121212'], bordo: ['dark', '#4A121C'],
         green: ['dark', '#12261D'], richesse: ['light', '#F4EFE3'], obsidian: ['dark', '#0D1110'],
-        terracotta: ['dark', '#211714'], tuscan: ['light', '#F2E8D6'] }[key];
+        terracotta: ['dark', '#211714'], tuscan: ['light', '#F2E8D6'], ussr: ['light', '#F1E6CC'] }[key];
       var theme = custom ? key : s.theme && s.theme !== 'system' ? s.theme
         : (w && w.colorScheme) || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
       var root = document.documentElement;
       root.dataset.theme = theme;
       root.dataset.mode = custom ? custom[0] : theme;
       if (s.recordColor && s.recordColor !== 'black') root.dataset.vinyl = s.recordColor;
+      if (s.playerMode === 'cassette') root.dataset.player = 'cassette'; // the launch screen shows a cassette then
+      if (s.tapeColor && s.tapeColor !== 'black') root.dataset.tape = s.tapeColor;
       var bg = custom ? custom[1] : theme === 'dark' ? '#1A1410' : '';
       if (bg) document.querySelector('meta[name="theme-color"]').content = bg;
     })();
@@ -41,28 +43,28 @@
   <!-- one version for every module: imports inside the modules are bare, and iOS caches them separately -->
   <script type="importmap">
   { "imports": {
-    "./js/api.js": "./js/api.js?v=57", "./js/i18n.js": "./js/i18n.js?v=57", "./js/player.js": "./js/player.js?v=57",
-    "./js/store.js": "./js/store.js?v=57", "./js/ui.js": "./js/ui.js?v=57", "./js/vinyl.js": "./js/vinyl.js?v=57",
-    "./js/sfx.js": "./js/sfx.js?v=57", "./js/eq.js": "./js/eq.js?v=57",
-    "./js/views/artist.js": "./js/views/artist.js?v=57", "./js/views/artists.js": "./js/views/artists.js?v=57", "./js/views/home.js": "./js/views/home.js?v=57", "./js/views/library.js": "./js/views/library.js?v=57",
-    "./js/views/playlist.js": "./js/views/playlist.js?v=57", "./js/views/search.js": "./js/views/search.js?v=57",
-    "./js/views/settings.js": "./js/views/settings.js?v=57",
-    "./js/stories.js": "./js/stories.js?v=57", "./js/themes.js": "./js/themes.js?v=57",
-    "./js/queue.js": "./js/queue.js?v=57", "./js/sync.js": "./js/sync.js?v=57", "./js/login.js": "./js/login.js?v=57", "./js/offline.js": "./js/offline.js?v=57", "./js/graph.js": "./js/graph.js?v=57", "./js/sleep.js": "./js/sleep.js?v=57"
+    "./js/api.js": "./js/api.js?v=58", "./js/i18n.js": "./js/i18n.js?v=58", "./js/player.js": "./js/player.js?v=58",
+    "./js/store.js": "./js/store.js?v=58", "./js/ui.js": "./js/ui.js?v=58", "./js/vinyl.js": "./js/vinyl.js?v=58",
+    "./js/sfx.js": "./js/sfx.js?v=58", "./js/eq.js": "./js/eq.js?v=58",
+    "./js/views/artist.js": "./js/views/artist.js?v=58", "./js/views/artists.js": "./js/views/artists.js?v=58", "./js/views/home.js": "./js/views/home.js?v=58", "./js/views/library.js": "./js/views/library.js?v=58",
+    "./js/views/playlist.js": "./js/views/playlist.js?v=58", "./js/views/search.js": "./js/views/search.js?v=58",
+    "./js/views/settings.js": "./js/views/settings.js?v=58",
+    "./js/stories.js": "./js/stories.js?v=58", "./js/themes.js": "./js/themes.js?v=58",
+    "./js/queue.js": "./js/queue.js?v=58", "./js/sync.js": "./js/sync.js?v=58", "./js/login.js": "./js/login.js?v=58", "./js/offline.js": "./js/offline.js?v=58", "./js/graph.js": "./js/graph.js?v=58", "./js/sleep.js": "./js/sleep.js?v=58"
   } }
   </script>
-  <link rel="modulepreload" href="js/app.js?v=57">
-  <link rel="modulepreload" href="js/api.js?v=57">
-  <link rel="modulepreload" href="js/player.js?v=57">
-  <link rel="modulepreload" href="js/ui.js?v=57">
-  <link rel="modulepreload" href="js/vinyl.js?v=57">
-  <link rel="modulepreload" href="js/store.js?v=57">
-  <link rel="modulepreload" href="js/i18n.js?v=57">
-  <link rel="modulepreload" href="js/views/home.js?v=57">
+  <link rel="modulepreload" href="js/app.js?v=58">
+  <link rel="modulepreload" href="js/api.js?v=58">
+  <link rel="modulepreload" href="js/player.js?v=58">
+  <link rel="modulepreload" href="js/ui.js?v=58">
+  <link rel="modulepreload" href="js/vinyl.js?v=58">
+  <link rel="modulepreload" href="js/store.js?v=58">
+  <link rel="modulepreload" href="js/i18n.js?v=58">
+  <link rel="modulepreload" href="js/views/home.js?v=58">
 </head>
 <body>
-  <!-- launch screen: a record slides out of its sleeve and spins; app.js puts it back and fades it out -->
-  <div class="boot" role="status" aria-label="Musique"><div class="vl" aria-hidden="true"><div class="vl__slide"><div class="vl__disc"><span class="vl__groove"></span><span class="vl__label"></span></div></div><div class="vl__sleeve"><span class="vl__brand">Musique</span></div></div></div>
+  <!-- launch screen: a record slides out of its sleeve and spins (a cassette's reels turn in the cassette view); app.js puts it back and fades it out -->
+  <div class="boot" role="status" aria-label="Musique"><div class="vl" aria-hidden="true"><div class="vl__slide"><div class="vl__disc"><span class="vl__groove"></span><span class="vl__label"></span></div></div><div class="vl__sleeve"><span class="vl__brand">Musique</span></div></div><div class="tl" aria-hidden="true"><div class="tl__shell"><span class="tl__label"></span><span class="tl__win"><i class="tl__reel"></i><i class="tl__reel"></i></span></div></div></div>
   <main id="main"></main>
   <div id="mini" class="mini" role="button" aria-label="player"></div>
   <nav id="nav" class="nav"></nav>
@@ -103,6 +105,6 @@
       }, 25000);
     })();
   </script>
-  <script type="module" src="js/app.js?v=57" onerror="window.__musiqueNote('не удалось загрузить js/app.js')"></script>
+  <script type="module" src="js/app.js?v=58" onerror="window.__musiqueNote('не удалось загрузить js/app.js')"></script>
 </body>
 </html>

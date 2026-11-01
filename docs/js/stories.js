@@ -2,7 +2,7 @@ import { api } from './api.js';
 import { t } from './i18n.js';
 import { settings, updateSettings } from './store.js';
 import { CLASSIC_SWATCH, THEMES } from './themes.js';
-import { EASE_IO, brandMark, esc, h, haptic, icon } from './ui.js';
+import { EASE_IO, TAPE_LOADER, brandMark, esc, h, haptic, icon } from './ui.js';
 
 /** The product intro shown on the very first launch, as stories: tap the right side for the next one,
  *  the left side for the previous, hold to pause, swipe down or tap the cross to close.
@@ -64,6 +64,14 @@ const SLIDES = [
     </div>`,
   },
   {
+    key: 'st_tape', // a slide added later: its texts have their own keys, the numbered ones keep theirs
+    tone: 'navy',
+    art: () => `<div class="sx-tape">${TAPE_LOADER}
+      <div class="sx-keys">${['M11.5 6v12L3 12zM21 6v12l-8.5-6z', 'M7 5.5v13l11-6.5z', 'M12.5 6v12l8.5-6zM3 6v12l8.5-6z']
+        .map((d, i) => `<span class="sx-key${i === 1 ? ' is-down' : ''}"><svg viewBox="0 0 24 24"><path d="${d}"/></svg></span>`).join('')}</div>
+    </div>`,
+  },
+  {
     tone: 'bordeaux',
     art: () => `<div class="sx-chat">
       <div class="sx-msg">${esc(t('st8_query'))}</div>
@@ -81,12 +89,14 @@ let root = null, index = 0, fill = null, done = null, keyHandler = null, visHand
 export function showStories() {
   if (root) return Promise.resolve();
   const last = SLIDES.length - 1;
+  let n = 0;
+  const keys = SLIDES.map((s) => s.key || `st${++n}`); // st1…st8, plus slides with keys of their own
   root = h(`<div class="stories" role="dialog" aria-modal="true" aria-label="Musique">
     ${SLIDES.map((s, i) => `<section class="story story--${s.tone}" aria-hidden="true">
       <div class="story__art">${s.art()}</div>
       <div class="story__copy">
-        <h2 class="story__title">${esc(t(`st${i + 1}_t`))}</h2>
-        <p class="story__text">${esc(t(`st${i + 1}_s`))}</p>
+        <h2 class="story__title">${esc(t(`${keys[i]}_t`))}</h2>
+        <p class="story__text">${esc(t(`${keys[i]}_s`))}</p>
         ${i === last ? `<button class="btn story__cta" data-start>${esc(t('st_start'))}</button>` : ''}
       </div>
     </section>`).join('')}

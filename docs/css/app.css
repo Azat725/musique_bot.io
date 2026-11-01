@@ -364,7 +364,7 @@ body.player-open .eq i { animation-play-state: paused; } /* hidden under the ful
 .segmented--mini { flex: none; width: 108px; padding: 2px; }
 .segmented--mini button { height: 30px; font-size: 13px; font-weight: 600; }
 .group--lang { margin-bottom: 8px; }
-.segmented--dense button { font-size: 13px; padding: 0 2px; letter-spacing: -.01em; } /* five options on a 375 px phone */
+.segmented--dense button { font-size: 12.5px; padding: 0 1px; letter-spacing: -.015em; } /* five options, or three long words, on a 375 px phone */
 
 .switch { appearance: none; -webkit-appearance: none; width: 48px; height: 28px; border-radius: 14px; background: var(--surface-2); position: relative; flex: none; cursor: pointer; transition: background .2s; margin: 0; border: 1px solid var(--line); }
 .switch::after { content: ''; position: absolute; left: 2px; top: 2px; width: 22px; height: 22px; border-radius: 50%; background: var(--white); box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: transform .2s var(--ease); }
@@ -675,3 +675,54 @@ body.player-open .toast { bottom: calc(24px + var(--safe-b)); }
 @keyframes pr-hop { 40% { transform: translateY(-3px); } }
 @keyframes pr-dive { 45% { transform: translateY(3px); } }
 @keyframes pr-upend { 50% { transform: scaleY(-1); } }
+
+/* ---------- the cassette view (Settings → Player → Tape deck; <html data-player="cassette">) ---------- */
+
+/* a cassette whose reels turn: the loader and the launch screen */
+.tl { --s: 150px; width: var(--s); height: calc(var(--s) * .63); }
+.tl--sm { --s: 76px; }
+.tl__shell { position: relative; display: block; width: 100%; height: 100%; border-radius: calc(var(--s) * .05); background: var(--tp-shell);
+  box-shadow: 0 6px 16px var(--shadow), inset 0 0 0 1px var(--tp-edge); }
+.tl__label { position: absolute; left: 7%; right: 7%; top: 8%; height: 58%; border-radius: calc(var(--s) * .025); background: var(--tp-label);
+  box-shadow: inset 0 calc(var(--s) * .09) 0 var(--tp-label), inset 0 calc(var(--s) * .12) 0 var(--tp-band); }
+.tl__win { position: absolute; left: 29%; right: 29%; top: 31%; height: 21%; border-radius: calc(var(--s) * .02); background: var(--tp-window);
+  display: flex; justify-content: space-around; align-items: center; }
+.tl__reel { width: calc(var(--s) * .1); height: calc(var(--s) * .1); border-radius: 50%; border: calc(var(--s) * .022) dotted var(--tp-hub);
+  animation: vl-spin 2.4s linear infinite reverse; }
+.boot .tl { display: none; }
+:root[data-player="cassette"] .boot .tl { display: block; }
+:root[data-player="cassette"] .boot .vl { display: none; }
+.boot.is-done .tl { animation: vl-away .4s var(--ease-io) both; }
+@media (prefers-reduced-motion: reduce) { .tl__reel { animation: none; } }
+
+/* behind every picture: a cassette instead of a record */
+:root[data-player="cassette"] :is(.cover, .mosaic, .artist__photo) { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A39580' stroke-width='1.3'%3E%3Crect x='2.5' y='6' width='19' height='12' rx='1.5'/%3E%3Ccircle cx='8.5' cy='11.4' r='2'/%3E%3Ccircle cx='15.5' cy='11.4' r='2'/%3E%3Cpath d='M7.5 18 8.6 15.6h6.8L16.5 18'/%3E%3C/svg%3E"); }
+
+.brand__mark--tape .disc { fill: var(--tp-shell); }
+.brand__mark--tape .label { fill: var(--accent); }
+.brand__mark--tape .hole { fill: var(--tp-label); }
+.brand__mark--tape .groove { fill: none; stroke: var(--tp-edge); stroke-width: .8; }
+
+/* the boombox's speakers pulse instead of the gramophone horn turning */
+:root[data-player="cassette"] .ic__horn { transform-origin: center; }
+:root[data-player="cassette"] .nav__item.is-on .ic__horn { transform: scale(1.08); }
+
+/* cassette and tape deck colours in Settings */
+.swatches--tape { grid-template-columns: repeat(6, minmax(0, 40px)); }
+.swatch--tape { border-radius: 5px; aspect-ratio: 1.55; }
+.swatch--tape::after { inset: 18% 12% 46%; border-radius: 2px; background: var(--c2); box-shadow: none; }
+.swatches--recorder { grid-template-columns: repeat(4, minmax(0, 44px)); justify-content: start; gap: 10px 14px; }
+.swatch--recorder { border-radius: 7px; aspect-ratio: 1.3; }
+.swatch--recorder::after { inset: 20% 18% 34%; border-radius: 3px; background: var(--c2); box-shadow: none; }
+
+/* the empty "Playlists" in the cassette view: a cassette peeking out of its case */
+.pl-empty__tape rect.s { fill: var(--tp-shell); }
+.pl-empty__tape rect.l { fill: var(--tp-label); }
+.pl-empty__tape rect.b { fill: var(--tp-band); }
+.pl-empty__tape circle { fill: var(--tp-window); }
+.pl-empty__tape { transform-box: fill-box; transform-origin: center; }
+@media (prefers-reduced-motion: no-preference) {
+  .pl-empty__tape { animation: pl-tape 4.5s var(--ease-io) infinite; }
+}
+@keyframes pl-tape { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(10px); } }
+.about__credit { margin: 12px 0 0; font-size: 12px; color: var(--text-3); }

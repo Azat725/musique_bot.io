@@ -166,6 +166,18 @@
   --seg-on: #344638; --on-seg-on: #F2E8D6;
 }
 
+/* USSR: banner red and gold on newsprint, a poster of the 80s */
+:root[data-theme="ussr"] {
+  --bg: #F1E6CC; --surface: #E7D6B2; --surface-2: #DCC69C;
+  --text: #2E1A14; --text-2: #5A4232; --text-3: #6F5847; --line: #D3BC92;
+  --heading: #9E1219;
+  --accent: #B3141C; --accent-text: #9E1219; --accent-press: #8E0F16; --accent-soft: #F0CFC0; --on-accent: #FBEFCF;
+  --tile-navy: #3B1012; --mini: #B3141C; --on-mini: #FBEFCF; --toast: #3B1012; --on-toast: #F6DE9A;
+  --scrim: rgba(40, 12, 8, 0.42); --shade: rgba(40, 12, 8, 0.5); --shadow: rgba(90, 30, 15, 0.24);
+  --vinyl: #16110E; --groove: rgba(255, 240, 210, 0.05); --groove-strong: rgba(255, 240, 210, 0.11); --sheen: rgba(255, 245, 220, 0.07);
+  --seg-on: #B3141C; --on-seg-on: #F6DE9A;
+}
+
 /* ---------- record colour (Settings → Customization); after the themes so it wins over their --vinyl ---------- */
 :root[data-vinyl="bordeaux"] { --vinyl: #5A1420; --groove: rgba(255, 220, 220, 0.06); --groove-strong: rgba(255, 220, 220, 0.13); --sheen: rgba(255, 230, 230, 0.08); }
 :root[data-vinyl="brown"] { --vinyl: #4A2E1E; --groove: rgba(255, 235, 210, 0.06); --groove-strong: rgba(255, 235, 210, 0.13); --sheen: rgba(255, 235, 210, 0.08); }
@@ -210,3 +222,32 @@
 /* cream: retro suitcase players, Crosley and Victrola, with brass trim */
 :root[data-deck="cream"] { --dk-body: #E3D1A5; --dk-panel: #C9B685; --dk-platter: #231F19; --dk-metal: #B29A5A; --dk-tube: #D5BE7A;
   --dk-dark: #4A3B26; --dk-text: #7C6A42; --dk-edge: rgba(0, 0, 0, 0.12); --dk-led: #7A3A2A; }
+
+/* ---------- cassettes (Settings -> Player -> Tape deck -> Cassette colour) ----------
+   --tp-shell the plastic, --tp-edge its outline, --tp-label the paper sticker, --tp-band the printed stripe on it,
+   --tp-ink the writing, --tp-window the clear window, --tp-tape the wound tape, --tp-hub the reel hubs, --tp-screw the screws. */
+:root {
+  --tp-shell: #1E1E20; --tp-edge: rgba(255, 255, 255, 0.1); --tp-label: #EFE6D2; --tp-band: #B3141C; --tp-ink: #2A2220;
+  --tp-window: #3A3430; --tp-tape: #4A2C1D; --tp-hub: #F1ECE2; --tp-screw: #8D8F93;
+}
+:root[data-tape="grey"] { --tp-shell: #6C6E72; --tp-band: #E0B33A; --tp-edge: rgba(255, 255, 255, 0.14); --tp-screw: #2E2F31; }
+:root[data-tape="cream"] { --tp-shell: #E4D6B6; --tp-band: #2F5E9E; --tp-label: #FBF6EA; --tp-edge: rgba(0, 0, 0, 0.14); --tp-screw: #6E6656; }
+:root[data-tape="red"] { --tp-shell: #A3191F; --tp-band: #1E1E20; --tp-label: #F1E6CC; --tp-edge: rgba(255, 255, 255, 0.14); --tp-screw: #3B0D10; }
+:root[data-tape="blue"] { --tp-shell: #1F3D74; --tp-band: #E0B33A; --tp-edge: rgba(255, 255, 255, 0.12); --tp-screw: #0E1C36; }
+:root[data-tape="clear"] { --tp-shell: #BFCACD; --tp-band: #B3141C; --tp-edge: rgba(0, 0, 0, 0.16); --tp-window: #8C989C; --tp-screw: #5E6A6E; }
+
+/* ---------- tape decks (Settings -> Player -> Tape deck -> Tape deck colour) ----------
+   --rc-body the case, --rc-panel the face around the bay, --rc-bay the cassette compartment, --rc-key / --rc-key-down the piano
+   keys up and pressed, --rc-key-text their signs, --rc-text the printing, --rc-grille the speaker, --rc-edge the case's edge line,
+   --rc-led / --rc-led-on the light, --rc-counter / --rc-digits the tape counter. Silver is the default. */
+:root {
+  --rc-body: #BDC0C4; --rc-panel: #A8ACB1; --rc-bay: #2B2B2E; --rc-key: #E1E3E5; --rc-key-down: #A3A7AC; --rc-key-text: #2B2B2E;
+  --rc-text: #34363A; --rc-grille: #8B9096; --rc-edge: rgba(0, 0, 0, 0.16); --rc-led: #4A1A1C; --rc-led-on: #FF4A3D;
+  --rc-counter: #17171A; --rc-digits: #F2C14E;
+}
+:root[data-recorder="black"] { --rc-body: #1E1E20; --rc-panel: #2A2A2D; --rc-bay: #0F0F10; --rc-key: #3A3A3E; --rc-key-down: #242427;
+  --rc-key-text: #D6D6DA; --rc-text: #B9B9BE; --rc-grille: #4A4A4F; --rc-edge: rgba(255, 255, 255, 0.08); }
+:root[data-recorder="beige"] { --rc-body: #CBB58F; --rc-panel: #B39C76; --rc-bay: #3A2E22; --rc-key: #EDE3CF; --rc-key-down: #B8A989;
+  --rc-key-text: #3A2E22; --rc-text: #4A3A28; --rc-grille: #8C7756; --rc-edge: rgba(0, 0, 0, 0.14); }
+:root[data-recorder="red"] { --rc-body: #9C1E24; --rc-panel: #82171C; --rc-bay: #2B0D0F; --rc-key: #E9DEC6; --rc-key-down: #B6A887;
+  --rc-key-text: #2B0D0F; --rc-text: #F3DCA8; --rc-grille: #5E1013; --rc-edge: rgba(255, 255, 255, 0.1); --rc-led-on: #FFD36B; }

@@ -1,6 +1,6 @@
 import { t } from './i18n.js';
 import { BANDS, applyFx, enableFx } from './graph.js';
-import { settings, updateSettings } from './store.js';
+import { settings, tapeMode, updateSettings } from './store.js';
 import { initSfx } from './sfx.js';
 import { esc, h, haptic, sheet } from './ui.js';
 
@@ -70,7 +70,9 @@ export function openControlPanel() {
   const panel = h(`<div class="eqp">
     <div class="eqp__title">${esc(t('panel_title'))}</div>
     <div class="fx__label">${esc(t('sound_speed'))}</div>
-    ${SEG('speed', [['slow', t('sound_slow'), '0.85×'], ['normal', '33⅓', t('sound_rpm')], ['fast', '45', t('sound_rpm')]])}
+    ${SEG('speed', tapeMode()
+      ? [['slow', t('sound_slow'), '0.85×'], ['normal', '4,76', t('sound_rpm')], ['fast', '6,4', t('sound_rpm')]] // cm/s of a cassette
+      : [['slow', t('sound_slow'), '0.85×'], ['normal', '33⅓', t('sound_rpm')], ['fast', '45', t('sound_rpm')]])}
     <div class="fx__label">${esc(t('sound_reverb'))}</div>
     ${SEG('reverb', [['off', t('sound_off')], ['room', t('sound_room')], ['hall', t('sound_hall')]])}
     <div class="eqp__eq">

@@ -1,12 +1,12 @@
 import { api, inTelegram } from './api.js';
-import { setLang, t } from './i18n.js';
+import { setLang, setTape, t } from './i18n.js';
 import { player } from './player.js';
-import { likes, loadHeard, loadLikes, onSettings, settings, syncCloudSettings, toggleLike } from './store.js';
+import { likes, loadHeard, loadLikes, onSettings, settings, syncCloudSettings, tapeMode, toggleLike } from './store.js';
 import { EASE_IO, cover, esc, fitMarquee, h, haptic, icon, loader, markPlaying, openArtist, reducedMotion, tg, toast } from './ui.js';
 import { initFx } from './graph.js';
 import { initOffline, syncOffline } from './offline.js';
 import { initSync } from './sync.js';
-import { syncVinylNoise } from './sfx.js';
+import { syncVinylNoise, tapeKey } from './sfx.js';
 import { maybeShowStories } from './stories.js';
 import { CLASSIC_BG, THEMES } from './themes.js';
 import { closePlayer, initFullPlayer, isPlayerOpen, openPlayer, translate as translatePlayer } from './vinyl.js';
@@ -48,6 +48,13 @@ function applyTheme() {
   else delete doc.dataset.vinyl;
   if (settings.deckColor && settings.deckColor !== 'walnut') doc.dataset.deck = settings.deckColor;
   else delete doc.dataset.deck;
+  // the cassette view: CSS anywhere in the app can tell (covers, loaders, the launch screen)
+  if (tapeMode()) doc.dataset.player = 'cassette';
+  else delete doc.dataset.player;
+  if (settings.tapeColor && settings.tapeColor !== 'black') doc.dataset.tape = settings.tapeColor;
+  else delete doc.dataset.tape;
+  if (settings.recorderColor && settings.recorderColor !== 'silver') doc.dataset.recorder = settings.recorderColor;
+  else delete doc.dataset.recorder;
   const color = custom ? custom.bg : COLORS[theme];
   try {
     if (tg?.isVersionAtLeast?.('6.1')) { tg.setHeaderColor(color); tg.setBackgroundColor(color); }
@@ -300,7 +307,7 @@ function renderMini() {
 }
 
 mini.addEventListener('click', (e) => {
-  if (e.target.closest('[data-mini-play]')) { haptic('light'); player.toggle(); return; }
+  if (e.target.closest('[data-mini-play]')) { haptic('light'); tapeKey(player.playing ? 'pause' : 'play'); player.toggle(); return; }
   if (e.target.closest('[data-mini-like]')) {
     haptic('light');
     toggleLike(player.current).then(() => document.dispatchEvent(new CustomEvent('likes-changed')), () => toast(t('toast_error'), 'error'));
@@ -368,18 +375,22 @@ function noServer() {
   nav.hidden = true;
 }
 
-let shownLang = null;
+let shownLang = null, shownTape = null;
 
 onSettings(() => {
   applyTheme(); // CSS-only, no re-render needed
   noiseOn();
-  if (settings.lang === shownLang) return;
+  if (settings.lang === shownLang && tapeMode() === shownTape) return;
   shownLang = settings.lang;
+  shownTape = tapeMode();
   setLang(settings.lang);
+  setTape(shownTape); // records or cassettes: icons, texts and pictures all change
   translatePlayer();
   renderNav(true);
-  // re-render views in the new language, keeping navigation
-  Object.values(stacks).forEach((stack) => stack.forEach((entry) => { entry.el = null; }));
+  // re-render views in the new language (or with the new pictures), keeping navigation and the place on the screen
+  const entry = stacks[tab][stacks[tab].length - 1];
+  entry.scroll = window.scrollY;
+  Object.values(stacks).forEach((stack) => stack.forEach((e) => { e.el = null; }));
   show();
 });
 
@@ -395,7 +406,9 @@ async function boot() {
   if (me) { me.catch(() => {}); api.preloadHome(); }
   await syncCloudSettings();
   shownLang = settings.lang;
+  shownTape = tapeMode();
   setLang(settings.lang);
+  setTape(shownTape);
   applyTheme();
   tg?.onEvent?.('themeChanged', applyTheme);
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', applyTheme);
