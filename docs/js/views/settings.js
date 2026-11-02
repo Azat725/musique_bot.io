@@ -29,7 +29,7 @@ export async function render(params = {}, nav) {
   } else if (part === 'device') {
     contents = `<section class="group">${row('look',t('custom_player'),t('player_' + settings.playerMode))}${row('help',t('device_help'),'','pm_' + settings.playerMode)}
       ${toggle('bareDeck',t('custom_bare'),t('custom_bare_hint'))}${toggle('hapticSeek',t('custom_haptic'),t('custom_haptic_hint'))}${!radioMode() ? toggle('sleeve',t('custom_sleeve'),t('custom_sleeve_hint')) : ''}
-      <label class="group__item"><span>${esc(t('custom_idle'))}</span><select class="field field--compact" data-idle>${[0,10,20,40,60].map((n)=>`<option value="${n}" ${settings.idleDelay === n ? 'selected' : ''}>${esc(n ? t('idle_s',{n}) : t('idle_off'))}</option>`).join('')}</select></label></section>${radioMode() ? radioSettings() : ''}`;
+      <fieldset class="radio-choices"><legend>${esc(t('custom_idle'))}</legend><div class="radio-choices__grid" role="radiogroup" aria-label="${esc(t('custom_idle'))}">${[0,10,20,40,60].map((n)=>`<button type="button" class="radio-choice ${settings.idleDelay === n ? 'is-selected' : ''}" role="radio" aria-checked="${settings.idleDelay === n}" data-idle-value="${n}">${esc(n ? t('idle_s',{n}) : t('idle_off'))}</button>`).join('')}</div></fieldset></section>${radioMode() ? radioSettings() : ''}`;
   } else if (part === 'sound') {
     contents = `<section class="group">${row('panel',t('panel_title'),t('settings_sound'))}${toggle('sounds',t('settings_sounds'),t('settings_sounds_hint'))}</section>`;
   } else if (part === 'offline') {
@@ -44,14 +44,21 @@ export async function render(params = {}, nav) {
   scope.listen(offline,'change',()=>{ const hint=root.querySelector('[data-action="downloads"] .group__hint'); if(hint) hint.textContent=t('offline_usage',{n:usage().count,mb:Math.round(usage().bytes/1048576)}); });
   root.addEventListener('change',(e)=>{
     if (e.target.dataset.toggle) { haptic('select'); updateSettings({[e.target.dataset.toggle]:e.target.checked}); }
-    if (e.target.matches('[data-idle]')) updateSettings({idleDelay:Number(e.target.value)});
-    if (e.target.dataset.radioSetting) {
-      const profile=RADIO_PROFILES.find((p)=>p.id===e.target.value);
-      updateSettings({[e.target.dataset.radioSetting]:e.target.value,...(profile?{radioCountry:profile.country,radioDecade:profile.decade}:{})});
-      if(profile) root.querySelectorAll('[data-radio-setting]').forEach((select)=>{ select.value=settings[select.dataset.radioSetting]; });
-    }
   });
   root.addEventListener('click',async(e)=>{
+    const idle = e.target.closest('[data-idle-value]');
+    if (idle) {
+      updateSettings({idleDelay:Number(idle.dataset.idleValue)});
+      root.querySelectorAll('[data-idle-value]').forEach((item) => { const active = item === idle; item.classList.toggle('is-selected',active); item.setAttribute('aria-checked',String(active)); });
+      haptic('select'); return;
+    }
+    const choice = e.target.closest('[data-radio-setting]');
+    if (choice) {
+      const profile = RADIO_PROFILES.find((p) => p.id === choice.dataset.value);
+      updateSettings({[choice.dataset.radioSetting]:choice.dataset.value,...(profile ? {radioCountry:profile.country,radioDecade:profile.decade} : {})});
+      root.querySelectorAll('[data-radio-setting]').forEach((item) => { const active = settings[item.dataset.radioSetting] === item.dataset.value; item.classList.toggle('is-selected',active); item.setAttribute('aria-checked',String(active)); });
+      haptic('select'); return;
+    }
     const button=e.target.closest('[data-action], [data-lang]'); if(!button)return;
     haptic('light');
     if(button.dataset.lang){updateSettings({lang:button.dataset.lang});return;}

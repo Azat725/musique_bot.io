@@ -781,6 +781,20 @@ body.player-open .toast { bottom: calc(24px + var(--safe-b)); }
 .look-option__swatches i { flex: 1; min-width: 0; }
 .look-option__device { flex: none; display: grid; place-items: center; width: 38px; height: 38px; color: var(--accent-text); }
 .look-option__device .ic { width: 36px; height: 36px; }
+.radio-choices { border: 0; margin: 0; padding: 12px 16px; min-width: 0; }
+.radio-choices legend { padding: 0; color: var(--text-2); font-size: 14px; }
+.radio-choices__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px; }
+.radio-choice { min-width: 0; min-height: 48px; padding: 10px; display: flex; align-items: center; gap: 8px; text-align: left; color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); font: 13px var(--font-sans); cursor: pointer; }
+.radio-choice.is-selected { border: 2px solid var(--accent); background: var(--accent-soft); }
+.radio-choice__symbol { min-width: 30px; color: var(--accent-text); font-weight: 700; text-align: center; }
+.radio-choice__art { flex: none; width: 48px; height: 34px; padding: 5px; display: flex; align-items: center; gap: 3px; background: #76513a; border: 2px solid #4a3426; border-radius: 4px; }
+.radio-choice__art i { flex: none; width: 5px; height: 5px; border-radius: 50%; background: #d9ccb0; }
+.radio-choice__art b { flex: 1; height: 9px; background: #e3d1a5; border: 1px solid #4a3426; }
+.radio-choice__art--car { height: 25px; background: #b5b8bd; border-color: #777; }
+.radio-choice__art--arch { border-radius: 45% 45% 4px 4px; }
+.radio-choice__art--ivory { background: #e3d1a5; }
+.radio-choice__art--digital, .radio-choice__art--lcd { background: #303134; border-color: #17181a; }
+.radio-choice__art--digital b, .radio-choice__art--lcd b { background: #a4b591; }
 .toast { flex-wrap: wrap; }.toast__action { border: 0; border-radius: 4px; color: inherit; background: transparent; text-decoration: underline; padding: 10px; min-height: 44px; font-weight: 600; }
 .toast.is-on .toast__action { pointer-events: auto; }
 .download-tools { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }

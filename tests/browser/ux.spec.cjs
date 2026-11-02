@@ -86,8 +86,13 @@ test('downloads screen can pause and resume without deleting liked songs',async(
 });
 test('radio settings and locked effects; all device modes open without audio',async({page})=>{
   await boot(page,{playerMode:'radio-car'});await settings(page,'device');
-  await page.locator('[data-radio-setting="radioProfileCar"]').selectOption('car-80');
-  await expect(page.locator('[data-radio-setting="radioCountry"]')).toHaveValue('jp');
+  await page.locator('[data-idle-value="60"]').click();
+  await expect(page.locator('[data-idle-value="60"]')).toHaveAttribute('aria-checked','true');
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('musique.settings')).idleDelay)).toBe(60);
+  await expect(page.locator('select')).toHaveCount(0);
+  await page.locator('[data-radio-setting="radioProfileCar"][data-value="car-80"]').click();
+  await expect(page.locator('[data-radio-setting="radioCountry"][data-value="jp"]')).toHaveAttribute('aria-checked','true');
+  await expect(page.locator('[data-radio-setting="radioDecade"][data-value="1980"]')).toHaveAttribute('aria-checked','true');
   await page.evaluate(async()=>{const {openControlPanel}=await import('/js/eq.js');openControlPanel();});
   for(const button of await page.locator('[data-seg] button').all())await expect(button).toBeDisabled();
   await page.keyboard.press('Escape');

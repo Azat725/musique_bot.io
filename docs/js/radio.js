@@ -24,13 +24,13 @@ export function radioProfile() {
   const kind = settings.playerMode === 'radio-car' ? 'car' : 'home';
   return RADIO_PROFILES.find((p) => p.id === settings['radioProfile' + (kind === 'car' ? 'Car' : 'Home')]) || RADIO_PROFILES.find((p) => p.kind === kind && p.decade === settings.radioDecade) || RADIO_PROFILES.find((p) => p.kind === kind);
 }
-const select = (key, label, choices) => `<label class="group__item look-field"><span>${esc(label)}</span><select data-radio-setting="${key}">${choices.map(([v,label])=>`<option value="${v}" ${settings[key]===v ? 'selected' : ''}>${esc(label)}</option>`).join('')}</select></label>`;
+const select = (key, label, choices, art = () => '') => `<fieldset class="radio-choices"><legend>${esc(label)}</legend><div class="radio-choices__grid" role="radiogroup" aria-label="${esc(label)}">${choices.map(([v,label])=>`<button type="button" class="radio-choice ${settings[key]===v ? 'is-selected' : ''}" role="radio" aria-checked="${settings[key]===v}" data-radio-setting="${esc(key)}" data-value="${esc(v)}">${art(v)}<span>${esc(label)}</span></button>`).join('')}</div></fieldset>`;
 export function radioSettings() {
   const profile = radioProfile(), key = profile.kind === 'car' ? 'radioProfileCar' : 'radioProfileHome';
   return `<section class="group"><div class="group__label">${esc(t('radio_model'))}</div>
-    ${select(key,t('radio_model'),RADIO_PROFILES.filter((p)=>p.kind===profile.kind).map((p)=>[p.id,p.name]))}
-    ${select('radioSource',t('radio_source'),[['forYou',t('radio_source_forYou')],['era',t('radio_source_era')]])}
-    ${select('radioCountry',t('radio_country'),['us','ussr','de','jp','fr'].map((v)=>[v,t('radio_'+v)]))}
+    ${select(key,t('radio_model'),RADIO_PROFILES.filter((p)=>p.kind===profile.kind).map((p)=>[p.id,p.name]), (id)=>{const p=RADIO_PROFILES.find((item)=>item.id===id);return `<span class="radio-choice__art radio-choice__art--${p.design} radio-choice__art--${p.kind}" aria-hidden="true"><i></i><b></b><i></i></span>`;})}
+    ${select('radioSource',t('radio_source'),[['forYou',t('radio_source_forYou')],['era',t('radio_source_era')]],(v)=>`<span class="radio-choice__symbol" aria-hidden="true">${v === 'era' ? '♫' : '♥'}</span>`)}
+    ${select('radioCountry',t('radio_country'),['us','ussr','de','jp','fr'].map((v)=>[v,t('radio_'+v)]),(v)=>`<span class="radio-choice__symbol" aria-hidden="true">${v.toUpperCase()}</span>`)}
     ${select('radioDecade',t('radio_decade'),['1940','1950','1960','1970','1980','1990','2000'].map((v)=>[v,v+'s']))}</section>`;
 }
 export async function radioTracks() {
