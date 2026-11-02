@@ -38,6 +38,9 @@
   --r-sm: 6px;
   --r-md: 8px;
   --gutter: 16px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
   --nav-h: 60px;
   --mini-h: 64px;
   --safe-b: env(safe-area-inset-bottom, 0px);
