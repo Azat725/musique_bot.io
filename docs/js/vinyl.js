@@ -200,6 +200,7 @@ export function initFullPlayer() {
     key.setAttribute('aria-label',t(['prev','rew'].includes(key.dataset.key) ? 'control_previous' : ['next','ff'].includes(key.dataset.key) ? 'control_next' : 'control_play_pause'));
     key.addEventListener('keydown',(e)=>{if(['Enter',' '].includes(e.key)){e.preventDefault();e.stopPropagation();haptic('light');pressKey(key.dataset.key);}});
   });
+  $('[data-bare-exit]').addEventListener('click', () => { haptic('select'); updateSettings({ bareDeck:false }); });
   setupGestures();
   setupIdle();
   applyMode();
