@@ -380,7 +380,6 @@ function onTrack({ track, dir }) {
   syncTime();
   syncLyrics();
   if (!open) { rec = null; clearRecords(); return; } // openPlayer builds the record when it is needed
-  if (radioMode()) { ++swapping; if (rec) cancelAnimationFrame(rec.raf); placeRecord(track); syncState(); return; }
   if (!rec) { placeRecord(track); if (takeSleeve(track)) unsleeve(++swapping); return; }
   if (rec.track?.id === track.id) return;
   swapRecord(track, dir < 0 ? -1 : 1, takeSleeve(track));
@@ -460,7 +459,6 @@ function notePending(track) {
 }
 
 function takeSleeve(track) {
-  if (radioMode()) return false;
   if (!track || !pendingSleeve.has(track.id)) return false;
   pendingSleeve.delete(track.id);
   if (radioMode()) return false;
