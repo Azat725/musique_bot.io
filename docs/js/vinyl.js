@@ -111,6 +111,7 @@ export function isPlayerOpen() { return open; }
 
 export function initFullPlayer() {
   root = h(`<div class="fp" aria-hidden="true">
+    <button class="bare-exit btn btn--outline" data-bare-exit>${esc(t('help_show_controls'))}</button>
     <header class="fp__top">
       <button class="icon-btn" data-close aria-label="close">${icon('down')}</button>
       <div class="fp__head"><div class="fp__kicker"></div><button class="fp__marker" hidden></button></div>

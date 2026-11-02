@@ -75,7 +75,7 @@ export async function render(_, nav) {
 
   if (radioMode()) {
     const section = h(`<section class="section"><div class="section__head"><h2 class="section__title">${esc(t('radio_shelf'))}</h2></div>
-      <p class="shelf__sub" data-radio-selection></p><p class="shelf__sub">${esc(t('radio_recording_note'))}</p><div class="radio-home__actions"><button class="btn btn--accent" data-radio-play>${icon('radio')}<span>${esc(t('radio_start'))}</span></button><button class="link" data-radio-settings>${esc(t('nav_settings'))}</button></div><p role="status" data-radio-status></p></section>`);
+      <p class="shelf__sub" data-radio-selection></p><p class="shelf__sub">${esc(t('radio_recording_note'))}</p><button class="btn btn--accent" data-radio-play>${icon('radio')}<span>${esc(t('radio_start'))}</span></button><button class="link" data-radio-settings>${esc(t('nav_settings'))}</button><p role="status" data-radio-status></p></section>`);
     const button = section.querySelector('[data-radio-play]');
     const selection=()=>{section.querySelector('[data-radio-selection]').textContent=t('radio_ready',{model:radioProfile().name,country:t('radio_'+settings.radioCountry),decade:settings.radioDecade})+' · '+t('radio_source_'+settings.radioSource);};
     selection(); scope.keep(onSettings(selection));
