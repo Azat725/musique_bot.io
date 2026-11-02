@@ -795,6 +795,8 @@ body.player-open .toast { bottom: calc(24px + var(--safe-b)); }
 .radio-choice__art--ivory { background: #e3d1a5; }
 .radio-choice__art--digital, .radio-choice__art--lcd { background: #303134; border-color: #17181a; }
 .radio-choice__art--digital b, .radio-choice__art--lcd b { background: #a4b591; }
+.radio-home__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); margin-top: var(--space-md); }
+.radio-home__actions [data-radio-settings] { min-height: 44px; padding: 0 12px; }
 .toast { flex-wrap: wrap; }.toast__action { border: 0; border-radius: 4px; color: inherit; background: transparent; text-decoration: underline; padding: 10px; min-height: 44px; font-weight: 600; }
 .toast.is-on .toast__action { pointer-events: auto; }
 .download-tools { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
