@@ -7,7 +7,8 @@ import { esc, h, haptic, icon, promptName, sheet, toast } from './ui.js';
 
 export const LOOK_KEYS = ['colorTheme','theme','themeFont','playerMode','recordColor','deckColor','tapeColor','recorderColor','cdColor','reelColor','lidColor','radioColor','radioCountry','radioDecade','radioProfileCar','radioProfileHome'];
 const snapshot = () => Object.fromEntries(LOOK_KEYS.map((k) => [k, settings[k]]));
-const select = (key, label, choices, value) => `<label class="look-field"><span>${esc(label)}</span><select data-key="${key}">${choices.map(([k, text]) => `<option value="${esc(k)}" ${k === value ? 'selected' : ''}>${esc(text)}</option>`).join('')}</select></label>`;
+const select = (key, label, choices, value, artwork = () => '') => `<fieldset class="look-field"><legend>${esc(label)}</legend><div class="look-options" role="radiogroup" aria-label="${esc(label)}">${choices.map(([k, text]) => `<button type="button" class="look-option ${k === value ? 'is-selected' : ''}" role="radio" aria-checked="${k === value}" data-key="${esc(key)}" data-value="${esc(k)}">${artwork(k)}<span>${esc(text)}</span></button>`).join('')}</div></fieldset>`;
+const swatches = (colours) => `<span class="look-option__swatches" aria-hidden="true">${colours.map((c) => `<i style="background:${esc(c)}"></i>`).join('')}</span>`;
 function colourChoices(draft) {
   const mode = draft.playerMode;
   if (mode === 'phonograph') return [];
@@ -22,13 +23,17 @@ function colourChoices(draft) {
 export async function openLookEditor(initial = {}) {
   const draft = {...snapshot(), ...initial};
   const content = h(`<div class="look-editor"><div class="look-preview" aria-label="${esc(t('look_preview'))}"><div class="look-preview__art"></div><b>Musique</b><span>${esc(t('look_preview'))}</span></div>
-    ${select('colorTheme', t('custom_theme'), Object.keys(THEMES).map((k) => [k, t('theme_' + k)]), draft.colorTheme)}
-    ${select('theme', t('settings_theme'), ['system','light','dark'].map((k) => [k, t('theme_' + k)]), draft.theme)}
-    ${select('playerMode', t('custom_player'), PLAYER_MODES.map((k) => [k, t('player_' + k)]), draft.playerMode)}
+    <div data-themes></div>
+    ${select('theme', t('settings_theme'), ['system','light','dark'].map((k) => [k, t('theme_' + k)]), draft.theme, (k) => swatches(k === 'system' ? ['#EFE4CF','#1A1410'] : CLASSIC_SWATCH[k].slice(0,2)))}
+    ${select('playerMode', t('custom_player'), PLAYER_MODES.map((k) => [k, t('player_' + k)]), draft.playerMode, (k) => `<span class="look-option__device" aria-hidden="true">${icon('pm_' + k)}</span>`)}
     <label class="group__item"><span>${esc(t('theme_font'))}</span><input type="checkbox" class="switch" data-font ${draft.themeFont ? 'checked' : ''}></label>
     <div data-colours></div><button class="btn btn--accent" data-apply>${esc(t('look_apply'))}</button></div>`);
   function colours() {
-    content.querySelector('[data-colours]').innerHTML = colourChoices(draft).map(([key, table, prefix]) => select(key, t(key === 'tapeColor' ? 'custom_tape' : key === 'recordColor' ? 'custom_record' : key === 'deckColor' ? 'custom_deck' : 'radio_color'), Object.keys(table).map((k) => [k, t(prefix + k)]), draft[key])).join('') + (draft.playerMode === 'cd' ? select('lidColor', t('custom_lid'), [['clear',t('lid_clear')],['silver',t('lid_silver')]], draft.lidColor) : '');
+    content.querySelector('[data-colours]').innerHTML = colourChoices(draft).map(([key, table, prefix]) => select(key, t(key === 'tapeColor' ? 'custom_tape' : key === 'recordColor' ? 'custom_record' : key === 'deckColor' ? 'custom_deck' : 'radio_color'), Object.keys(table).map((k) => [k, t(prefix + k)]), draft[key], (k) => swatches(Array.isArray(table[k]) ? table[k] : [table[k]]))).join('') + (draft.playerMode === 'cd' ? select('lidColor', t('custom_lid'), [['clear',t('lid_clear')],['silver',t('lid_silver')]], draft.lidColor, (k) => swatches([k === 'clear' ? '#e8e4dc' : '#b5b8bd'])) : '');
+  }
+  function themes() {
+    const mode = draft.theme === 'system' ? document.documentElement.dataset.mode || 'light' : draft.theme;
+    content.querySelector('[data-themes]').innerHTML = select('colorTheme', t('custom_theme'), Object.keys(THEMES).map((k) => [k, t('theme_' + k)]), draft.colorTheme, (k) => swatches(k === 'classic' ? CLASSIC_SWATCH[mode] : THEMES[k][mode].swatch));
   }
   function preview() {
     const mode = draft.theme === 'system' ? document.documentElement.dataset.mode : draft.theme;
@@ -45,11 +50,22 @@ export async function openLookEditor(initial = {}) {
   }
   content.addEventListener('change', (e) => {
     if (e.target.matches('[data-font]')) draft.themeFont = e.target.checked;
-    else if (e.target.dataset.key) { draft[e.target.dataset.key] = e.target.value; if (e.target.dataset.key === 'playerMode') colours(); }
+    haptic('select'); preview();
+  });
+  content.addEventListener('click', (e) => {
+    const button = e.target.closest('button[data-key]');
+    if (!button) return;
+    const { key, value } = button.dataset;
+    draft[key] = value;
+    button.parentElement.querySelectorAll('[role="radio"]').forEach((item) => {
+      const active = item === button; item.classList.toggle('is-selected', active); item.setAttribute('aria-checked', String(active));
+    });
+    if (key === 'playerMode') colours();
+    if (key === 'theme') themes();
     haptic('select'); preview();
   });
   content.querySelector('[data-apply]').addEventListener('click', () => content.closest('.sheet').close('apply'));
-  colours(); preview();
+  colours(); themes(); preview();
   if (await sheet({ title: esc(t('look_title')), content, swipe: true }) === 'apply') { updateSettings(draft); haptic('success'); return true; }
   return false;
 }

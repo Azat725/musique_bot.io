@@ -27,13 +27,13 @@ async function settings(page,section) {
 test('appearance preview cancels without applying; Apply persists a draft',async({page})=>{
   await boot(page); await settings(page,'appearance');
   await page.locator('[data-action="look"]').click();
-  await page.locator('[data-key="colorTheme"]').selectOption('ussr');
+  await page.locator('[data-key="colorTheme"][data-value="ussr"]').click();
   await page.keyboard.press('Escape');
   await expect(page.locator('.sheet')).toHaveCount(0);
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('musique.settings')).colorTheme)).not.toBe('ussr');
   await page.locator('[data-action="look"]').click();
-  await page.locator('[data-key="playerMode"]').selectOption('cd');
-  await page.locator('[data-key="cdColor"]').selectOption('blue');
+  await page.locator('[data-key="playerMode"][data-value="cd"]').click();
+  await page.locator('[data-key="cdColor"][data-value="blue"]').click();
   await page.locator('[data-apply]').click();
   await expect(page.locator('html')).toHaveAttribute('data-player','cd');
   await expect(page.locator('html')).toHaveAttribute('data-cd','blue');
