@@ -1,8 +1,10 @@
 import { api } from '../api.js';
+import { viewScope } from '../lifecycle.js';
+import { radioProfile, radioTracks } from '../radio.js';
 import { t } from '../i18n.js';
 import { player } from '../player.js';
-import { onSettings, phonoMode, settings } from '../store.js';
-import { brandMark, cover, esc, h, haptic, icon, loader, openArtist } from '../ui.js';
+import { onSettings, phonoMode, radioMode, settings } from '../store.js';
+import { brandMark, cover, esc, h, haptic, icon, loader, openArtist, toast } from '../ui.js';
 
 /** "Good morning", or "Good morning, Azat" when a name is set in Settings. */
 function greeting() {
@@ -50,10 +52,11 @@ export async function render(_, nav) {
   </div>`);
   const body = root.querySelector('.home__body');
   const title = root.querySelector('.hero__title');
-  onSettings(() => { if (title.textContent !== greeting()) title.textContent = greeting(); });
+  const scope = viewScope(root);
+  scope.keep(onSettings(() => { if (title.textContent !== greeting()) title.textContent = greeting(); }));
   body.append(h(loader()));
 
-  const data = await api.home();
+  let data; try { data = await api.home(); } catch(error) { root.dispose(); throw error; }
   body.innerHTML = '';
   const openList = (title, tracks) => () => nav.push('playlist', { kind: 'tracks', title, tracks });
 
@@ -70,6 +73,27 @@ export async function render(_, nav) {
     }).catch(() => {});
   }
 
+  if (radioMode()) {
+    const section = h(`<section class="section"><div class="section__head"><h2 class="section__title">${esc(t('radio_shelf'))}</h2></div>
+      <p class="shelf__sub" data-radio-selection></p><p class="shelf__sub">${esc(t('radio_recording_note'))}</p><button class="btn btn--accent" data-radio-play>${icon('radio')}<span>${esc(t('radio_start'))}</span></button><button class="link" data-radio-settings>${esc(t('nav_settings'))}</button><p role="status" data-radio-status></p></section>`);
+    const button = section.querySelector('[data-radio-play]');
+    const selection=()=>{section.querySelector('[data-radio-selection]').textContent=t('radio_ready',{model:radioProfile().name,country:t('radio_'+settings.radioCountry),decade:settings.radioDecade})+' · '+t('radio_source_'+settings.radioSource);};
+    selection(); scope.keep(onSettings(selection));
+    section.querySelector('[data-radio-settings]').addEventListener('click',()=>nav.push('settings',{section:'device'}));
+    button.addEventListener('click', async () => {
+      haptic('light'); button.disabled = true;
+      const fingerprint=JSON.stringify([settings.playerMode,settings.radioSource,settings.radioCountry,settings.radioDecade]);
+      const status=section.querySelector('[data-radio-status]'); status.textContent=t('radio_loading');
+      try {
+        const tracks = await radioTracks();
+        if(fingerprint!==JSON.stringify([settings.playerMode,settings.radioSource,settings.radioCountry,settings.radioDecade]) || root.disposed) return;
+        if (tracks.length && radioMode()) { player.playQueue(tracks, 0); status.textContent=''; }
+        else status.textContent=t('radio_no_match');
+      } catch { status.textContent=t('radio_no_match'); } finally { button.disabled = false; }
+    });
+    body.append(section);
+  }
+
   if (data.recent?.length) {
     const s = h('<section class="section"></section>');
     s.append(sectionHead(t('home_recent'), openList(t('home_recent'), data.recent)), cards(data.recent));
@@ -77,13 +101,23 @@ export async function render(_, nav) {
   }
 
   // 'For you' comes in its own request so the page never waits for it
-  const forYou = h('<section class="section section--later" hidden></section>');
+  const forYou = h(`<section class="section section--later">${loader()}</section>`);
   body.append(forYou);
-  api.recommend().then(({ tracks }) => {
-    if (!tracks?.length) return;
-    forYou.append(sectionHead(t('home_for_you'), openList(t('home_for_you'), tracks)), cards(tracks.slice(0, 15)));
-    forYou.hidden = false;
-  }).catch(() => {});
+  async function loadRecommendations() {
+    forYou.setAttribute('aria-busy','true');
+    try {
+      const {tracks}=await api.recommend(); if(root.disposed)return;
+      forYou.replaceChildren();
+      if(tracks?.length) forYou.append(sectionHead(t('home_for_you'),openList(t('home_for_you'),tracks)),cards(tracks.slice(0,15)));
+      else forYou.append(h(`<p class="empty__text">${esc(t('home_empty_text'))}</p>`));
+    } catch {
+      if(root.disposed)return;
+      const retry=h(`<button class="btn btn--outline">${esc(t('retry'))}</button>`);
+      retry.addEventListener('click',()=>{retry.disabled=true;loadRecommendations();});
+      forYou.replaceChildren(h(`<p class="empty__text">${esc(t('search_failed'))}</p>`),retry);
+    } finally {forYou.removeAttribute('aria-busy');}
+  }
+  loadRecommendations();
 
   if (data.genres?.length) {
     const s = h('<section class="section"></section>');

@@ -143,6 +143,7 @@ export const api = {
   preloadHome() { homeRequest = get('/api/home'); homeRequest.catch(() => {}); },
   home() { const r = homeRequest || get('/api/home'); homeRequest = null; return r; },
   recommend: () => get('/api/recommend'),
+  radio: (country, decade) => get(`/api/radio?country=${encodeURIComponent(country)}&decade=${encodeURIComponent(decade)}`),
   /** The phonograph's shelf: { tracks } — 50 cylinders and early records of the 1890s–1920s. */
   phonograph: () => get('/api/phonograph'),
   suggest: (q, signal) => request('GET', `/api/suggest?q=${encodeURIComponent(q)}`, null, signal),

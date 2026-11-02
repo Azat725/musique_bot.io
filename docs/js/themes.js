@@ -60,3 +60,13 @@ export const TAPE_COLORS = {
 export const RECORDER_COLORS = {
   silver: ['#BDC0C4', '#2B2B2E'], black: ['#1E1E20', '#0F0F10'], beige: ['#CBB58F', '#3A2E22'], red: ['#9C1E24', '#2B0D0F'],
 };
+
+// Finishes commonly used on domestic tape decks and portable CD players.
+export const REEL_COLORS = {
+  silver: ['#C5C8CC', '#2A2B2E'], black: ['#303134', '#17181A'],
+  walnut: ['#76513A', '#282322'], cream: ['#D9CCB0', '#585046'],
+};
+export const CD_COLORS = {
+  silver: ['#C9CDD3', '#9EA3AA'], black: ['#303338', '#17191C'],
+  white: ['#E9E7E1', '#C7C9C8'], blue: ['#335B82', '#243F5C'], red: ['#A6353D', '#76242B'],
+};

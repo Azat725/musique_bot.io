@@ -1,13 +1,13 @@
 import { t } from './i18n.js';
 import { player } from './player.js';
-import { cover, esc, h, haptic, icon, sheet } from './ui.js';
+import { cover, esc, fmt, h, haptic, icon, reducedMotion, sheet, toast } from './ui.js';
 
 /** "Up next": the current track and what follows. Tap a row to play it, × to take it out,
  *  drag the grip to reorder. Follows the player while open; swipe down closes it. */
 export function openQueue() {
   haptic('light');
   const content = h(`<div class="queue">
-    <div class="sheet__head"><div class="queue__title">${esc(t('queue_title'))}</div></div>
+    <div class="sheet__head"><div class="queue__title">${esc(t('queue_title'))}</div><p class="queue__summary"></p></div>
     <div class="sheet__scroll">
       <div class="queue__label">${esc(t('player_now'))}</div>
       <div class="queue__now"></div>
@@ -22,10 +22,10 @@ export function openQueue() {
   const scroller = content.querySelector('.sheet__scroll');
   let drag = null;
 
-  const row = (tr, i) => h(`<div class="qrow" data-i="${i}">
+  const row = (tr, i) => h(`<div class="qrow" data-i="${i}" role="button" tabindex="0">
     ${cover(tr.cover, 'qrow__cover')}
     <div class="qrow__meta"><div class="qrow__title">${esc(tr.title)}</div><div class="qrow__artist">${esc(tr.artist)}</div></div>
-    ${i > player.index ? `<button class="icon-btn qrow__remove" aria-label="${esc(t('queue_remove'))}">${icon('close')}</button>
+    ${i > player.index ? `<button class="icon-btn qrow__next" aria-label="${esc(t('menu_play_next'))}">${icon('next2')}</button><button class="icon-btn qrow__remove" aria-label="${esc(t('queue_remove'))}">${icon('close')}</button>
       <button class="qrow__grip" aria-label="${esc(t('queue_move'))}">${icon('grip')}</button>` : ''}
   </div>`);
 
@@ -35,6 +35,7 @@ export function openQueue() {
     now.replaceChildren(...(cur ? [row(cur, player.index)] : []));
     now.firstElementChild?.classList.add('is-current', player.playing ? 'is-playing' : 'is-paused');
     const rest = player.queue.slice(player.index + 1);
+    content.querySelector('.queue__summary').textContent = t('queue_summary', { n: rest.length, time: fmt(rest.reduce((sum, tr) => sum + (tr.duration || 0) / player.rate, 0)) });
     list.replaceChildren(...rest.map((tr, k) => row(tr, player.index + 1 + k)));
     content.classList.toggle('is-empty', !rest.length);
   }
@@ -45,14 +46,28 @@ export function openQueue() {
     const i = Number(r.dataset.i);
     if (e.target.closest('.qrow__remove')) {
       haptic('light');
-      r.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(30%)' }], { duration: 180, easing: 'ease-in', fill: 'forwards' });
-      setTimeout(() => player.removeAt(i), 180); // not on .finished: a hidden page never finishes animations
+      const track = player.queue[i], session = player.queueSession, offset = i - player.index;
+      if (!reducedMotion()) {
+        const clone = r.cloneNode(true), rect = r.getBoundingClientRect();
+        Object.assign(clone.style, { position: 'fixed', left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, zIndex: 300, pointerEvents: 'none' });
+        clone.inert = true; clone.setAttribute('aria-hidden', 'true'); document.body.append(clone);
+        clone.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(30%)' }], { duration: 180, fill: 'forwards' });
+        setTimeout(() => clone.remove(), 200);
+      }
+      player.removeAt(i);
+      toast(t('toast_removed'), 'remove', { run: () => { if (!player.insertUpcoming([track], offset, session)) toast(t('queue_changed')); } });
       return;
     }
+    if (e.target.closest('.qrow__next')) { haptic('select'); player.move(i, player.index + 1); return; }
     haptic('light');
     player.jumpTo(i);
   });
-  content.querySelector('.queue__clear').addEventListener('click', () => { haptic('medium'); player.clearUpcoming(); });
+  list.addEventListener('keydown', (e) => { if (e.target.matches('.qrow') && ['Enter', ' '].includes(e.key)) { e.preventDefault(); e.target.click(); } });
+  content.querySelector('.queue__clear').addEventListener('click', () => {
+    const removed = player.queue.slice(player.index + 1), session = player.queueSession;
+    haptic('medium'); player.clearUpcoming();
+    if (removed.length) toast(t('queue_clear'), 'remove', { run: () => { if (!player.insertUpcoming(removed, 1, session)) toast(t('queue_changed')); } });
+  });
 
   // ---------- reorder: only the grip starts a drag, so the list still scrolls under the finger ----------
   list.addEventListener('pointerdown', (e) => {
@@ -62,7 +77,7 @@ export function openQueue() {
     const r = grip.closest('.qrow');
     const rows = [...list.children];
     drag = { r, rows, from: rows.indexOf(r), to: rows.indexOf(r), y0: e.clientY, s0: scroller.scrollTop,
-      step: r.offsetHeight, y: e.clientY, raf: 0 };
+      step: r.offsetHeight, y: e.clientY, raf: 0, current: player.current };
     grip.setPointerCapture(e.pointerId);
     r.classList.add('is-dragging');
     list.classList.add('is-sorting');
@@ -93,21 +108,22 @@ export function openQueue() {
     drag.y = e.clientY;
     layout();
   });
-  const drop = () => {
+  const drop = (cancel = false) => {
     if (!drag) return;
-    const { from, to, raf } = drag;
+    const { from, to, raf, current } = drag;
     cancelAnimationFrame(raf);
     drag = null;
     list.classList.remove('is-sorting');
-    if (from !== to) player.move(player.index + 1 + from, player.index + 1 + to);
+    if (!cancel && current === player.current && from !== to) player.move(player.index + 1 + from, player.index + 1 + to);
     render();
   };
-  list.addEventListener('pointerup', drop);
-  list.addEventListener('pointercancel', drop);
+  list.addEventListener('pointerup', () => drop());
+  list.addEventListener('pointercancel', () => drop(true));
 
   const events = ['queue', 'track', 'state'];
-  events.forEach((ev) => player.addEventListener(ev, render));
+  const changed = () => { if (drag) drop(true); else render(); };
+  events.forEach((ev) => player.addEventListener(ev, changed));
   render();
   sheet({ content, swipe: true, closeLabel: t('close'), cls: 'sheet--queue' })
-    .then(() => events.forEach((ev) => player.removeEventListener(ev, render)));
+    .then(() => { if (drag) { cancelAnimationFrame(drag.raf); drag = null; } events.forEach((ev) => player.removeEventListener(ev, changed)); });
 }

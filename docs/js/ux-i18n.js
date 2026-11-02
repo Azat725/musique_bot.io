@@ -1,0 +1,26 @@
+export const UX = {
+  ru: {
+    control_previous:'Предыдущий трек',control_next:'Следующий трек',control_play_pause:'Воспроизведение / пауза',
+    undo:'Отменить', queue_summary:'Далее: {n} · примерно {time}', queue_changed:'Очередь уже изменилась',
+    settings_section_appearance:'Оформление',settings_section_device:'Устройство',settings_section_sound:'Звук',settings_section_offline:'Загрузки',settings_section_about:'О проекте',
+    look_title:'Настроить оформление',look_preview:'Предпросмотр',look_apply:'Применить',look_draft_hint:'Тема, шрифт, устройство и цвета с предпросмотром',look_presets:'Мои оформления',look_presets_hint:'Сохранённые сочетания темы и устройства',look_save:'Сохранить текущее',look_name:'Название оформления',look_limit:'Можно сохранить до 8 оформлений',
+    downloads_title:'Загрузки',downloads_all:'Все',downloads_saved:'Скачано',downloads_pending:'Ожидают',downloads_failed:'Ошибки',downloads_pause:'Приостановить',downloads_resume:'Продолжить',downloads_retry:'Повторить ошибки',downloads_remove:'Удалить копию с телефона',downloads_empty:'Здесь пока нет треков. Включите автозагрузку избранного в настройках.',downloads_only:'Только скачанные',downloads_network:'Ожидаем сеть',downloads_space:'Не хватает места',
+    download_saved:'На телефоне',download_pending:'В очереди',download_failed:'Не удалось скачать',download_downloading:'Скачиваем',download_removed:'Копия удалена',
+    search_loading:'Ищем музыку…',search_failed:'Не удалось обновить результаты. Попробуйте ещё раз.',
+    device_help:'Как управлять',help_play:'Нажмите на устройство или его кнопку воспроизведения, чтобы включить музыку или поставить её на паузу.',help_seek:'Удерживайте пластинку или носитель, затем двигайте пальцем для перемотки. Кнопки перемотки тоже можно удерживать.',help_like:'Дважды коснитесь устройства, чтобы добавить трек в избранное.',help_exit:'В режиме «Только устройство» кнопка «Показать управление» возвращает обычные элементы плеера.',help_radio:'Кнопки на приёмнике управляют воспроизведением и переключают треки. Музыку можно выбрать на главной.',help_show_controls:'Показать управление',
+    radio_model:'Приёмник',radio_source:'Музыка',radio_source_forYou:'Для вас',radio_source_era:'Музыка эпохи',radio_start:'Настроиться на волну',radio_ready:'Выбрано: {model} · {country} · {decade}-е',radio_no_match:'Не удалось найти доступные записи этой подборки',radio_loading:'Настраиваем волну…',radio_recording_note:'Подборка основана на годах оригинальных записей. В источнике может быть переиздание.',radio_reference:'О модели',
+    player_waiting:'Загружаем трек…',player_network:'Нет связи. Скачанные треки доступны в медиатеке.',
+  },
+  en: {
+    control_previous:'Previous track',control_next:'Next track',control_play_pause:'Play / pause',
+    undo:'Undo',queue_summary:'Up next: {n} · about {time}',queue_changed:'The queue has already changed',
+    settings_section_appearance:'Appearance',settings_section_device:'Device',settings_section_sound:'Sound',settings_section_offline:'Downloads',settings_section_about:'About',
+    look_title:'Customize appearance',look_preview:'Preview',look_apply:'Apply',look_draft_hint:'Preview the theme, typeface, device and colours',look_presets:'My looks',look_presets_hint:'Saved theme and device combinations',look_save:'Save current look',look_name:'Look name',look_limit:'You can save up to 8 looks',
+    downloads_title:'Downloads',downloads_all:'All',downloads_saved:'Saved',downloads_pending:'Pending',downloads_failed:'Failed',downloads_pause:'Pause',downloads_resume:'Resume',downloads_retry:'Retry failed',downloads_remove:'Remove local copy',downloads_empty:'No tracks here yet. Enable offline favourites in Settings.',downloads_only:'Downloaded only',downloads_network:'Waiting for connection',downloads_space:'Not enough storage',
+    download_saved:'On this device',download_pending:'Queued',download_failed:'Download failed',download_downloading:'Downloading',download_removed:'Local copy removed',
+    search_loading:'Finding music…',search_failed:'Could not refresh results. Please try again.',
+    device_help:'How to use',help_play:'Tap the device or its play button to play or pause.',help_seek:'Hold the record or medium, then move your finger to seek. You can also hold the rewind keys.',help_like:'Double-tap the device to add the track to favourites.',help_exit:'In “Only the machine” mode, “Show controls” restores the regular player controls.',help_radio:'The receiver keys control playback and skip tracks. Choose music on Home.',help_show_controls:'Show controls',
+    radio_model:'Receiver',radio_source:'Music',radio_source_forYou:'For you',radio_source_era:'Music of the era',radio_start:'Tune in',radio_ready:'Selected: {model} · {country} · {decade}s',radio_no_match:'No playable recordings found for this selection',radio_loading:'Tuning in…',radio_recording_note:'Selections use the years of the original recordings. Sources may provide reissues.',radio_reference:'About this model',
+    player_waiting:'Loading track…',player_network:'No connection. Downloaded tracks are available in your library.',
+  },
+};

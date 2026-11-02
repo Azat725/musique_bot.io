@@ -1,4 +1,5 @@
 import { api } from '../api.js';
+import { viewScope } from '../lifecycle.js';
 import { plural, t } from '../i18n.js';
 import { favArtists, getPlaylists, invalidatePlaylists, likedList, likes, loadFavArtists, settings, tapeMode, updateSettings } from '../store.js';
 import { EASE_IO, esc, h, haptic, icon, loader, promptName, reducedMotion, sheet, thumb, toast } from '../ui.js';
@@ -40,13 +41,17 @@ export async function render(_, nav) {
 
   // Favourites and History open a beat after the tap, so the icon's little motion (the heart beating, the clock
   // running back) is seen before the screen moves; what the list needs is loaded meanwhile
-  let opening = false;
+  const scope = viewScope(root);
+  let opening = false, openTimer;
+  scope.keep(() => clearTimeout(openTimer));
+  root.onHide = () => { clearTimeout(openTimer); opening = false; root.querySelectorAll('.is-opening').forEach((n) => n.classList.remove('is-opening')); };
   const openSlowly = (tile, params, warm) => tile.addEventListener('click', () => {
     if (opening) return;
     opening = true;
     tile.classList.add('is-opening');
     warm?.().catch(() => {});
-    setTimeout(() => {
+    openTimer = setTimeout(() => {
+      if (!root.isConnected || root.disposed) return;
       opening = false;
       tile.classList.remove('is-opening');
       nav.push('playlist', params);
@@ -58,13 +63,13 @@ export async function render(_, nav) {
   const artistsSub = root.querySelector('[data-go="artists"] .tile__sub');
   const syncArtists = () => { artistsSub.textContent = t('artists_count', { n: favArtists.size }); };
   loadFavArtists().then(syncArtists, () => {});
-  document.addEventListener('fav-artists-changed', syncArtists);
+  scope.listen(document, 'fav-artists-changed', syncArtists);
 
   const list = root.querySelector('.playlists');
   const sortBtn = root.querySelector('[data-sort]');
   let dirty = false, playlists = [];
   const rows = new Map(); // playlist id -> row element
-  document.addEventListener('playlists-changed', () => { dirty = true; });
+  scope.listen(document, 'playlists-changed', () => { dirty = true; });
 
   const sortKey = () => (SORTS[settings.plSort] ? settings.plSort : 'new');
 
@@ -141,8 +146,8 @@ export async function render(_, nav) {
   root.querySelector('.tiles').before(note);
   const syncNote = () => { note.hidden = navigator.onLine; };
   syncNote();
-  addEventListener('online', () => { syncNote(); if (root.isConnected) { dirty = false; load(); } });
-  addEventListener('offline', syncNote);
+  scope.listen(window, 'online', () => { syncNote(); if (root.isConnected) { dirty = false; load(); } });
+  scope.listen(window, 'offline', syncNote);
 
   await load();
   root.onShow = () => {

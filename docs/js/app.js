@@ -2,13 +2,15 @@ import { api, inTelegram } from './api.js';
 import { setLang, setLook, t } from './i18n.js';
 import { player } from './player.js';
 import { likes, loadHeard, loadLikes, onSettings, phonoMode, settings, syncCloudSettings, tapeMode, toggleLike, updateSettings } from './store.js';
-import { EASE_IO, confirmSheet, cover, esc, fitMarquee, h, haptic, icon, loader, markPlaying, openArtist, reducedMotion, tg, toast } from './ui.js';
+import { EASE_IO, confirmSheet, cover, esc, fitMarquee, h, haptic, icon, loader, markPlaying, offerLikeUndo, openArtist, reducedMotion, tg, toast } from './ui.js';
 import { initFx } from './graph.js';
 import { initOffline, syncOffline } from './offline.js';
 import { initSync } from './sync.js';
 import { syncVinylNoise } from './sfx.js';
 import { maybeShowStories } from './stories.js';
 import { CLASSIC_BG, THEMES } from './themes.js';
+import { loadTypeface } from './fonts.js';
+import { showRadioIntro } from './radio.js';
 import { closePlayer, deviceKey, initFullPlayer, isPlayerOpen, openPlayer, translate as translatePlayer } from './vinyl.js';
 import * as artist from './views/artist.js';
 import * as artists from './views/artists.js';
@@ -17,8 +19,9 @@ import * as library from './views/library.js';
 import * as playlist from './views/playlist.js';
 import * as search from './views/search.js';
 import * as settingsView from './views/settings.js';
+import * as downloads from './views/downloads.js';
 
-const VIEWS = { home, search, library, settings: settingsView, playlist, artist, artists };
+const VIEWS = { home, search, library, settings: settingsView, downloads, playlist, artist, artists };
 const TABS = [['home', 'home', 'nav_home'], ['search', 'search', 'nav_search'], ['library', 'library', 'nav_library'], ['settings', 'settings', 'nav_settings']];
 const COLORS = CLASSIC_BG; // --bg of each classic theme, for Telegram's header and bars
 
@@ -59,6 +62,12 @@ function applyTheme() {
   if (settings.recorderColor && settings.recorderColor !== 'silver') doc.dataset.recorder = settings.recorderColor;
   else delete doc.dataset.recorder;
   doc.dataset.lid = settings.lidColor === 'silver' ? 'silver' : 'clear'; // the CD player's lid
+  doc.dataset.cd = settings.cdColor || 'silver';
+  doc.dataset.reel = settings.reelColor || 'silver';
+  doc.dataset.radio = settings.radioColor || 'walnut';
+  doc.dataset.radioDecade = settings.radioDecade || '1960';
+  doc.dataset.themeFont = settings.themeFont ? (settings.colorTheme || 'classic') : 'off';
+  if(settings.themeFont) loadTypeface(settings.colorTheme);
   const color = custom ? custom[mode].bg : COLORS[mode];
   try {
     if (tg?.isVersionAtLeast?.('6.1')) { tg.setHeaderColor(color); tg.setBackgroundColor(color); }
@@ -79,7 +88,7 @@ const navApi = {
   },
   back() {
     const stack = stacks[tab];
-    if (stack.length > 1) { stack.pop(); show('back'); }
+    if (stack.length > 1) { stack.pop().el?.dispose?.(); show('back'); }
   },
 };
 
@@ -153,6 +162,7 @@ function transition(next, dir) {
   finishLeaving?.(); // a second tap first finishes the transition still running
   const prev = main.firstElementChild;
   if (prev === next) return;
+  prev?.onHide?.();
   if (!prev || !dir) {
     main.replaceChildren(next);
     next.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, easing: EASE_IO });
@@ -184,12 +194,16 @@ async function show(dir = null) {
   renderNav();
   syncBackButton();
   if (!entry.el) {
+    const generation = entry.generation = (entry.generation || 0) + 1;
     const skeleton = h(`<div class="view">${loader()}</div>`);
     transition(skeleton, dir);
     window.scrollTo(0, 0);
     try {
-      entry.el = await VIEWS[entry.name].render(entry.params, navApi);
+      const rendered = await VIEWS[entry.name].render(entry.params, navApi);
+      if (!stack.includes(entry) || entry.generation !== generation) { rendered.dispose?.(); return; }
+      entry.el = rendered;
     } catch (e) {
+      if (entry.generation !== generation || !stack.includes(entry)) return;
       console.error(e);
       entry.el = errorView(() => { entry.el = null; show(); });
     }
@@ -213,7 +227,7 @@ async function show(dir = null) {
 function switchTab(next) {
   if (next === tab) {
     // tapping the active tab returns to its root
-    if (stacks[tab].length > 1) { stacks[tab].length = 1; webForget(); show('back'); }
+    if (stacks[tab].length > 1) { stacks[tab].splice(1).forEach((e) => e.el?.dispose?.()); webForget(); show('back'); }
     else window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
@@ -314,7 +328,9 @@ mini.addEventListener('click', (e) => {
   if (e.target.closest('[data-mini-play]')) { haptic('light'); deviceKey(player.playing ? 'pause' : 'play'); player.toggle(); return; }
   if (e.target.closest('[data-mini-like]')) {
     haptic('light');
-    toggleLike(player.current).then(() => document.dispatchEvent(new CustomEvent('likes-changed')), () => toast(t('toast_error'), 'error'));
+    const track=player.current;
+    if(!track)return;
+    toggleLike(track).then((liked) => { document.dispatchEvent(new CustomEvent('likes-changed')); if(!liked) offerLikeUndo(track); }, () => toast(t('toast_error'), 'error'));
     renderMini();
     return;
   }
@@ -402,6 +418,7 @@ onSettings(() => {
   applyTheme(); // CSS-only, no re-render needed
   noiseOn();
   if (settings.lang === shownLang && settings.playerMode === shownMode) return;
+  if(settings.playerMode!==shownMode && settings.playerMode.startsWith('radio-')) showRadioIntro();
   shownLang = settings.lang;
   shownMode = settings.playerMode;
   setLang(settings.lang);
@@ -411,7 +428,7 @@ onSettings(() => {
   // re-render views in the new language (or with the new pictures), keeping navigation and the place on the screen
   const entry = stacks[tab][stacks[tab].length - 1];
   entry.scroll = window.scrollY;
-  Object.values(stacks).forEach((stack) => stack.forEach((e) => { e.el = null; }));
+  Object.values(stacks).forEach((stack) => stack.forEach((e) => { e.generation=(e.generation||0)+1; e.el?.dispose?.(); e.el = null; }));
   show();
 });
 

@@ -75,6 +75,7 @@ const SLIDES = [
     art: () => `<div class="sx-players">${['record', 'turntable', 'cassette', 'reel', 'cd', 'phonograph']
       .map((m, i) => `<span class="sx-player" style="--d:${i * 0.1}s">${icon('pm_' + m)}<small>${esc(t('player_' + m))}</small></span>`).join('')}</div>`,
   },
+  { key: 'st_radio', tone: 'cream', art: () => `<div class="sx-players"><span class="sx-player">${icon('pm_radio-car')}<small>${esc(t('player_radio-car'))}</small></span><span class="sx-player">${icon('pm_radio-home')}<small>${esc(t('player_radio-home'))}</small></span></div>` },
   {
     tone: 'bordeaux',
     art: () => `<div class="sx-chat">

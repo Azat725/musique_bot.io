@@ -1,4 +1,5 @@
 import { api } from '../api.js';
+import { viewScope } from '../lifecycle.js';
 import { t } from '../i18n.js';
 import { clearRecentSearches, pushRecentSearch, recentSearches, settings, updateSettings } from '../store.js';
 import { artistRow, confirmSheet, esc, h, haptic, icon, loader, trackList } from '../ui.js';
@@ -35,21 +36,26 @@ export async function render() {
     <header class="view__head"><h1 class="view__title">${esc(t('nav_search'))}</h1></header>
     <div class="searchbar">
       ${icon('search')}
-      <input type="search" enterkeyhint="search" autocomplete="off" placeholder="${esc(t('search_placeholder'))}">
+      <input type="search" role="combobox" aria-label="${esc(t('search_placeholder'))}" aria-controls="search-suggestions" aria-autocomplete="list" aria-expanded="false" enterkeyhint="search" autocomplete="off" placeholder="${esc(t('search_placeholder'))}">
       <button class="icon-btn searchbar__clear" aria-label="clear" hidden>${icon('close')}</button>
     </div>
-    <div class="suggest" role="listbox" hidden></div>
+    <div class="suggest" id="search-suggestions" role="listbox" hidden></div>
     <div class="segmented search__modes" role="tablist">
       ${MODES.map((m) => `<button role="tab" data-mode="${m}">${esc(t('search_mode_' + m))}</button>`).join('')}
     </div>
-    <div class="search__body"></div>
+    <div class="search__status" role="status" aria-live="polite"></div><div class="search__body"></div>
   </div>`);
   const input = root.querySelector('input');
+  const scope = viewScope(root);
+  const status = root.querySelector('.search__status');
   const clear = root.querySelector('.searchbar__clear');
   const body = root.querySelector('.search__body');
   const modes = root.querySelector('.search__modes');
   const suggestBox = root.querySelector('.suggest');
   let timer, seq = 0, inflight = null, suggestTimer = 0, suggestSeq = 0, suggestAbort = null;
+  let activeSuggestion = -1;
+  root.onHide = () => { clearTimeout(timer); hideSuggest(); inflight?.abort(); seq++; status.replaceChildren(); body.removeAttribute('aria-busy'); };
+  scope.keep(() => root.onHide());
   const syncModes = () => modes.querySelectorAll('button').forEach((b) => {
     b.classList.toggle('is-on', b.dataset.mode === mode());
     b.setAttribute('aria-selected', b.dataset.mode === mode());
@@ -96,6 +102,7 @@ export async function render() {
     suggestAbort?.abort();
     suggestSeq++;
     suggestBox.hidden = true;
+    input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); activeSuggestion = -1;
     suggestBox.replaceChildren();
   }
 
@@ -104,11 +111,12 @@ export async function render() {
     const mine = recentSearches().filter((r) => r.toLowerCase().startsWith(low) && r.toLowerCase() !== low).slice(0, 3);
     const items = [...mine.map((text) => ({ text, past: true })),
       ...fromServer.filter((s) => s.toLowerCase() !== low && !mine.some((m) => m.toLowerCase() === s.toLowerCase())).map((text) => ({ text, past: false }))].slice(0, 8);
-    suggestBox.replaceChildren(...items.map(({ text, past }) => {
-      const row = h(`<button class="suggest__item" role="option">${icon(past ? 'clock' : 'search')}<span>${esc(text)}</span></button>`);
+    activeSuggestion = -1; input.removeAttribute('aria-activedescendant');
+    suggestBox.replaceChildren(...items.map(({ text, past }, i) => {
+      const row = h(`<button class="suggest__item" role="option" aria-selected="false" id="suggestion-${i}" tabindex="-1">${icon(past ? 'clock' : 'search')}<span>${esc(text)}</span></button>`);
       // pointerdown, not click: the field loses focus first, and that would close the list under the finger
-      row.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
+      row.addEventListener('pointerdown', (e) => e.preventDefault());
+      row.addEventListener('click', () => {
         haptic('select');
         input.value = text;
         hideSuggest();
@@ -118,6 +126,7 @@ export async function render() {
       return row;
     }));
     suggestBox.hidden = !items.length;
+    input.setAttribute('aria-expanded', String(!!items.length));
   }
 
   function askSuggest() {
@@ -143,20 +152,28 @@ export async function render() {
   async function run(q, remember = false) {
     q = q.trim();
     clear.hidden = !q;
-    if (!q) { last = null; showIdle(); return; }
+    if (!q) { seq++; inflight?.abort(); status.replaceChildren(); body.removeAttribute('aria-busy'); last = null; showIdle(); return; }
     const my = ++seq, m = mode();
     inflight?.abort(); // a superseded query must not keep the server busy
     inflight = new AbortController();
-    body.innerHTML = loader();
+    status.textContent = t('search_loading');
+    body.setAttribute('aria-busy', 'true');
+    if (!body.children.length) body.innerHTML = loader();
     try {
       const { tracks = [], more = [], artists = [] } = await api.search(q, inflight.signal, m);
       if (my !== seq) return;
+      status.replaceChildren(); body.removeAttribute('aria-busy');
       last = { q, mode: m, tracks, more, artists };
       if (remember) pushRecentSearch(q);
       body.innerHTML = '';
       body.append(isEmpty(last) ? h(`<div class="empty"><div class="empty__title">${esc(t('search_nothing'))}</div></div>`) : results(last));
-    } catch {
-      if (my === seq) body.innerHTML = `<div class="empty"><div class="empty__title">${esc(t('toast_error'))}</div></div>`;
+    } catch (error) {
+      if (my !== seq || error.name === 'AbortError') return;
+      hideSuggest();
+      body.removeAttribute('aria-busy');
+      status.replaceChildren(h(`<span>${esc(t(navigator.onLine ? 'search_failed' : 'why_offline'))}</span>`));
+      const retry = h(`<button class="link">${esc(t('retry'))}</button>`);
+      retry.addEventListener('click', () => run(q, remember)); status.append(retry);
     }
   }
 
@@ -167,6 +184,14 @@ export async function render() {
   });
   input.addEventListener('focus', askSuggest);
   input.addEventListener('keydown', (e) => {
+    const rows = [...suggestBox.querySelectorAll('[role="option"]')];
+    if (['ArrowDown', 'ArrowUp'].includes(e.key) && rows.length && !suggestBox.hidden) {
+      e.preventDefault(); activeSuggestion = (activeSuggestion + (e.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length;
+      rows.forEach((row, i) => row.setAttribute('aria-selected', String(i === activeSuggestion)));
+      input.setAttribute('aria-activedescendant', rows[activeSuggestion].id); rows[activeSuggestion].scrollIntoView({ block: 'nearest' }); return;
+    }
+    if (e.key === 'Escape') { hideSuggest(); return; }
+    if (e.key === 'Enter' && activeSuggestion >= 0 && rows[activeSuggestion]) { e.preventDefault(); rows[activeSuggestion].click(); return; }
     if (e.key === 'Enter') { clearTimeout(timer); hideSuggest(); run(input.value, true); input.blur(); }
   });
   input.addEventListener('blur', () => {

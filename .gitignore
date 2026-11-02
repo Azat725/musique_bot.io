@@ -12,3 +12,8 @@ cookies.txt
 .env.dev
 tunnel-dev.log
 server/dev-data/
+node_modules/
+test-results/
+playwright-report/
+dist/
+.test-data/

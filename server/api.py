@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import auth, config, db, importer, lyrics, music, sources, weblogin
+from . import auth, config, db, importer, lyrics, music, radio, sources, weblogin
 
 log = logging.getLogger("musique.api")
 
@@ -91,6 +91,14 @@ def _track(body: TrackBody) -> dict:
 @app.get("/api/health")
 async def health():
     return {"ok": True}
+
+
+@app.get('/api/radio')
+async def radio_station(country: str = 'us', decade: int = 1960, user=User):
+    try:
+        return {'tracks': await radio.station(country, decade)}
+    except ValueError:
+        raise HTTPException(400, 'Unknown radio selection')
 
 
 @app.get("/api/me")

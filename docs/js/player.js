@@ -1,5 +1,5 @@
 import { api } from './api.js';
-import { heard, onSettings, phonoMode, settings } from './store.js';
+import { heard, onSettings, phonoMode, radioMode, settings } from './store.js';
 import { audioUrl as savedUrl, isSaved } from './offline.js';
 
 export const RATES = { slow: 0.85, normal: 1, fast: 45 / (100 / 3) }; // fast = 1.35: a 45 rpm record played at 45 instead of 33⅓
@@ -18,6 +18,7 @@ class Player extends EventTarget {
     // CORS mode: the equalizer can only process audio fetched this way (the server allows any origin)
     if (!api.usesBlob) this.audio.crossOrigin = 'anonymous';
     this.queue = [];
+    this.queueSession = 0;
     this.original = null; // queue order before shuffle
     this.index = -1;
     this.shuffle = false;
@@ -102,6 +103,7 @@ class Player extends EventTarget {
   playQueue(tracks, start = 0, { shuffle = false } = {}) {
     // a player may refuse a track (the phonograph plays only its cylinders): app.js sets the guard
     if (this.guard && !this.guard(tracks, start)) return;
+    this.queueSession++;
     this.queue = tracks.slice();
     this.original = null;
     this.index = start;
@@ -158,6 +160,15 @@ class Player extends EventTarget {
     this._emit('queue');
   }
 
+  /** Undo removes only: never replace a queue opened by the user in the meantime. */
+  insertUpcoming(tracks, offset = 1, session = this.queueSession) {
+    if (session !== this.queueSession || !this.current) return false;
+    this.queue.splice(Math.min(this.queue.length, this.index + Math.max(1, offset)), 0, ...tracks);
+    this.original?.push(...tracks);
+    this._emit('queue');
+    return true;
+  }
+
   /** How fast the loaded file runs against the original (0.85 slowed, 1.35 at 45): the record spins at it,
    *  and timed lyrics turn the file's time back into the song's with it. */
   get rate() { return RATES[this.fx.split('-')[0]] || 1; }
@@ -166,6 +177,7 @@ class Player extends EventTarget {
     // without a network a saved track plays as it was saved: the server cannot render effects now
     if (track.id === this._plainFor || (!navigator.onLine && isSaved(track.id))) return PLAIN;
     if (phonoMode()) return 'phono'; // Edison's phonograph: narrow, crackling, unsteady, rendered by the server
+    if (radioMode()) return PLAIN; // no extra ffmpeg renders for radio
     return chosenFx();
   }
 
@@ -230,6 +242,7 @@ class Player extends EventTarget {
    *  to play it: paused, only the start of the file fetched. `time` is in the song's own seconds. */
   restore({ tracks, index, time = 0, shuffle = false, repeat = 'off' }) {
     if (!tracks?.length) return;
+    this.queueSession++;
     clearTimeout(this._errTimer);
     this.queue = tracks.slice();
     this.original = null;

@@ -40,6 +40,11 @@ export const settings = {
   playerMode: 'record', // devices/index.js PLAYER_MODES: record, turntable, cassette, reel, cd, phonograph
   bareDeck: false, // "only the machine": no title, bar or buttons under it, the device itself is played
   lidColor: 'clear', // the portable CD player's lid: 'clear' or 'silver'
+  cdColor: 'silver', // the portable player's body
+  reelColor: 'silver', // the reel-to-reel recorder's cabinet
+  themeFont: false, // keep the familiar type until explicitly enabled
+  radioDecade: '1960', radioCountry: 'us', radioColor: 'walnut',
+  radioSource: 'forYou', radioProfileCar: 'car-60', radioProfileHome: 'home-60',
   recordColor: 'black',
   deckColor: 'walnut', // the turntable's colourway, see css/tokens.css
   tapeColor: 'black', // the cassette's shell, see themes.js TAPE_COLORS
@@ -50,13 +55,16 @@ export const settings = {
   speed: 'normal', // 'slow' 0.85×, 'normal' 33⅓ rpm, 'fast' 45 rpm 1.35×: the record spins and plays at that pace, pitch following
   reverb: 'off', // 'room' | 'hall'; with a slowed record this is the slowed + reverb sound
   offlineLikes: false, // favourites are downloaded to the phone and play without a network (offline.js)
+  downloadsPaused: false,
+  lookPresets: [],
+  deviceHints: {},
   ...load(),
 };
 migrate();
 
 // what belongs to this device alone and stays out of the account's look: downloads live on one phone, and the
 // "just so you know" notes are shown once per device
-const DEVICE_ONLY = new Set(['offlineLikes', 'fxNoted', 'eqNoted']);
+const DEVICE_ONLY = new Set(['offlineLikes', 'downloadsPaused', 'deviceHints', 'fxNoted', 'eqNoted']);
 
 /** The settings that follow the account to every device. */
 export function sharedSettings() {
@@ -81,9 +89,11 @@ export const tapeMode = () => settings.playerMode === 'cassette' || settings.pla
 
 /** Edison's phonograph: its own shelf of cylinders, its own sound that nothing in the control panel changes. */
 export const phonoMode = () => settings.playerMode === 'phonograph';
+export const radioMode = () => settings.playerMode === 'radio-car' || settings.playerMode === 'radio-home';
 
 export function onSettings(fn) {
   listeners.add(fn);
+  return () => listeners.delete(fn);
 }
 
 /** Pull settings saved on another device via Telegram CloudStorage. */
@@ -138,20 +148,27 @@ export async function likedList() {
   return likedTracks.slice();
 }
 
-export async function toggleLike(track) {
-  if (likes.has(track.id)) {
-    likes.delete(track.id);
-    likedTracks = likedTracks.filter((t) => t.id !== track.id);
-    keepLikes();
-    await api.unlike(track.id);
-    return false;
-  }
-  likes.add(track.id);
-  likedTracks = [track, ...likedTracks];
-  keepLikes();
-  await api.like(track);
-  return true;
+const likeWrites = new Map();
+export function setLike(track, wanted) {
+  const previous = likeWrites.get(track.id) || Promise.resolve();
+  const write = previous.catch(() => {}).then(async () => {
+    const before = likes.has(track.id);
+    if (before === wanted) return wanted;
+    const apply = (on) => {
+      if (on) { likes.add(track.id); likedTracks = [track, ...likedTracks.filter((tr) => tr.id !== track.id)]; }
+      else { likes.delete(track.id); likedTracks = likedTracks.filter((tr) => tr.id !== track.id); }
+      keepLikes();
+    };
+    apply(wanted);
+    try { if (wanted) await api.like(track); else await api.unlike(track.id); }
+    catch (error) { apply(before); document.dispatchEvent(new CustomEvent('likes-changed')); throw error; }
+    return wanted;
+  });
+  likeWrites.set(track.id, write);
+  write.finally(() => { if (likeWrites.get(track.id) === write) likeWrites.delete(track.id); }).catch(() => {});
+  return write;
 }
+export function toggleLike(track) { return setLike(track, !likes.has(track.id)); }
 
 // ---------- tracks already heard (the sleeve is only for a first listen) ----------
 

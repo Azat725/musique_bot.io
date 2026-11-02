@@ -1,5 +1,7 @@
+import { UX } from './ux-i18n.js';
 const DICT = {
   ru: {
+    ...UX.ru,
     nav_home: 'Главная', nav_search: 'Поиск', nav_library: 'Медиатека', nav_settings: 'Настройки',
     greet_morning: 'Доброе утро', greet_day: 'Добрый день', greet_evening: 'Добрый вечер', greet_night: 'Доброй ночи',
     home_recent: 'Недавно слушали',
@@ -146,6 +148,16 @@ const DICT = {
     pm_desc_cd: 'Портативный CD-плеер 90-х: дисплей, Anti-Skip, радужный диск', pm_desc_phonograph: 'Фонограф Эдисона: восковые цилиндры 1890–1920-х и их звук',
     custom_bare: 'Только техника', custom_bare_hint: 'Без названия, полосы и кнопок: управляйте самим устройством, двойное касание — в избранное',
     custom_lid: 'Крышка CD-плеера', lid_clear: 'Прозрачная', lid_silver: 'Серебристая',
+    custom_cd_body: 'Корпус CD-плеера', custom_reel_body: 'Корпус магнитофона',
+    body_silver: 'Серебристый', body_black: 'Чёрный', body_white: 'Белый', body_blue: 'Синий', body_red: 'Красный', body_walnut: 'Орех', body_cream: 'Кремовый',
+    theme_font: 'Шрифт темы', theme_font_hint: 'Особый шрифт для заголовков; выключено по умолчанию',
+    'player_radio-car': 'Автомобильное радио', 'player_radio-home': 'Домашнее радио',
+    'pm_desc_radio-car': 'Магнитола в духе дорог прошлого', 'pm_desc_radio-home': 'Приёмник в духе разных эпох',
+    radio_decade: 'Эпоха', radio_country: 'Страна', radio_color: 'Цвет корпуса', radio_us: 'США', radio_ussr: 'СССР / Россия', radio_de: 'Германия', radio_jp: 'Япония', radio_fr: 'Франция',
+    radio_shelf: 'Радио по эпохе', radio_play: 'Подобрать музыку', radio_hint: 'Подборка по поисковому запросу: год и страна записей могут отличаться.', radio_empty: 'Подборка не нашлась. Попробуйте позже.',
+    radio_lock: 'В режиме радио скорость и реверберация недоступны.', about_f_radio: 'Домашнее и автомобильное радио с музыкой разных эпох',
+    settings_noise_radio: 'Помехи антенны', settings_noise_hint_radio: 'Тихое шипение приёмника под музыку',
+    st_radio_t: 'Своя волна', st_radio_s: 'Домашнее или автомобильное радио: выберите эпоху и страну и найдите музыку под настроение.',
     rl_model: 'СТУДИЯ 19', ph_plate: 'Фонограф · 1899',
     panel_phono: 'Фонограф звучит как есть: скорость, реверберация и эквалайзер у него не меняются.',
     phono_shelf: 'Цилиндры', phono_play_all: 'Играть все', phono_count: '{n} записей 1890–1920-х',
@@ -165,6 +177,7 @@ const DICT = {
     custom_idle_hint_cd: 'Через сколько секунд останется только плеер', custom_haptic_hint_cd: 'Лёгкие щелчки под пальцем на полосе и диске',
   },
   en: {
+    ...UX.en,
     nav_home: 'Home', nav_search: 'Search', nav_library: 'Library', nav_settings: 'Settings',
     greet_morning: 'Good morning', greet_day: 'Good afternoon', greet_evening: 'Good evening', greet_night: 'Good night',
     home_recent: 'Recently played',
@@ -311,6 +324,16 @@ const DICT = {
     pm_desc_cd: 'A 90s portable CD player: display, Anti-Skip, a rainbow disc', pm_desc_phonograph: "Edison's phonograph: wax cylinders of the 1890s–1920s and their sound",
     custom_bare: 'Only the machine', custom_bare_hint: 'No title, bar or buttons: play the device itself, double-tap to like',
     custom_lid: 'CD player lid', lid_clear: 'Clear', lid_silver: 'Silver',
+    custom_cd_body: 'CD player body', custom_reel_body: 'Reel deck cabinet',
+    body_silver: 'Silver', body_black: 'Black', body_white: 'White', body_blue: 'Blue', body_red: 'Red', body_walnut: 'Walnut', body_cream: 'Cream',
+    theme_font: 'Theme typeface', theme_font_hint: 'A distinctive typeface for headings; off by default',
+    'player_radio-car': 'Car radio', 'player_radio-home': 'Home radio',
+    'pm_desc_radio-car': 'A dashboard radio inspired by the past', 'pm_desc_radio-home': 'A receiver inspired by different eras',
+    radio_decade: 'Decade', radio_country: 'Country', radio_color: 'Cabinet colour', radio_us: 'USA', radio_ussr: 'USSR / Russia', radio_de: 'Germany', radio_jp: 'Japan', radio_fr: 'France',
+    radio_shelf: 'Radio by era', radio_play: 'Find music', radio_hint: 'A search-based selection: recordings may differ in year and country.', radio_empty: 'No tracks found. Please try again later.',
+    radio_lock: 'Speed and reverb are unavailable in radio mode.', about_f_radio: 'Home and car radios with music from different eras',
+    settings_noise_radio: 'Aerial hiss', settings_noise_hint_radio: 'Soft receiver static under the music',
+    st_radio_t: 'Find your frequency', st_radio_s: 'Choose a home or car radio, a decade and a country, then find music for the mood.',
     rl_model: 'STUDIO 19', ph_plate: 'Phonograph · 1899',
     panel_phono: 'The phonograph sounds as it is: its speed, reverb and equalizer cannot be changed.',
     phono_shelf: 'Cylinders', phono_play_all: 'Play all', phono_count: '{n} recordings of the 1890s–1920s',
@@ -340,7 +363,7 @@ export function setLang(value) {
 
 // the player gives some texts its own words: "<key>_tape" for the cassette deck and the reels ("Find a tape"), "<key>_reel"
 // for the reels alone, "<key>_cd" for the CD player; a text without such a version is said the usual way
-const LOOKS = { cassette: ['tape'], reel: ['reel', 'tape'], cd: ['cd'] };
+const LOOKS = { cassette: ['tape'], reel: ['reel', 'tape'], cd: ['cd'], 'radio-car': ['radio'], 'radio-home': ['radio'] };
 let look = [];
 
 export function setLook(mode) {

@@ -1,7 +1,7 @@
 import { api } from './api.js';
 import { t } from './i18n.js';
 import { player } from './player.js';
-import { getPlaylists, invalidatePlaylists, likes, tapeMode, toggleLike } from './store.js';
+import { getPlaylists, invalidatePlaylists, likes, setLike, settings, tapeMode, toggleLike } from './store.js';
 import { coverUrl as savedCover, isSaved, offline, savingId, savingPct } from './offline.js';
 
 export const tg = window.Telegram?.WebApp;
@@ -69,6 +69,9 @@ const ICONS = {
   pm_reel: '<circle cx="7" cy="9" r="4.5"/><circle cx="17" cy="9" r="4.5"/><circle class="fill" cx="7" cy="9" r="1"/><circle class="fill" cx="17" cy="9" r="1"/>' + P('M7 13.5 9.5 19h5l2.5-5.5'),
   pm_cd: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.2"/>' + P('M12 5.5a6.5 6.5 0 0 1 6.5 6.5M12 8a4 4 0 0 1 4 4'),
   pm_phonograph: P('M3 20h11v-4H3z') + '<rect x="4.5" y="12.5" width="8" height="3.5" rx="1"/>' + P('M10 12.5 13 7c1.5-2.6 4.5-4 7.5-3.5l-2.5 6c-2-.2-3.5.6-4.6 2.2L12 13'),
+  radio: '<rect x="3" y="6" width="18" height="13" rx="2"/>' + P('M6 9h12M8 3l8 3M13 13h4M13 16h4') + '<circle cx="8" cy="14" r="2"/>',
+  'pm_radio-car': '<rect x="2.5" y="7" width="19" height="10" rx="1.5"/><circle cx="5.5" cy="12" r="1.2"/><circle cx="18.5" cy="12" r="1.2"/>' + P('M8 10h8M8 13h8'),
+  'pm_radio-home': '<rect x="3" y="6" width="18" height="13" rx="2"/>' + P('M6 9h12M8 3l8 3M13 13h4M13 16h4') + '<circle cx="8" cy="14" r="2"/>',
 };
 
 // the cassette view swaps the record-shaped icons for tapes: the same names, the same moving parts (ic__disc slides out,
@@ -92,11 +95,24 @@ const TAPE_ICONS = {
     + '<path class="fill ic__heart" d="M19.6 9.6s-2.5-1.5-2.5-3.2a1.35 1.35 0 0 1 2.5-.7 1.35 1.35 0 0 1 2.5.7c0 1.7-2.5 3.2-2.5 3.2z"/>',
 };
 
+// Device-specific marks share the same stroke, proportions and moving-part classes as the existing icons.
+const REEL_ICONS = {
+  home: '<rect x="3" y="3.5" width="18" height="17" rx="1.8"/><g class="ic__horn"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/></g>' + P('M7 16h10M8 18h2M14 18h2'),
+  vinyl: '<circle cx="7" cy="10" r="4.5"/><circle cx="17" cy="10" r="4.5"/><circle cx="7" cy="10" r="1"/><circle cx="17" cy="10" r="1"/>' + P('M7 14.5 9.5 19h5l2.5-4.5'),
+  library: '<rect x="3.5" y="5" width="10" height="14" rx="1"/><g class="ic__disc"><circle cx="16" cy="12" r="5"/><circle cx="16" cy="12" r="1"/></g>',
+};
+const CD_ICONS = {
+  home: '<rect x="3" y="3" width="18" height="18" rx="5"/><g class="ic__horn"><circle cx="12" cy="10" r="5"/><circle cx="12" cy="10" r="1"/></g>' + P('M8 18h8'),
+  vinyl: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2"/>' + P('M12 6a6 6 0 0 1 6 6M12 8a4 4 0 0 1 4 4'),
+  library: '<rect x="3" y="5" width="12" height="14" rx="1"/><g class="ic__disc"><circle cx="15.5" cy="12" r="5.5"/><circle cx="15.5" cy="12" r="1.2"/></g>',
+};
+
 export const EASE_IO = 'cubic-bezier(.65, 0, .35, 1)';
 export const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export function icon(name, cls = '') {
-  const art = (tapeMode() && TAPE_ICONS[name]) || ICONS[name];
+  const deviceIcons = settings.playerMode === 'reel' ? REEL_ICONS : settings.playerMode === 'cd' ? CD_ICONS : tapeMode() ? TAPE_ICONS : null;
+  const art = deviceIcons?.[name] || ICONS[name];
   return `<svg class="ic ic--${name} ${cls}" viewBox="0 0 24 24" aria-hidden="true">${art}</svg>`;
 }
 
@@ -169,11 +185,15 @@ export function thumb(url, px = 144) {
 // the cassette view: a cassette whose reels turn
 export const TAPE_LOADER = '<div class="tl" aria-hidden="true"><div class="tl__shell"><span class="tl__label"></span><span class="tl__win"><i class="tl__reel"></i><i class="tl__reel"></i></span></div></div>';
 const VINYL = '<div class="vl" aria-hidden="true"><div class="vl__slide"><div class="vl__disc"><span class="vl__groove"></span><span class="vl__label"></span></div></div><div class="vl__sleeve"><span class="vl__brand">Musique</span></div></div>';
+export const REEL_LOADER = '<div class="medium-loader medium-loader--reel" aria-hidden="true"><i></i><i></i><b></b></div>';
+export const CD_LOADER = '<div class="medium-loader medium-loader--cd" aria-hidden="true"><i></i></div>';
+export const RADIO_LOADER = '<div class="medium-loader medium-loader--radio" aria-hidden="true"><span></span><i></i><i></i></div>';
 
 /** Loading placeholder: the same record-and-sleeve scene as the launch screen, smaller. It fades in
  *  only after a quarter of a second, so fast screens never flash it. */
 export function loader() {
-  return `<div class="view-loader">${tapeMode() ? TAPE_LOADER.replace('class="tl"', 'class="tl tl--sm"') : VINYL.replace('class="vl"', 'class="vl vl--sm"')}</div>`;
+  const art = settings.playerMode.startsWith('radio-') ? RADIO_LOADER : settings.playerMode === 'reel' ? REEL_LOADER : settings.playerMode === 'cd' ? CD_LOADER : tapeMode() ? TAPE_LOADER.replace('class="tl"', 'class="tl tl--sm"') : VINYL.replace('class="vl"', 'class="vl vl--sm"');
+  return `<div class="view-loader">${art}</div>`;
 }
 
 export function cover(url, cls = '', px = 144) {
@@ -184,7 +204,7 @@ export function cover(url, cls = '', px = 144) {
 
 // ---------- toast ----------
 
-let toastTimer;
+let toastTimer, toastVersion = 0;
 // what each kind of toast shows beside its text, and the buzz it comes with
 const TOAST_KINDS = {
   like: ['heartFill', 'success'], unlike: ['heart', 'light'], add: ['check', 'success'], remove: ['trash', 'light'],
@@ -192,7 +212,8 @@ const TOAST_KINDS = {
 };
 
 /** `kind` (optional) adds a small icon in front of the text and the matching vibration. */
-export function toast(text, kind) {
+export function toast(text, kind, action = null) {
+  const version = ++toastVersion;
   let el = document.getElementById('toast');
   if (!el) {
     el = h('<div id="toast" class="toast" role="status"></div>');
@@ -201,12 +222,40 @@ export function toast(text, kind) {
   const [ic, buzz] = TOAST_KINDS[kind] || [];
   el.replaceChildren(...(ic ? [h(`<span class="toast__icon">${icon(ic)}</span>`)] : []), document.createTextNode(text));
   el.classList.toggle('has-icon', !!ic);
+  if (action) {
+    const button = h(`<button class="toast__action">${esc(action.label || t('undo'))}</button>`);
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      try { await action.run(); if (version === toastVersion) el.classList.remove('is-on'); }
+      catch { toast(t('toast_error'), 'error'); }
+    });
+    el.append(button);
+  }
   if (buzz) haptic(buzz);
   el.classList.remove('is-on');
   void el.offsetWidth; // the icon pops again for a toast right after another
   el.classList.add('is-on');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('is-on'), 2200);
+  toastTimer = setTimeout(() => el.classList.remove('is-on'), action ? 6500 : 2200);
+}
+
+/** Trap focus in the topmost modal and return it to its opener, including nested sheets. */
+export function modalFocus(root, close) {
+  const opener = document.activeElement;
+  const focusable = () => [...root.querySelectorAll('button:not(:disabled), input:not(:disabled), select, textarea, [tabindex="0"]')].filter((n) => n.getClientRects().length);
+  const key = (e) => {
+    if ([...document.querySelectorAll('[aria-modal="true"]')].at(-1) !== root) return;
+    if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); close(); }
+    if (e.key === 'Tab') {
+      const nodes = focusable(), at = nodes.indexOf(document.activeElement);
+      if (!nodes.length) return;
+      if (e.shiftKey && at <= 0) { e.preventDefault(); nodes.at(-1).focus(); }
+      else if (!e.shiftKey && (at < 0 || at === nodes.length - 1)) { e.preventDefault(); nodes[0].focus(); }
+    }
+  };
+  document.addEventListener('keydown', key, true);
+  requestAnimationFrame(() => { if (root.isConnected) (focusable()[0] || root).focus({ preventScroll: true }); });
+  return () => { document.removeEventListener('keydown', key, true); if (opener?.isConnected) opener.focus({ preventScroll: true }); };
 }
 
 // ---------- bottom sheet ----------
@@ -223,15 +272,22 @@ export function sheet({ title = '', items = [], content = null, done = false, cl
       </div>
     </div>`);
     const body = root.querySelector('.sheet__body');
+    root.setAttribute('aria-label', root.querySelector('.sheet__title')?.textContent || 'Musique');
     if (content) body.append(content);
     items.forEach((it, i) => {
       const btn = h(`<button class="sheet__item ${it.danger ? 'is-danger' : ''}">${icon(it.icon)}<span>${esc(it.label)}</span></button>`);
       btn.addEventListener('click', () => close(i));
       body.append(btn);
     });
-    let unbindSwipe = null;
+    let unbindSwipe = null, releaseFocus = null, closed = false;
     function close(value) {
+      if (closed) return;
+      closed = true;
       unbindSwipe?.();
+      releaseFocus?.();
+      root.setAttribute('aria-modal', 'false');
+      root.setAttribute('aria-hidden', 'true');
+      root.inert = true;
       root.classList.remove('is-open');
       setTimeout(() => root.remove(), 380);
       resolve(value ?? null);
@@ -241,6 +297,7 @@ export function sheet({ title = '', items = [], content = null, done = false, cl
     if (swipe) unbindSwipe = swipeToClose(root, () => close(null));
     root.close = close;
     document.body.append(root);
+    releaseFocus = modalFocus(root, () => close(null));
     requestAnimationFrame(() => root.classList.add('is-open'));
   });
 }
@@ -307,7 +364,9 @@ export function promptName({ title, value = '', action, placeholder = t('playlis
       </form>
     </div>`);
     const input = root.querySelector('input');
-    const done = (v) => { root.remove(); resolve(v); };
+    root.setAttribute('aria-label', title);
+    let releaseFocus;
+    const done = (v) => { releaseFocus?.(); root.remove(); resolve(v); };
     root.querySelector('[data-cancel]').addEventListener('click', () => done(null));
     root.querySelector('form').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -315,6 +374,7 @@ export function promptName({ title, value = '', action, placeholder = t('playlis
       if (v) done(v);
     });
     document.body.append(root);
+    releaseFocus = modalFocus(root, () => done(null));
     setTimeout(() => input.focus(), 50);
   });
 }
@@ -442,27 +502,30 @@ export function removeRow(row, done) {
 export function trackList(tracks, { numbered = false, context = null, onChange = null } = {}) {
   const list = h(`<div class="tracks ${numbered ? 'tracks--numbered' : ''}"></div>`);
   tracks.forEach((tr, i) => list.append(trackRow(tr, { index: numbered ? i : null })));
+  list.addEventListener('keydown', (e) => { if (e.target.matches('.track') && ['Enter', ' '].includes(e.key)) { e.preventDefault(); e.target.click(); } });
   list.addEventListener('click', async (e) => {
     const row = e.target.closest('.track');
     if (!row) return;
     if (row.classList.contains('is-removing')) return;
     const i = [...list.children].filter((r) => !r.classList.contains('is-removing')).indexOf(row);
+    const track = tracks[i]; if (!track) return;
     if (e.target.closest('.track__artist')) { e.stopPropagation(); openArtist(tracks[i]); return; }
     if (e.target.closest('.track__like')) {
       // like right from the list: the track keeps playing (or not) as it was
       e.stopPropagation();
       haptic('light');
       try {
-        const now = await toggleLike(tracks[i]);
+        const now = await toggleLike(track);
+        if (!now) offerLikeUndo(track);
         document.dispatchEvent(new CustomEvent('likes-changed'));
-        if (!now && context?.likes) { tracks.splice(i, 1); removeRow(row, onChange); }
+        if (!now && context?.likes) { const at=tracks.indexOf(track); if(at>=0) tracks.splice(at, 1); removeRow(row, onChange); }
       } catch { toast(t('toast_error'), 'error'); }
       return;
     }
     if (e.target.closest('.track__more')) {
       e.stopPropagation();
-      const changed = await trackMenu(tracks[i], context);
-      if (changed === 'removed') { tracks.splice(i, 1); removeRow(row, onChange); }
+      const changed = await trackMenu(track, context);
+      if (changed === 'removed') { const at=tracks.indexOf(track); if(at>=0) tracks.splice(at, 1); removeRow(row, onChange); }
       return;
     }
     haptic('light');
@@ -560,6 +623,7 @@ export async function trackMenu(track, context = null) {
         const now = await toggleLike(track);
         haptic('success');
         toast(t(now ? 'toast_liked' : 'toast_unliked'), now ? 'like' : 'unlike');
+        if (!now) offerLikeUndo(track);
         document.dispatchEvent(new CustomEvent('likes-changed'));
         if (!now && context?.likes) return 'removed';
         break;
@@ -572,11 +636,21 @@ export async function trackMenu(track, context = null) {
       case 'remove':
         await api.removeFromPlaylist(context.playlistId, track.id);
         invalidatePlaylists();
-        toast(t('toast_removed'), 'remove');
+        toast(t('toast_removed'), 'remove', { run: async () => {
+          await api.addToPlaylist(context.playlistId, track); invalidatePlaylists();
+          document.dispatchEvent(new CustomEvent('playlist-restored', { detail: context.playlistId }));
+        } });
         return 'removed';
     }
   } catch {
     toast(t('toast_error'), 'error');
   }
   return null;
+}
+
+export function offerLikeUndo(track) {
+  toast(t('toast_unliked'), 'unlike', { run: async () => {
+    await setLike(track, true); document.dispatchEvent(new CustomEvent('likes-changed'));
+    document.dispatchEvent(new CustomEvent('playlist-restored', { detail: 'likes' }));
+  } });
 }

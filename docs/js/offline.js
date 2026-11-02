@@ -1,5 +1,5 @@
 import { api } from './api.js';
-import { likedList, likes, onSettings, settings } from './store.js';
+import { likedList, likes, onSettings, settings, updateSettings } from './store.js';
 
 /** Favourites without a network: with the setting on, every liked track is downloaded (a compact copy, about
  *  3 MB) into IndexedDB while the app is open, and played from there, so the metro and the lift keep the music.
@@ -12,6 +12,10 @@ export const MAX_SAVED = 500; // the newest liked tracks kept on the phone (abou
 
 export const offline = new EventTarget(); // 'change' whenever the saved set or the download progress changes
 const saved = new Map(); // id -> bytes
+const metadata = new Map(), wantedTracks = new Map(), failures = new Map();
+let excluded;
+try { excluded = new Set(JSON.parse(localStorage.getItem('musique.download-excluded')) || []); } catch { excluded = new Set(); }
+let generation = 0;
 let db = null, ready = null, syncing = false, again = false, current = null, abort = null, stopped = '';
 let pct = 0; // how much of the current download has arrived, 0-100
 const urls = new Map(); // id -> object URL of the audio (a few are kept, the oldest are revoked)
@@ -39,6 +43,7 @@ export function initOffline() {
         const c = cur.result;
         if (!c) { resolve(); return; }
         saved.set(c.value.id, c.value.size || 0);
+        metadata.set(c.value.id, { id: c.value.id, ...c.value.meta });
         c.continue();
       };
       cur.onerror = () => reject(cur.error);
@@ -52,6 +57,23 @@ export const isSaved = (id) => saved.has(id);
 export const savingId = () => current;
 export const savingPct = () => pct;
 export const stopReason = () => stopped; // '' | 'space' | 'network'
+export function downloadList() {
+  const all = new Map([...wantedTracks, ...metadata]);
+  return [...all.values()].map((track) => ({ ...track, bytes: saved.get(track.id) || 0,
+    status: saved.has(track.id) ? 'saved' : current === track.id ? 'downloading' : excluded.has(track.id) ? 'removed' : failures.has(track.id) ? 'failed' : 'pending',
+    percent: current === track.id ? pct : 0 }));
+}
+const keepExcluded = () => { try { localStorage.setItem('musique.download-excluded', JSON.stringify([...excluded])); } catch {} };
+export async function removeDownload(id) {
+  excluded.add(id); keepExcluded(); if (id === current) { again = true; abort?.abort(); }
+  await initOffline(); if (db) await remove(id); emit();
+}
+export function retryDownloads(id = null) {
+  if (id) { excluded.delete(id); failures.delete(id); } else failures.clear();
+  keepExcluded(); stopped = ''; updatePause(false); soon(0); emit();
+}
+function updatePause(paused) { updateSettings({ downloadsPaused: paused }); }
+export const pauseDownloads = (paused) => { updatePause(paused); if (paused) abort?.abort(); else soon(0); emit(); };
 
 export function usage() {
   let bytes = 0;
@@ -96,16 +118,19 @@ export async function coverUrl(id) {
 async function remove(id) {
   await req(tx('readwrite').delete(id));
   saved.delete(id);
+  metadata.delete(id);
   if (urls.has(id)) { URL.revokeObjectURL(urls.get(id)); urls.delete(id); }
   if (coverUrls.has(id)) { URL.revokeObjectURL(coverUrls.get(id)); coverUrls.delete(id); }
 }
 
 export async function clearAll() {
+  generation++;
   abort?.abort();
   await initOffline();
   if (!db) return;
   await req(tx('readwrite').clear());
   saved.clear();
+  metadata.clear();
   urls.forEach((u) => URL.revokeObjectURL(u)); urls.clear();
   coverUrls.forEach((u) => URL.revokeObjectURL(u)); coverUrls.clear();
   emit();
@@ -138,8 +163,10 @@ function smallCover(url) {
 
 async function download(track) {
   abort = new AbortController();
+  const signal = abort.signal, started = generation;
   const res = await fetch(`${api.streamUrl(track.id)}&q=save`, { signal: abort.signal, headers: { 'ngrok-skip-browser-warning': '1' } });
   if (!res.ok) throw Object.assign(new Error(`http-${res.status}`), { skip: res.status === 404 });
+  if (!(res.headers.get('content-type') || '').startsWith('audio/')) throw Object.assign(new Error('Not an audio file'), { skip:true });
   const blob = await readWithProgress(res);
   let cover = null;
   if (track.cover) {
@@ -149,8 +176,10 @@ async function download(track) {
     } catch {}
   }
   const meta = { title: track.title, artist: track.artist, duration: track.duration, artist_id: track.artist_id || '', cover: track.cover || '' };
+  if (signal.aborted || started !== generation || excluded.has(track.id)) throw new DOMException('Cancelled', 'AbortError');
   await req(tx('readwrite').put({ id: track.id, blob, cover, meta, size: blob.size + (cover?.size || 0), savedAt: Date.now() }));
   saved.set(track.id, blob.size + (cover?.size || 0));
+  metadata.set(track.id, track); failures.delete(track.id);
 }
 
 /** Make the saved set match the newest MAX_SAVED favourites: delete what was unliked (or pushed past the limit
@@ -166,12 +195,13 @@ export async function syncOffline() {
     if (!db) return;
     let list;
     try { list = (await likedList()).slice(0, MAX_SAVED); } catch { return; } // newest first
+    wantedTracks.clear(); list.forEach((track) => wantedTracks.set(track.id, track));
     const wanted = new Set(list.map((tr) => tr.id));
     for (const id of [...saved.keys()]) if (!wanted.has(id)) await remove(id);
     emit();
     for (const track of list) {
-      if (!settings.offlineLikes) break;
-      if (saved.has(track.id)) continue;
+      if (!settings.offlineLikes || settings.downloadsPaused) break;
+      if (saved.has(track.id) || excluded.has(track.id) || failures.has(track.id)) continue;
       if (!navigator.onLine) { stopped = 'network'; break; }
       current = track.id;
       pct = 0;
@@ -181,6 +211,7 @@ export async function syncOffline() {
       } catch (e) {
         if (e?.name === 'QuotaExceededError' || /quota/i.test(e?.message || '')) { stopped = 'space'; break; }
         if (e?.name === 'AbortError') break;
+        failures.set(track.id, e?.skip ? 'unavailable' : 'network');
         if (e?.skip) continue; // this one is not available anywhere: the others still are
         stopped = 'network'; // the network went away mid-download: carry on when it is back
         break;
@@ -208,7 +239,7 @@ export function keepDownloads() {
 
 // when to look again: a like or an unlike, the network coming back, the setting switched on
 document.addEventListener('likes-changed', () => soon());
-addEventListener('online', () => soon(1500));
+addEventListener('online', () => { failures.forEach((why, id) => { if (why === 'network') failures.delete(id); }); soon(1500); });
 let wasOn = settings.offlineLikes;
 onSettings(() => {
   if (settings.offlineLikes === wasOn) return;

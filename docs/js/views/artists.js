@@ -1,4 +1,5 @@
 import { t } from '../i18n.js';
+import { viewScope } from '../lifecycle.js';
 import { favArtistsList, toggleFavArtist } from '../store.js';
 import { artistRow, esc, h, haptic, icon, sheet, toast } from '../ui.js';
 
@@ -44,7 +45,7 @@ export async function render() {
   }
 
   let dirty = false;
-  document.addEventListener('fav-artists-changed', () => { if (root.isConnected) draw(); else dirty = true; });
+  viewScope(root).listen(document, 'fav-artists-changed', () => { if (root.isConnected) draw(); else dirty = true; });
   root.onShow = () => { if (dirty) { dirty = false; draw(); } };
   await draw();
   return root;

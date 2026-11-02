@@ -1,4 +1,5 @@
 import { api } from '../api.js';
+import { viewScope } from '../lifecycle.js';
 import { t } from '../i18n.js';
 import { player } from '../player.js';
 import { favArtists, loadFavArtists, toggleFavArtist } from '../store.js';
@@ -83,7 +84,7 @@ export async function render(params, nav) {
     fav.setAttribute('aria-pressed', on);
   };
   loadFavArtists().then(syncFav, syncFav);
-  document.addEventListener('fav-artists-changed', syncFav);
+  viewScope(root).listen(document, 'fav-artists-changed', syncFav);
   fav.addEventListener('click', async () => {
     haptic('light');
     try {

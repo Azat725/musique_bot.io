@@ -1,4 +1,4 @@
-import { phonoMode, settings, tapeMode } from './store.js';
+import { phonoMode, radioMode, settings, tapeMode } from './store.js';
 
 /** Sound effects through Web Audio, so they mix with the music instead of interrupting it.
  *  The context is created lazily (only with sounds on) and suspended whenever nothing is playing:
@@ -139,6 +139,20 @@ export function startSpinNoise(volume = 1, background = false) {
   };
 }
 
+/** A soft band-limited aerial hiss, generated locally; returns an idempotent stop function. */
+function startRadioNoise(volume = 1, background = false) {
+  if (!hold(background)) return () => {};
+  const now = ctx.currentTime, src = noise(), filter = ctx.createBiquadFilter(), gain = ctx.createGain();
+  filter.type = 'bandpass'; filter.frequency.value = 1800; filter.Q.value = 0.45;
+  gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(volume * 0.025, now + 0.5);
+  src.connect(filter).connect(gain).connect(ctx.destination); src.start();
+  let stopped = false;
+  return () => { if (stopped) return; stopped = true; const at = ctx.currentTime;
+    gain.gain.cancelScheduledValues(at); gain.gain.setValueAtTime(gain.gain.value, at); gain.gain.linearRampToValueAtTime(0, at + 0.3);
+    src.onended = release; src.stop(at + 0.32);
+  };
+}
+
 // ---------- record noise under the music (Settings) ----------
 
 // indices are what Settings store; 4 ("whisper", 35 % of low) came later, so it is appended rather than inserted
@@ -148,11 +162,11 @@ let bgNoise = null; // { level, stop }
 /** Keep the noise under the music in step with playback and the chosen level: a record's crackle, a tape's hiss
  *  (cassette and reels), nothing from a CD, and always the wax crackle of the phonograph, whatever the setting. */
 export function syncVinylNoise(playing) {
-  const kind = phonoMode() ? 'phono' : tapeMode() ? 'tape' : settings.playerMode === 'cd' ? 'none' : 'vinyl';
+  const kind = phonoMode() ? 'phono' : radioMode() ? 'radio' : tapeMode() ? 'tape' : settings.playerMode === 'cd' ? 'none' : 'vinyl';
   const level = !playing || kind === 'none' ? 0 : kind === 'phono' ? 1 : NOISE_LEVELS[settings.vinylNoise] || 0;
   if (bgNoise && bgNoise.level === level && bgNoise.kind === kind) return;
   bgNoise?.stop();
-  const start = { phono: startPhonoNoise, tape: startTapeNoise, vinyl: startSpinNoise }[kind];
+  const start = { phono: startPhonoNoise, radio: startRadioNoise, tape: startTapeNoise, vinyl: startSpinNoise }[kind];
   bgNoise = level ? { level, kind, stop: start(level, true) } : null;
 }
 

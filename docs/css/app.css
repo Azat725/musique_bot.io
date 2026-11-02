@@ -693,6 +693,44 @@ body.player-open .toast { bottom: calc(24px + var(--safe-b)); }
 .boot.is-done .tl { animation: vl-away .4s var(--ease-io) both; }
 @media (prefers-reduced-motion: reduce) { .tl__reel { animation: none; } }
 
+/* The same compact, flat illustration language as the record and cassette loaders. */
+.medium-loader { --s: 76px; position: relative; flex: none; width: var(--s); height: var(--s); }
+.boot .medium-loader { display: none; --s: 150px; }
+:root[data-player="reel"] .boot :is(.vl, .tl), :root[data-player="cd"] .boot :is(.vl, .tl) { display: none; }
+:root[data-player="reel"] .boot .medium-loader--reel, :root[data-player="cd"] .boot .medium-loader--cd { display: block; }
+.medium-loader--reel { height: calc(var(--s) * .65); display: flex; align-items: flex-start; justify-content: space-around; padding-top: 5%; border-radius: 6px; background: var(--surface-2); box-shadow: 0 6px 16px var(--shadow), inset 0 0 0 1px var(--line); }
+.medium-loader--reel i { width: 42%; aspect-ratio: 1; border-radius: 50%; border: calc(var(--s) * .06) dotted var(--text-3); box-shadow: inset 0 0 0 2px var(--surface); animation: vl-spin 2.4s linear infinite; }
+.medium-loader--reel b { position: absolute; bottom: 10%; left: 16%; right: 16%; height: 13%; border-radius: 2px; background: var(--accent); }
+.medium-loader--cd { border-radius: 50%; background: var(--surface-2); border: 2px solid var(--line); box-shadow: 0 6px 16px var(--shadow); display: grid; place-items: center; }
+.medium-loader--cd i { width: 75%; height: 75%; border-radius: 50%; border: calc(var(--s) * .17) solid var(--surface); box-shadow: inset 0 0 0 2px var(--accent), 0 0 0 1px var(--text-3); animation: vl-spin 2.4s linear infinite; }
+.medium-loader--radio { height: calc(var(--s) * .58); border-radius: 7px; background: var(--surface-2); box-shadow: 0 6px 16px var(--shadow), inset 0 0 0 2px var(--line); }
+.medium-loader--radio span { position: absolute; left: 12%; right: 12%; top: 20%; height: 24%; background: var(--surface); border: 1px solid var(--line); }
+.medium-loader--radio span::after { content: ''; position: absolute; top: 0; bottom: 0; left: 20%; width: 2px; background: var(--accent); animation: radio-tune 2s ease-in-out infinite alternate; }
+.medium-loader--radio i { position: absolute; width: 13%; aspect-ratio: 1; bottom: 15%; border-radius: 50%; background: var(--text-2); }
+.medium-loader--radio i:nth-of-type(1) { left: 18%; } .medium-loader--radio i:nth-of-type(2) { right: 18%; }
+@keyframes radio-tune { to { left: 80%; } }
+:root[data-player^="radio-"] .boot :is(.vl, .tl) { display: none; }
+:root[data-player^="radio-"] .boot .medium-loader--radio { display: block; }
+.radio-intro { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; background: var(--bg); animation: vl-away .3s var(--ease) .85s both; pointer-events: none; }
+.radio-intro .medium-loader { --s: 150px; }
+.radio-intro[data-radio-kind="radio-car"] .medium-loader { height: calc(var(--s) * .4); border-radius: 4px; }
+.boot.is-done .medium-loader { animation: vl-away .4s var(--ease-io) both; }
+@media (prefers-reduced-motion: reduce) { .medium-loader i, .medium-loader span::after { animation: none; } .radio-intro { animation: none; } }
+
+/* Headings only, so decorative faces don't impair the readability of controls or track names. */
+:root[data-theme-font="navy"] { --font-serif: 'Cormorant Garamond', Georgia, serif; }
+:root[data-theme-font="noir"] { --font-serif: 'Oswald', Georgia, serif; }
+:root[data-theme-font="bordo"] { --font-serif: 'PT Serif', Georgia, serif; }
+:root[data-theme-font="green"] { --font-serif: 'PT Serif Caption', Georgia, serif; }
+:root[data-theme-font="richesse"] { --font-serif: 'Cormorant', Georgia, serif; }
+:root[data-theme-font="obsidian"] { --font-serif: 'Manrope', Georgia, serif; }
+:root[data-theme-font="terracotta"] { --font-serif: 'Alegreya', Georgia, serif; }
+:root[data-theme-font="tuscan"] { --font-serif: 'Merriweather', Georgia, serif; }
+:root[data-theme-font="ussr"] { --font-serif: 'Russo One', Georgia, serif; }
+:root[data-theme-font="ddr"] { --font-serif: 'Roboto Condensed', Georgia, serif; }
+:root[data-theme-font="eighties"] { --font-serif: 'Rubik Mono One', Georgia, serif; }
+:root[data-theme-font="depression"] { --font-serif: 'Bitter', Georgia, serif; }
+
 /* behind every picture: a cassette instead of a record */
 :root[data-family="tape"] :is(.cover, .mosaic, .artist__photo) { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23A39580' stroke-width='1.3'%3E%3Crect x='2.5' y='6' width='19' height='12' rx='1.5'/%3E%3Ccircle cx='8.5' cy='11.4' r='2'/%3E%3Ccircle cx='15.5' cy='11.4' r='2'/%3E%3Cpath d='M7.5 18 8.6 15.6h6.8L16.5 18'/%3E%3C/svg%3E"); }
 
@@ -724,3 +762,30 @@ body.player-open .toast { bottom: calc(24px + var(--safe-b)); }
 }
 @keyframes pl-tape { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(10px); } }
 .about__credit { margin: 12px 0 0; font-size: 12px; color: var(--text-3); }
+
+/* Paper surfaces and compact tools for the settings subpages. */
+.settings-view .group__item { min-height: 62px; }
+.look-editor { display: grid; gap: 14px; padding: 0 8px 12px; min-width: 0; }
+.look-field { display: grid; gap: 8px; min-width: 0; color: var(--text-2); font-size: 14px; }
+.look-field select, .field--compact { min-width: 0; max-width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); color: var(--text); font: 15px var(--font-sans); }
+.look-preview { padding: 20px; border: 1px solid var(--line); border-radius: var(--r-md); text-align: center; display: grid; justify-items: center; gap: 8px; }
+.look-preview b { font-size: 26px; }.look-preview span { font: 13px var(--font-sans); }
+.look-preview__art { display: grid; place-items: center; width: 112px; height: 100px; border-radius: var(--r-sm); background: #E8DDC8; }
+.look-preview__art .ic { width: 82px; height: 82px; stroke-width: 1; }
+.toast { flex-wrap: wrap; }.toast__action { border: 0; border-radius: 4px; color: inherit; background: transparent; text-decoration: underline; padding: 10px; min-height: 44px; font-weight: 600; }
+.toast.is-on .toast__action { pointer-events: auto; }
+.download-tools { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.downloads-list { margin-top: 16px; }.download-row { display: flex; gap: 12px; align-items: center; min-height: 80px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.download-row__meta { flex: 1; min-width: 0; display: grid; gap: 5px; }
+.download-row__meta b, .download-row__meta small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.download-row__meta small, .download-row__meta span { color: var(--text-2); font-size: 12px; }
+.download-filter { display: flex; gap: 10px; align-items: center; min-height: 44px; margin: 10px 0; font-size: 14px; }
+.download-filter input { accent-color: var(--accent); width: 18px; height: 18px; }
+.search__status { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--text-2); font-size: 13px; }
+.search__status:not(:empty) { min-height: 44px; margin: 8px 0; }
+.suggest__item[aria-selected="true"] { background: var(--accent-soft); }
+.queue__summary { color: var(--text-2); font-size: 13px; margin: 8px 0 0; }
+.qrow__next, .qrow__remove, .qrow__grip { width: 44px; min-width: 44px; min-height: 44px; }
+.qrow { gap: 6px; }.qrow__meta { min-width: 0; }
+:is(button, input, select, textarea, [tabindex]):focus-visible { outline: 2px solid var(--accent-text); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }

@@ -12,4 +12,5 @@ COPY server server
 
 ENV HOST=0.0.0.0 PORT=8000 DATA_DIR=/data TUNNEL=none PYTHONUNBUFFERED=1
 VOLUME /data
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)" || exit 1
 CMD ["python", "-m", "server"]

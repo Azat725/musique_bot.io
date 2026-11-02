@@ -1,6 +1,6 @@
 import { t } from './i18n.js';
 import { BANDS, applyFx, enableFx } from './graph.js';
-import { phonoMode, settings, updateSettings } from './store.js';
+import { phonoMode, radioMode, settings, updateSettings } from './store.js';
 import { DEVICES } from './devices/index.js';
 import { initSfx } from './sfx.js';
 import { esc, h, haptic, sheet } from './ui.js';
@@ -83,6 +83,7 @@ export function openControlPanel() {
   const panel = h(`<div class="eqp ${locked ? 'is-locked' : ''}">
     <div class="eqp__title">${esc(t('panel_title'))}</div>
     ${locked ? `<p class="eqp__lock">${esc(t('panel_phono'))}</p>` : ''}
+    ${radioMode() ? `<p class="eqp__lock">${esc(t('radio_lock'))}</p>` : ''}
     <div class="fx__label">${esc(t('sound_speed'))}</div>
     ${SEG('speed', speedOptions())}
     <div class="fx__label">${esc(t('sound_reverb'))}</div>
@@ -113,6 +114,7 @@ export function openControlPanel() {
     </div>
   </div>`);
   const power = panel.querySelector('.eqp__power input');
+  if (radioMode()) panel.querySelectorAll('[data-seg] button').forEach((b) => { b.disabled = true; });
   const line = panel.querySelector('.eqp__line');
   const faders = [...panel.querySelectorAll('.fader')];
 
@@ -130,7 +132,8 @@ export function openControlPanel() {
   }
 
   const drawSound = () => panel.querySelectorAll('[data-seg]').forEach((g) => g.querySelectorAll('button').forEach((b) => {
-    const on = b.dataset.v === settings[g.dataset.seg];
+    const current = radioMode() ? (g.dataset.seg === 'speed' ? 'normal' : 'off') : settings[g.dataset.seg];
+    const on = b.dataset.v === current;
     b.classList.toggle('is-on', on);
     b.setAttribute('aria-pressed', on);
   }));

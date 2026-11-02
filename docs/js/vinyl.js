@@ -1,11 +1,12 @@
 import { t } from './i18n.js';
 import { player } from './player.js';
-import { heard, heardReady, likes, onSettings, settings, toggleLike, updateSettings } from './store.js';
-import { EASE_IO, chooseAndAddToPlaylist, esc, fitMarquee, fmt, h, haptic, icon, openArtist, reducedMotion, sheet, toast, trackMenu } from './ui.js';
+import { heard, heardReady, likes, onSettings, radioMode, settings, toggleLike, updateSettings } from './store.js';
+import { EASE_IO, chooseAndAddToPlaylist, esc, fitMarquee, fmt, h, haptic, icon, offerLikeUndo, openArtist, reducedMotion, sheet, toast, trackMenu } from './ui.js';
 import { api } from './api.js';
 import { openControlPanel } from './eq.js';
 import { initSfx, playSfx, rustle, startScratch, startSpinNoise, whoosh } from './sfx.js';
 import { DEVICES, PLAYER_MODES } from './devices/index.js';
+import { maybeDeviceHint } from './device-help.js';
 import { openQueue } from './queue.js';
 import { SLEEP_OPTIONS, setSleep, sleepLeft, sleepMode, sleepTimer } from './sleep.js';
 
@@ -110,6 +111,7 @@ export function isPlayerOpen() { return open; }
 
 export function initFullPlayer() {
   root = h(`<div class="fp" aria-hidden="true">
+    <button class="bare-exit btn btn--outline" data-bare-exit>${esc(t('help_show_controls'))}</button>
     <header class="fp__top">
       <button class="icon-btn" data-close aria-label="close">${icon('down')}</button>
       <div class="fp__head"><div class="fp__kicker"></div><button class="fp__marker" hidden></button></div>
@@ -151,6 +153,7 @@ export function initFullPlayer() {
     </div>
   </div>`);
   document.body.append(root);
+  root.inert = true;
   stage = root.querySelector('.fp__stage');
   bubble = root.querySelector('.scrub');
   el = { bar: root.querySelector('.progress__bar'), cur: root.querySelector('[data-cur]'), dur: root.querySelector('[data-dur]'),
@@ -184,13 +187,21 @@ export function initFullPlayer() {
     if (!player.current) return;
     haptic('light');
     try {
-      await toggleLike(player.current);
+      const track=player.current;
+      if (!await toggleLike(track)) offerLikeUndo(track);
       document.dispatchEvent(new CustomEvent('likes-changed'));
     } catch { toast(t('toast_error'), 'error'); }
     syncLike();
   });
 
   setupSeek($('.progress__bar'));
+  root.querySelectorAll('.dev [data-key]').forEach((key) => {
+    key.closest('.dk, .deck, .recorder')?.removeAttribute('aria-hidden');
+    key.setAttribute('role','button'); key.tabIndex=0;
+    key.setAttribute('aria-label',t(['prev','rew'].includes(key.dataset.key) ? 'control_previous' : ['next','ff'].includes(key.dataset.key) ? 'control_next' : 'control_play_pause'));
+    key.addEventListener('keydown',(e)=>{if(['Enter',' '].includes(e.key)){e.preventDefault();e.stopPropagation();haptic('light');pressKey(key.dataset.key);}});
+  });
+  $('[data-bare-exit]').addEventListener('click', () => { haptic('select'); updateSettings({ bareDeck:false }); });
   setupGestures();
   setupIdle();
   applyMode();
@@ -198,6 +209,7 @@ export function initFullPlayer() {
   onSettings(() => {
     applyMode();
     syncSpeed();
+    if (radioMode()) device()?.show?.(root, player.current);
     if (settings.idleDelay !== idleSeen) { idleSeen = settings.idleDelay; wake(); }
   });
 
@@ -253,6 +265,7 @@ const DECK_RPM = { slow: '28', normal: '33', fast: '45' }; // slowed: 33⅓ × 0
 
 /** What the current sound is called: "slowed + reverb", "45 rpm", "reverb"… or '' when it is plain. */
 function soundTag() {
+  if (radioMode()) return '';
   const slow = settings.speed === 'slow', reverb = settings.reverb !== 'off';
   if (slow && reverb) return t('sound_slowrev');
   return [slow ? t('sound_slow_tag') : settings.speed === 'fast' ? t('sound_fast_tag') : '', reverb ? t('sound_reverb_tag') : '']
@@ -279,6 +292,7 @@ function syncMarker() {
   const preparing = player.loading && player.fx !== 'normal-off' && !!player.current;
   btn.classList.toggle('is-busy', preparing);
   if (preparing) parts.push(`<span>${esc(t('fx_preparing'))}</span>`);
+  else if(player.loading && player.current) parts.push(`<span>${esc(t(navigator.onLine ? 'player_waiting' : 'player_network'))}</span>`);
   if (m) parts.push(`${icon('moon')}<span>${esc(m === 'track' ? t('sleep_track_short') : fmt(sleepLeft()))}</span>`);
   const tag = soundTag();
   if (tag && !preparing) parts.push(`<span>${esc(tag)}</span>`);
@@ -295,6 +309,7 @@ export function openPlayer() {
   rec?.el.getAnimations().forEach((a) => a.cancel()); // a record that flew back into the mini player
   const fromMini = miniCoverRect();
   root.classList.add('is-open');
+  root.inert = false;
   root.setAttribute('aria-hidden', 'false');
   if (!rec || rec.track?.id !== player.current.id) placeRecord(player.current);
   device()?.show?.(root, player.current);
@@ -307,11 +322,13 @@ export function openPlayer() {
   fitMarquee(el.title); // measured now that the player has its real width
   syncLyrics();
   armIdle();
+  maybeDeviceHint(root);
   document.dispatchEvent(new CustomEvent('player-open', { detail: true }));
 }
 
 export function closePlayer() {
   open = false;
+  root.querySelector('.device-hint')?.remove();
   armLifted = false;
   wake();
   syncSpinNoise();
@@ -319,6 +336,7 @@ export function closePlayer() {
   const toMini = miniCoverRect();
   if (toMini) fly(toMini, false);
   root.classList.remove('is-open');
+  root.inert = true;
   root.setAttribute('aria-hidden', 'true');
   // stop the record once the slide-down has finished: nobody sees it spin
   closeTimer = setTimeout(() => { if (!open && rec) { cancelAnimationFrame(rec.raf); rec.rate = 0; rec.anim.pause(); } }, 450);
@@ -437,12 +455,13 @@ const pendingSleeve = new Set(); // the current track, if it is new and its slee
 
 function notePending(track) {
   pendingSleeve.clear(); // a sleeve nobody opened before the next track simply stays closed
-  if (settings.sleeve && heardReady && track && !heard.has(track.id) && !reducedMotion()) pendingSleeve.add(track.id);
+  if (!radioMode() && settings.sleeve && heardReady && track && !heard.has(track.id) && !reducedMotion()) pendingSleeve.add(track.id);
 }
 
 function takeSleeve(track) {
   if (!track || !pendingSleeve.has(track.id)) return false;
   pendingSleeve.delete(track.id);
+  if (radioMode()) return false;
   return true;
 }
 
@@ -959,7 +978,8 @@ async function likeCurrent() {
   haptic('success');
   let liked = likes.has(player.current.id);
   try {
-    liked = await toggleLike(player.current);
+    const track=player.current; liked = await toggleLike(track);
+    if(!liked) offerLikeUndo(track);
     document.dispatchEvent(new CustomEvent('likes-changed'));
   } catch { toast(t('toast_error'), 'error'); return; }
   const heart = root.querySelector('.fp__heart');

@@ -5,6 +5,7 @@
 # ngrok is kept as a spare (its free plan caps traffic per month): docker compose --env-file server/.env --profile ngrok up -d
 services:
   musique:
+    image: ${MUSIQUE_IMAGE:-musique-api:local}
     build: .
     restart: unless-stopped
     env_file: server/.env

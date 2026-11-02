@@ -7,6 +7,27 @@
 .dk { position: absolute; inset: 0; display: none; pointer-events: none; }
 .dk > * { position: absolute; }
 .fp.is-reel .dk--reel, .fp.is-cd .dk--cd, .fp.is-phonograph .dk--phonograph { display: block; }
+.fp.is-radio-car .rd--car, .fp.is-radio-home .rd--home { display: block; }
+.fp:is(.is-radio-car, .is-radio-home) { --size: min(78vw, 40vh, 380px); }
+.fp:is(.is-radio-car, .is-radio-home) .fp__stage { min-height: calc(var(--size) * .75 + 20px); }
+.record.radio-medium { width: var(--size); height: calc(var(--size) * .6); border-radius: 0; box-shadow: none; opacity: 0; pointer-events: none; }
+.rd__cabinet { position: absolute; left: 50%; top: 50%; width: var(--size); height: calc(var(--size) * .68); transform: translate(-50%, -50%); border-radius: 8px; padding: 5%; background: var(--radio-body, #76513A); box-shadow: 0 16px 40px var(--shadow), inset 0 0 0 2px rgba(0, 0, 0, .2); }
+.rd--car .rd__cabinet { height: calc(var(--size) * .48); border-radius: 4px; }
+.rd__brand { color: #F2EBD8; font: 700 calc(var(--size) * .032)/1 var(--font-sans); letter-spacing: .18em; margin-bottom: 3%; }
+.rd__dial { position: relative; height: 20%; border-radius: 3px; background: #E6D3A7; color: #342B23; font: 600 calc(var(--size) * .025)/1 var(--font-sans); display: grid; place-items: center; }
+.rd__dial i { position: absolute; left: 55%; top: 0; bottom: 0; width: 2px; background: #9F2930; }
+.rd__face { display: flex; align-items: center; gap: 6%; height: 28%; }
+.rd__knob { flex: none; width: 13%; aspect-ratio: 1; border-radius: 50%; background: #D3C9B3; color: #34302D; display: grid; place-items: center; box-shadow: 0 2px 0 rgba(0,0,0,.4); }
+.rd__knob svg { width: 50%; height: 50%; fill: currentColor; }
+.rd__display { flex: 1; min-width: 0; text-align: center; color: #F2EBD8; font: 600 calc(var(--size) * .034)/1.3 var(--font-sans); }
+.rd__display b { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }.rd__display small { font-size: .75em; opacity: .8; }
+.rd__speaker { height: 20%; border-radius: 3px; background: #574638; border: 2px solid #8D795B; }
+.rd--car .rd__speaker { display: none; }
+.rd__keys { height: 20%; display: flex; gap: 4%; justify-content: center; align-items: center; }.rd__keys span { width: 13%; height: 70%; display: grid; place-items: center; border-radius: 2px; background: #C6B99D; color: #2E2925; }.rd__keys svg { width: 55%; height: 70%; fill: currentColor; }
+:root[data-radio="black"] { --radio-body: #303134; } :root[data-radio="cream"] { --radio-body: #B6A483; } :root[data-radio="silver"] { --radio-body: #797D81; }
+:root:is([data-radio-decade="1940"], [data-radio-decade="1950"]) .rd--home .rd__cabinet { border-radius: 32% 32% 8px 8px; padding-top: 12%; }
+:root:is([data-radio-decade="1980"], [data-radio-decade="1990"], [data-radio-decade="2000"]) .rd__cabinet { border-radius: 3px; }
+:root:is([data-radio-decade="1990"], [data-radio-decade="2000"]) .rd__dial { background: #A4B591; font-family: ui-monospace, monospace; }
 /* a device's own keys work: play, pause, a tap on ◀◀ / ▶▶ changes the track, holding one winds (vinyl.js keyDown) */
 .dev [data-key] { pointer-events: auto; cursor: pointer; touch-action: none; -webkit-tap-highlight-color: transparent; }
 .rec__key.is-down { transform: translateY(calc(var(--size) * .012)); box-shadow: 0 calc(var(--size) * .002) 0 var(--rc-key-down); background: var(--rc-key-down); }
@@ -54,7 +75,7 @@
 .fp.is-bare .reel__tag { display: block; }
 
 .dk--reel::before { content: ''; position: absolute; left: 50%; top: 50%; width: calc(var(--size) * 1.16); height: calc(var(--size) * 1.2);
-  margin: calc(var(--size) * -.6) 0 0 calc(var(--size) * -.58); border-radius: 10px; background: #C5C8CC;
+  margin: calc(var(--size) * -.6) 0 0 calc(var(--size) * -.58); border-radius: 10px; background: var(--reel-body, #C5C8CC);
   box-shadow: 0 16px 40px var(--shadow), inset 0 0 0 1px rgba(0, 0, 0, .15), inset 0 0 0 calc(var(--size) * .02) #B6B9BE; }
 .rl__heads { left: 50%; top: 50%; width: calc(var(--size) * .5); height: calc(var(--size) * .12); margin: calc(var(--size) * -.07) 0 0 calc(var(--size) * -.25);
   border-radius: 5px; background: #2B2C2F; display: flex; align-items: flex-start; justify-content: center; gap: calc(var(--size) * .03); padding-top: 3px; }
@@ -64,7 +85,7 @@
 .rl__roller { position: absolute; right: 2%; bottom: 8%; width: calc(var(--size) * .04); height: calc(var(--size) * .04); border-radius: 50%; background: #1A1A1C;
   box-shadow: 0 0 0 2px #55575B; }
 .rl__panel { left: 50%; top: 50%; width: calc(var(--size) * 1.02); height: calc(var(--size) * .24); margin: calc(var(--size) * .08) 0 0 calc(var(--size) * -.51);
-  border-radius: 6px; background: #2A2B2E; display: flex; align-items: center; justify-content: space-around; padding: 0 calc(var(--size) * .03); }
+  border-radius: 6px; background: var(--reel-panel, #2A2B2E); display: flex; align-items: center; justify-content: space-around; padding: 0 calc(var(--size) * .03); }
 .rl__counter { position: relative; display: flex; gap: 2px; padding: 3px; border-radius: 3px; background: #121214; }
 .rl__drum { width: calc(var(--size) * .06); height: calc(var(--size) * .085); overflow: hidden; border-radius: 2px; background: #F2EEE4; }
 .rl__digits { display: flex; flex-direction: column; transition: transform .35s var(--ease-io); }
@@ -129,6 +150,15 @@
   border-radius: calc(var(--size) * .06); background: #C9CDD3; box-shadow: 0 10px 24px var(--shadow), inset 0 0 0 1px rgba(0, 0, 0, .12);
   display: flex; align-items: center; gap: calc(var(--size) * .04); padding: 0 calc(var(--size) * .04); }
 :root[data-mode="dark"] .cd__front { background: #9EA3AA; }
+/* An explicit body colour wins over the light/dark palette in either mode. */
+:root[data-reel="black"] { --reel-body: #303134; --reel-panel: #17181A; }
+:root[data-reel="walnut"] { --reel-body: #76513A; --reel-panel: #282322; }
+:root[data-reel="cream"] { --reel-body: #D9CCB0; --reel-panel: #585046; }
+:root[data-cd="black"] { --cd-body: #303338; }
+:root[data-cd="white"] { --cd-body: #E9E7E1; }
+:root[data-cd="blue"] { --cd-body: #335B82; }
+:root[data-cd="red"] { --cd-body: #A6353D; }
+:root[data-cd]:not([data-cd="silver"]) :is(.cd__body, .cd__front) { background: var(--cd-body); }
 .cd__lcd { position: relative; flex: 1.4; min-width: 0; height: 74%; border-radius: 4px; background: #A4B591; color: #1C2716;
   box-shadow: inset 0 0 0 2px #6F7D61; padding: 4% 5%; display: flex; flex-direction: column; justify-content: space-between;
   font: 600 calc(var(--size) * .045)/1 ui-monospace, Menlo, monospace; }
@@ -236,3 +266,19 @@
 .shelf__sub { margin: -4px 0 10px; font-size: 13px; color: var(--text-2); }
 .shelf__play { margin-bottom: 12px; display: inline-flex; align-items: center; gap: 8px; }
 .shelf__play .ic { width: 16px; height: 16px; }
+
+.rd__cabinet[data-design="arch"] { border-radius: 32% 32% 8px 8px; padding-top: 12%; }
+.rd__cabinet[data-design="chrome"] { border: 6px solid #B8B7AF; border-radius: 14px; }
+.rd__cabinet[data-design="ivory"] .rd__dial { background: #EFE4CF; border: 2px solid #C6B793; }
+.rd__cabinet[data-design="portable"]::before { content: ''; position: absolute; left: 25%; right: 25%; top: -16px; height: 20px; border: 4px solid #A6A7AA; border-bottom: 0; border-radius: 5px 5px 0 0; }
+.rd__cabinet:is([data-design="digital"], [data-design="lcd"]) .rd__dial { background: #99AC8F; font-family: ui-monospace, monospace; }
+.rd__cabinet[data-design="lcd"] .rd__knob { border-radius: 4px; }
+.rd__speaker { position: relative; overflow: hidden; }
+.rd__speaker::before { content: ''; position: absolute; left: 7%; top: 0; bottom: 0; width: 2px; background: #9B896D; box-shadow: 12px 0 #9B896D,24px 0 #9B896D,36px 0 #9B896D,48px 0 #9B896D,60px 0 #9B896D,72px 0 #9B896D,84px 0 #9B896D,96px 0 #9B896D,108px 0 #9B896D,120px 0 #9B896D,132px 0 #9B896D,144px 0 #9B896D,156px 0 #9B896D,168px 0 #9B896D,180px 0 #9B896D,192px 0 #9B896D,204px 0 #9B896D; }
+.bare-exit { display: none; position: absolute; z-index: 8; top: 62px; right: 16px; font-size: 12px; min-height: 44px; }
+.fp.is-bare .bare-exit { display: inline-flex; }
+.device-hint { position: absolute; z-index: 9; left: 16px; right: 16px; top: 62px; padding: 12px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: 0 6px 18px var(--shadow); font-size: 13px; line-height: 1.5; }
+.device-hint span { flex: 1 1 200px; }.device-hint .icon-btn { margin-left: auto; }
+.device-help { padding: 4px 8px; line-height: 1.6; }.device-help > .ic { display: block; width: 72px; height: 72px; margin: 0 auto 16px; color: var(--accent-text); }.device-help li { margin: 0 0 14px; }
+.fp:not(.is-open) .device-hint { display: none; }
+@media (orientation: landscape) and (max-height: 500px) { .device-hint { top: 52px; left: 8px; right: auto; max-width: 42vw; font-size: 12px; }.bare-exit { top: 52px; } }

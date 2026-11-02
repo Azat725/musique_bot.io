@@ -1,8 +1,9 @@
 import { api } from '../api.js';
+import { viewScope } from '../lifecycle.js';
 import { plural, t } from '../i18n.js';
 import { player } from '../player.js';
 import { invalidatePlaylists, likedList, settings } from '../store.js';
-import { MAX_SAVED, offline, progress as savedProgress, usage as savedUsage } from '../offline.js';
+import { isSaved, MAX_SAVED, offline, progress as savedProgress, usage as savedUsage } from '../offline.js';
 import { confirmSheet, esc, h, haptic, icon, loader, promptName, sheet, toast, trackList } from '../ui.js';
 
 const FILTER_FROM = 8; // a list this long (or longer) gets a search field
@@ -48,9 +49,11 @@ export async function render(params, nav) {
       <input type="search" enterkeyhint="search" autocomplete="off" placeholder="${esc(t('list_filter'))}">
       <button class="icon-btn searchbar__clear" aria-label="clear" hidden>${icon('close')}</button>
     </div>
+    ${params.kind === 'likes' ? `<label class="download-filter"><input type="checkbox" data-saved-only>${esc(t('downloads_only'))}</label>` : ''}
     <div class="list__body">${loader()}</div>
   </div>`);
   const body = root.querySelector('.list__body');
+  const scope = viewScope(root);
   const sub = root.querySelector('.view__sub');
   const more = root.querySelector('[data-more]');
   const filterBar = root.querySelector('.searchbar--list');
@@ -58,11 +61,12 @@ export async function render(params, nav) {
   const filterClear = filterBar.querySelector('.searchbar__clear');
   let tracks = [];
   let query = '';
+  let savedOnly = false;
 
   /** What the filter lets through; with an empty field, the list itself. */
   const shown = () => {
     const q = norm(query.trim());
-    return q ? tracks.filter((tr) => norm(`${tr.title} ${tr.artist}`).includes(q)) : tracks;
+    return tracks.filter((tr) => (!savedOnly || isSaved(tr.id)) && (!q || norm(`${tr.title} ${tr.artist}`).includes(q)));
   };
 
   const refreshCount = (visible = shown()) => {
@@ -105,6 +109,7 @@ export async function render(params, nav) {
     filterClear.hidden = !query;
     draw();
   });
+  root.querySelector('[data-saved-only]')?.addEventListener('change', (e) => { savedOnly = e.target.checked; draw(); });
   filterClear.addEventListener('click', () => { filterInput.value = ''; query = ''; filterClear.hidden = true; draw(); filterInput.focus(); });
 
   root.querySelector('[data-play]').addEventListener('click', () => { const v = shown(); if (v.length) { haptic('medium'); player.playQueue(v, 0); } });
@@ -138,13 +143,16 @@ export async function render(params, nav) {
     });
   }
 
-  tracks = await loadTracks(params);
+  try { tracks = await loadTracks(params); } catch(error) { root.dispose(); throw error; }
   root.querySelector('.view__title').textContent = params.title;
   draw();
+  scope.listen(document, 'playlist-restored', async (e) => {
+    if (e.detail === params.id || (e.detail === 'likes' && params.kind === 'likes')) { tracks = await loadTracks(params); if (!root.disposed) draw(); }
+  });
   if (params.kind === 'likes') {
-    offline.addEventListener('change', () => { if (root.isConnected) refreshCount(); });
+    scope.listen(offline, 'change', () => { if (root.isConnected) { if (savedOnly) draw(); else refreshCount(); } });
     let dirty = false;
-    document.addEventListener('likes-changed', () => { dirty = true; });
+    scope.listen(document, 'likes-changed', () => { dirty = true; });
     root.onShow = async () => { if (!dirty) return; dirty = false; tracks = await loadTracks(params); draw(); };
   }
   return root;

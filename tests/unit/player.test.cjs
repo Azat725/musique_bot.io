@@ -1,0 +1,14 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
+async function engine(){
+  const settings={playerMode:'record',speed:'slow',reverb:'hall'};
+  class Audio extends EventTarget{constructor(){super();this.paused=true;}play(){throw Error('Audio forbidden');}pause(){}}
+  const context=vm.createContext({Audio,EventTarget,CustomEvent,navigator:{onLine:true},window:{},setTimeout,clearTimeout,URL});
+  const mock=(obj)=>new vm.SyntheticModule(Object.keys(obj),function(){Object.entries(obj).forEach(([k,v])=>this.setExport(k,v));},{context});
+  const deps={'./api.js':mock({api:{usesBlob:false}}),'./store.js':mock({heard:new Set(),settings,onSettings:()=>{},phonoMode:()=>settings.playerMode==='phonograph',radioMode:()=>settings.playerMode.startsWith('radio-')}),'./offline.js':mock({audioUrl:()=>null,isSaved:()=>false})};
+  const mod=new vm.SourceTextModule(fs.readFileSync('docs/js/player.js','utf8'),{context});await mod.link((s)=>deps[s]);await mod.evaluate();
+  const player=mod.namespace.player;player._load=()=>{};return {player,settings};
+}
+test('radio bypasses rendered effects and leaving restores the chosen sound',async()=>{const {player,settings}=await engine();const tr={id:'a'};assert.equal(player._fxFor(tr),'slow-hall');settings.playerMode='radio-car';assert.equal(player._fxFor(tr),'normal-off');settings.playerMode='radio-home';assert.equal(player._fxFor(tr),'normal-off');settings.playerMode='phonograph';assert.equal(player._fxFor(tr),'phono');settings.playerMode='cd';assert.equal(player._fxFor(tr),'slow-hall');});
+test('removing and restoring upcoming tracks never replaces the current track',async()=>{const {player}=await engine();const list=[{id:'a'},{id:'b'},{id:'c'}];player.playQueue(list);const session=player.queueSession;player.removeAt(1);assert.equal(player.current,list[0]);player.insertUpcoming([list[1]],1,session);assert.deepEqual(Array.from(player.queue,x=>x.id),['a','b','c']);player.playQueue([{id:'new'}]);assert.equal(player.insertUpcoming(list.slice(1),1,session),false);assert.equal(player.queue.length,1);});
+test('reordering cannot move or remove the playing track',async()=>{const {player}=await engine();player.playQueue([{id:'a'},{id:'b'},{id:'c'}]);player.removeAt(0);player.move(0,2);assert.equal(player.current.id,'a');player.move(2,1);assert.deepEqual(Array.from(player.queue,x=>x.id),['a','c','b']);});
+test('a cleared queue can be restored in order without starting playback',async()=>{const {player}=await engine();const list=[{id:'a'},{id:'b'},{id:'c'}];player.playQueue(list);player.clearUpcoming();assert.equal(player.queue.length,1);assert.equal(player.insertUpcoming(list.slice(1)),true);assert.deepEqual(Array.from(player.queue,x=>x.id),['a','b','c']);assert.equal(player.audio.paused,true);});
