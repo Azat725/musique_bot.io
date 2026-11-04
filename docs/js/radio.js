@@ -1,12 +1,13 @@
 import { api } from './api.js';
 import { player } from './player.js';
-import { settings, updateSettings } from './store.js';
+import { likedList, settings, updateSettings } from './store.js';
 import { t } from './i18n.js';
 import { RECEIVERS, receiverById } from './devices/receivers.js';
 import { esc, h, haptic, sheet, toast } from './ui.js';
 
 /** The radio as a time machine: the receiver sets the era and its home country (a Fiat 500 of 1965 plays Italy's
- *  sixties). Its stations are the same decade in seven countries, plus "Your wave" (picked from what you play).
+ *  sixties). Its stations are the same decade in seven countries, plus "Your wave": from your favourites when there are enough
+ *  of them (shuffled, nothing is searched), otherwise picked by the server from what you have played.
  *  The receiver, not a menu, decides what you hear: one model, one era, countries on its buttons. */
 
 export const COUNTRIES = ['us', 'uk', 'ussr', 'de', 'fr', 'it', 'jp'];
@@ -47,6 +48,22 @@ const events = new EventTarget(); // 'tuning' (a station is being found), 'tuned
 export const radioEvents = events;
 let tuning = 0;
 
+const WAVE_MIN = 5, WAVE_FILL = 20; // favourites needed for a wave of them, and the shortest queue that is made of them
+
+/** Your wave out of the favourites: shuffled, repeated (in new orders) until the queue is long enough to listen to. Nothing is
+ *  looked up: these are tracks the account already knows. Returns [] when there are too few favourites. */
+export function waveFromLikes(liked, rnd = Math.random) {
+  if (!liked || liked.length < WAVE_MIN) return [];
+  const out = [];
+  while (out.length < WAVE_FILL) {
+    const round = liked.slice();
+    for (let i = round.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [round[i], round[j]] = [round[j], round[i]]; }
+    if (out.length && round[0].id === out[out.length - 1].id) round.push(round.shift()); // not the same song twice running
+    out.push(...round);
+  }
+  return out;
+}
+
 /** Tune in a station: its songs (the country's decade, in a fresh order) start playing. */
 export async function tune(id = settings.radioStation || receiver().country) {
   const r = receiver();
@@ -55,7 +72,8 @@ export async function tune(id = settings.radioStation || receiver().country) {
   updateSettings({ radioStation: id });
   events.dispatchEvent(new CustomEvent('tuning', { detail: { id } }));
   try {
-    const { tracks = [] } = id === 'mine' ? await api.recommend() : await api.radio(id, decadeOf(r));
+    const wave = id === 'mine' ? waveFromLikes(await likedList().catch(() => [])) : []; // the favourites, or the server's pick if there are too few
+    const { tracks = [] } = wave.length ? { tracks: wave } : id === 'mine' ? await api.recommend() : await api.radio(id, decadeOf(r));
     if (seq !== tuning) return false; // tuned elsewhere meanwhile
     if (!tracks.length) throw new Error('empty');
     player.playQueue(tracks, 0);
