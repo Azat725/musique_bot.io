@@ -145,3 +145,42 @@ test('people wait at the kerb for a car that is coming, the player included, the
   p.state = 'wait';
   assert.equal(T.pedHit({ x: c.x, y: c.y, h: 0, len: 4, wid: 1.7 }, p), false, 'those waiting at the kerb cannot be hit');
 });
+
+test('records: a clean run is a record only from 50 m on, a race counts from the first movement and costs seconds for touches, nothing leaves the device', async () => {
+  const R = await load('records.js');
+  const mem = new Map(), storage = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, v) };
+  const rec = R.loadRecords(storage);
+  assert.deepEqual(rec, { clean: 0, race: 0 });
+  const run = R.makeRun();
+  run.clean = 30; assert.equal(R.endRun(run, rec), 0); // too short
+  run.clean = 412.7; assert.equal(R.endRun(run, rec), 412); assert.equal(rec.clean, 412); assert.equal(run.clean, 0);
+  run.clean = 300; assert.equal(R.endRun(run, rec), 0); // not a record
+  R.saveRecords(storage, rec);
+  assert.deepEqual(R.loadRecords(storage), { clean: 412, race: 0 });
+  assert.deepEqual(R.loadRecords({ getItem() { throw new Error('private mode'); } }), { clean: 0, race: 0 });
+  assert.deepEqual(R.loadRecords({ getItem: () => 'not json' }), { clean: 0, race: 0 });
+  assert.doesNotThrow(() => R.saveRecords({ setItem() { throw new Error('full'); } }, rec));
+
+  const { W, world } = await (async () => { const s = await setup(); return { W: s.W, world: s.world }; })();
+  const car = { x: 483, y: 280, v: 0 };
+  const course = R.makeCourse(world, W.rng('race'), car);
+  assert.equal(course.points.length, 6);
+  assert.equal(JSON.stringify(course.points), JSON.stringify(R.makeCourse(world, W.rng('race'), car).points)); // the same race for the same seed
+  for (const p of course.points) assert.ok(world.onRoad(p.x, p.y), 'a checkpoint off the road');
+  R.stepCourse(course, car, 5);
+  assert.equal(course.time, 0, 'the clock waits for the car to move');
+  car.v = 3;
+  R.stepCourse(course, car, 2);
+  assert.equal(course.time, 2);
+  let events = [];
+  for (const p of course.points) { Object.assign(car, { x: p.x, y: p.y }); events.push(R.stepCourse(course, car, 10)); }
+  assert.deepEqual(events, ['point', 'point', 'point', 'point', 'point', 'finish']);
+  assert.equal(course.done, true);
+  course.touches = 2;
+  assert.equal(R.courseTotal(course), course.time + 2 * R.PENALTY);
+  const first = R.finishCourse(course, rec);
+  assert.equal(first.best, true); assert.equal(rec.race, first.total);
+  course.touches = 5;
+  assert.equal(R.finishCourse(course, rec).best, false); // slower: the record stays
+  assert.equal(R.clock(75.4), '1:15');
+});

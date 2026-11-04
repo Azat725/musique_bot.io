@@ -135,7 +135,7 @@ test('drive: the mini game asks first, drives only on the road, tunes by holding
   await expect(page.locator('.drive')).toHaveCount(0);
   await expect(page.locator('.sheet')).toHaveCount(0);
   await page.locator('[data-drive]').click();
-  await page.locator('.sheet .sheet__item').click();
+  await page.locator('.sheet .sheet__item').first().click();
   await expect(page.locator('.drive')).toBeVisible();
   await expect(page.locator('.drive .rx-needle').first()).toBeAttached(); // the car's own dashboard, alive
   const coloursSeen=await page.evaluate(()=>{const c=document.querySelector('.drive__view'),d=c.getContext('2d').getImageData(0,0,c.width,Math.round(c.height*.5)).data,seen=new Set();for(let i=0;i<d.length;i+=4*97)seen.add(d[i]+','+d[i+1]+','+d[i+2]);return seen.size;});
@@ -169,7 +169,7 @@ test('drive: the mini game asks first, drives only on the road, tunes by holding
   await expect(page.locator('.fp.is-open')).toBeVisible(); // back in the player
   await expect(page.locator('.sheet')).toHaveCount(0);
   await page.setViewportSize({width:375,height:812});
-  await page.locator('[data-drive]').click();await page.locator('.sheet .sheet__item').click();
+  await page.locator('[data-drive]').click();await page.locator('.sheet .sheet__item').first().click();
   await expect(page.locator('.drive__rotate')).toBeVisible(); // held upright: asks to turn the phone
   await page.keyboard.press('Escape');
   await page.locator('.fp [data-close]').click();
@@ -212,4 +212,34 @@ test('removing a downloaded file keeps the favourite and does not download it ag
   await expect(page.locator('.download-row')).toHaveCount(1);await page.locator('[data-action="remove"]').click();
   await expect(page.locator('.download-row')).toHaveCount(0);
   expect(await page.evaluate(async()=>{const {likes}=await import('/js/store.js');return likes.has('track000000');})).toBe(true);
+});
+test('drive: the race shows the next checkpoint, ends with a result, and the best time stays on this device only',async({page})=>{
+  test.setTimeout(60000);
+  await page.setViewportSize({width:812,height:375});
+  const requests=[];
+  page.on('request',(r)=>{ if(new URL(r.url()).pathname.startsWith('/api/')) requests.push(new URL(r.url()).pathname); });
+  await boot(page,{playerMode:'radio-car',firstUse:Date.now()});
+  await page.evaluate(async(tracks)=>{const {player}=await import('/js/player.js');const {openPlayer}=await import('/js/vinyl.js');player.queue=[tracks[0]];player.index=0;openPlayer();},tracks);
+  await page.locator('[data-drive]').click();
+  await page.locator('.sheet .sheet__item').nth(1).click(); // the race
+  await expect(page.locator('.drive')).toBeVisible();
+  await expect(page.locator('.drive__hud1')).toHaveText('Checkpoint 1 of 6');
+  await expect(page.locator('.drive__arrow')).toBeVisible();
+  const quiet=requests.length;
+  await page.evaluate(async()=>{ // drive to every checkpoint at once
+    const g=(await import('/js/drive/game.js')).driveState();
+    for(const p of g.course().points){ Object.assign(g.car,{x:p.x,y:p.y,v:3}); await new Promise((r)=>setTimeout(r,120)); }
+  });
+  await expect(page.locator('.drive__result')).toBeVisible();
+  await expect(page.locator('.drive__result h2')).toHaveText('Race finished');
+  await expect(page.locator('.drive__resultbest')).toHaveText('Your best yet!');
+  const kept=await page.evaluate(()=>JSON.parse(localStorage.getItem('musique.drive-records')));
+  expect(kept.race).toBeGreaterThan(0);
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('musique.settings')).drive)).toBeUndefined(); // not in the synced settings
+  await page.locator('[data-keep]').click();
+  await expect(page.locator('.drive__result')).toBeHidden();
+  await expect(page.locator('.drive__hud1')).toContainText('No touches');
+  expect(requests.length).toBe(quiet); // nothing sent anywhere
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.keyboard.press('Escape');
 });

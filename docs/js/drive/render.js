@@ -214,6 +214,17 @@ export function createRenderer(canvas, world, style) {
     }
   }
 
+  /** The next checkpoint of a race: a flat ring on the road and a tall pillar of light that can be seen over the roofs. */
+  function beaconAt(p, d) {
+    const f = fwd(p.x, p.y);
+    const ring = (rad) => Array.from({ length: 16 }, (_, i) => [p.x + Math.cos(i / 16 * 6.283) * rad, p.y + Math.sin(i / 16 * 6.283) * rad, 0.03]);
+    fillPoly(ring(11), 'rgba(77,141,255,0.24)'); fillPoly(ring(6.5), 'rgba(120,170,255,0.3)');
+    if (f < 1.5) return;
+    const k = focal / f, x = sx(side(p.x, p.y), f), top = sy(70, f), bottom = sy(0, f);
+    ctx.fillStyle = 'rgba(120,170,255,0.5)'; ctx.fillRect(x - 0.9 * k, top, 1.8 * k, bottom - top);
+    ctx.fillStyle = 'rgba(214,230,255,0.9)'; ctx.fillRect(x - 0.25 * k, top, 0.5 * k, bottom - top);
+  }
+
   // ----- people, lamps, lights, trees: billboards -----
   function person(p, d) {
     const f = fwd(p.x, p.y);
@@ -261,9 +272,9 @@ export function createRenderer(canvas, world, style) {
     ctx.fillStyle = fog('#0A2018', d); ctx.beginPath(); ctx.arc(x + 0.9 * k * t.s, y - 3.3 * k * t.s, 1.7 * k * t.s, 0, 7); ctx.fill();
   }
 
-  /** Draws one frame. `f` = { car, traffic, lights, time, shake }. */
+  /** Draws one frame. `f` = { car, traffic, lights, time, shake, beacon }. */
   function draw(f) {
-    const { car, traffic, lights, time, shake = 0 } = f;
+    const { car, traffic, lights, time, shake = 0, beacon = null } = f;
     camH = car.h; cosH = Math.cos(car.h); sinH = Math.sin(car.h);
     const seat = style.lht ? 0.35 : -0.35; // the driver sits on the right in Britain and Japan
     camX = car.x + cosH * 0.3 + sinH * seat; camY = car.y + sinH * 0.3 - cosH * seat;
@@ -285,10 +296,11 @@ export function createRenderer(canvas, world, style) {
     for (const t of world.trees) { const d = dist(t.x, t.y); if (d < 120 && fwd(t.x, t.y) > 0) items.push({ k: 3, o: t, d }); }
     for (const c of traffic.cars) { const d = dist(c.x, c.y); if (d < 200 && fwd(c.x, c.y) > -6) items.push({ k: 4, o: c, d }); }
     for (const p of traffic.peds) { const d = dist(p.x, p.y); if (d < 70 && fwd(p.x, p.y) > 0) items.push({ k: 5, o: p, d }); }
+    if (beacon) items.push({ k: 6, o: beacon, d: dist(beacon.x, beacon.y) });
     items.sort((a, b) => b.d - a.d);
     for (const it of items) {
       if (it.k === 0) building(it.o, it.d); else if (it.k === 1) lamp(it.o, it.d); else if (it.k === 2) trafficLight(it.o, it.d);
-      else if (it.k === 3) tree(it.o, it.d); else if (it.k === 4) vehicle(it.o, it.d); else person(it.o, it.d);
+      else if (it.k === 3) tree(it.o, it.d); else if (it.k === 4) vehicle(it.o, it.d); else if (it.k === 6) beaconAt(it.o, it.d); else person(it.o, it.d);
     }
   }
 
