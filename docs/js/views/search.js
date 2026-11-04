@@ -5,7 +5,7 @@ import { clearRecentSearches, pushRecentSearch, recentSearches, settings, update
 import { artistRow, confirmSheet, esc, h, haptic, icon, loader, trackList } from '../ui.js';
 
 const MODES = ['all', 'tracks', 'artists'];
-const SUGGEST_DELAY = 60; // ms of quiet typing before asking the server
+const SUGGEST_DELAY = 200; // ms of quiet typing before asking the server: one request per pause, not per key
 const suggestCache = new Map(); // query -> what the server suggested, so going back a letter is instant
 let last = null; // { q, mode, tracks, more, artists }
 

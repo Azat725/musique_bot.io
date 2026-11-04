@@ -10,7 +10,6 @@ import { syncVinylNoise } from './sfx.js';
 import { maybeShowStories } from './stories.js';
 import { CLASSIC_BG, THEMES } from './themes.js';
 import { loadTypeface } from './fonts.js';
-import { showRadioIntro } from './radio.js';
 import { closePlayer, deviceKey, initFullPlayer, isPlayerOpen, openPlayer, translate as translatePlayer } from './vinyl.js';
 import * as artist from './views/artist.js';
 import * as artists from './views/artists.js';
@@ -64,8 +63,6 @@ function applyTheme() {
   doc.dataset.lid = settings.lidColor === 'silver' ? 'silver' : 'clear'; // the CD player's lid
   doc.dataset.cd = settings.cdColor || 'silver';
   doc.dataset.reel = settings.reelColor || 'silver';
-  doc.dataset.radio = settings.radioColor || 'walnut';
-  doc.dataset.radioDecade = settings.radioDecade || '1960';
   doc.dataset.themeFont = settings.themeFont ? (settings.colorTheme || 'classic') : 'off';
   if(settings.themeFont) loadTypeface(settings.colorTheme);
   const color = custom ? custom[mode].bg : COLORS[mode];
@@ -366,13 +363,17 @@ player.addEventListener('time', () => {
   const bar = mini.firstElementChild; // .mini__progress
   if (bar) bar.style.setProperty('--p', player.duration ? player.time / player.duration : 0);
 });
-const WHY = ['region', 'removed', 'age', 'youtube', 'notfound'];
-player.addEventListener('error', async (e) => {
-  const id = e.detail?.track?.id;
+const WHY = ['region', 'removed', 'age', 'youtube', 'notfound', 'busy'];
+player.addEventListener('error', (e) => {
   if (!navigator.onLine) { toast(t('why_offline'), 'error'); return; }
-  let reason = '';
-  try { reason = id ? (await api.why(id)).reason : ''; } catch { reason = 'server'; }
+  const reason = e.detail?.reason || ''; // the player has already asked the server why
   toast(t(reason === 'server' ? 'why_server' : WHY.includes(reason) ? 'why_' + reason : 'toast_unavailable'), 'error');
+});
+let busyShown = '';
+player.addEventListener('busy', (e) => { // said once per track, while the player quietly asks again
+  if (busyShown === e.detail.track.id) return;
+  busyShown = e.detail.track.id;
+  toast(t('player_busy'));
 });
 player.addEventListener('offline-miss', () => toast(t('offline_miss'), 'error'));
 // the network went away: say once that what is saved keeps playing
@@ -418,7 +419,6 @@ onSettings(() => {
   applyTheme(); // CSS-only, no re-render needed
   noiseOn();
   if (settings.lang === shownLang && settings.playerMode === shownMode) return;
-  if(settings.playerMode!==shownMode && settings.playerMode.startsWith('radio-')) showRadioIntro();
   shownLang = settings.lang;
   shownMode = settings.playerMode;
   setLang(settings.lang);

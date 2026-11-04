@@ -37,7 +37,16 @@
 
   --r-sm: 6px;
   --r-md: 8px;
+  --r-lg: 12px;             /* sheets and dialogs */
+  /* one spacing scale for every screen: content starts --gutter from the edge, blocks of a page are --section-gap
+     apart, things inside a block --gap apart, and a card holds its content --card-y / --card-x in from its edge */
   --gutter: 16px;
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
+  --gap: 12px;
+  --section-gap: 28px;
+  --card-y: 14px;
+  --card-x: 16px;
+  --col: 720px;             /* the column every screen keeps to on a wide screen (a computer) */
   --nav-h: 60px;
   --mini-h: 64px;
   --safe-b: env(safe-area-inset-bottom, 0px);

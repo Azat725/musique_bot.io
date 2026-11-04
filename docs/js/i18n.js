@@ -1,7 +1,6 @@
 import { UX } from './ux-i18n.js';
 const DICT = {
   ru: {
-    ...UX.ru,
     nav_home: 'Главная', nav_search: 'Поиск', nav_library: 'Медиатека', nav_settings: 'Настройки',
     greet_morning: 'Доброе утро', greet_day: 'Добрый день', greet_evening: 'Добрый вечер', greet_night: 'Доброй ночи',
     home_recent: 'Недавно слушали',
@@ -175,9 +174,9 @@ const DICT = {
     custom_sleeve_cd: 'Бокс для новых треков', custom_sleeve_hint_cd: 'Диск достаётся из бокса, когда трек звучит впервые',
     custom_sleeve_reel: 'Коробка для новых треков', custom_sleeve_hint_reel: 'Бобина достаётся из картонной коробки, когда трек звучит впервые',
     custom_idle_hint_cd: 'Через сколько секунд останется только плеер', custom_haptic_hint_cd: 'Лёгкие щелчки под пальцем на полосе и диске',
+    ...UX.ru, // last: the newer texts of ux-i18n.js win over older ones of the same name
   },
   en: {
-    ...UX.en,
     nav_home: 'Home', nav_search: 'Search', nav_library: 'Library', nav_settings: 'Settings',
     greet_morning: 'Good morning', greet_day: 'Good afternoon', greet_evening: 'Good evening', greet_night: 'Good night',
     home_recent: 'Recently played',
@@ -351,6 +350,7 @@ const DICT = {
     custom_sleeve_cd: 'Jewel case for new tracks', custom_sleeve_hint_cd: 'A disc comes out of its case when a track plays for the first time',
     custom_sleeve_reel: 'Box for new tracks', custom_sleeve_hint_reel: 'A reel comes out of its cardboard box when a track plays for the first time',
     custom_idle_hint_cd: 'After how many seconds only the player stays', custom_haptic_hint_cd: 'Light ticks under your finger on the bar and the disc',
+    ...UX.en,
   },
 };
 

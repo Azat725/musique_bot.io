@@ -20,37 +20,34 @@ async function boot(page,patch={}) {
   await expect(page.locator('#nav')).toBeVisible();
   await expect(page.locator('.boot')).toHaveCount(0);
 }
-async function settings(page,section) {
+async function settings(page) {
   await page.locator('[data-tab="settings"]').click();
-  if(section)await page.locator(`[data-action="section:${section}"]`).click();
+  await expect(page.locator('.settings-view')).toBeVisible();
 }
-test('appearance preview cancels without applying; Apply persists a draft',async({page})=>{
-  await boot(page); await settings(page,'appearance');
-  await page.locator('[data-action="look"]').click();
-  await page.locator('[data-key="colorTheme"][data-value="ussr"]').click();
-  await page.keyboard.press('Escape');
-  await expect(page.locator('.sheet')).toHaveCount(0);
-  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('musique.settings')).colorTheme)).not.toBe('ussr');
-  await page.locator('[data-action="look"]').click();
-  await page.locator('[data-key="playerMode"][data-value="cd"]').click();
-  await page.locator('[data-key="cdColor"][data-value="blue"]').click();
-  await page.locator('[data-apply]').click();
+test('settings apply at once: a player, its colour and a theme in one tap each',async({page})=>{
+  await boot(page); await settings(page);
+  await page.locator('[data-picks="playerMode"] [data-value="cd"]').click();
   await expect(page.locator('html')).toHaveAttribute('data-player','cd');
+  await page.locator('[data-swatches="cdColor"] [data-value="blue"]').click();
   await expect(page.locator('html')).toHaveAttribute('data-cd','blue');
+  await page.locator('[data-picks="colorTheme"] [data-value="ussr"]').click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme','ussr');
+  await expect(page.locator('select, [data-apply]')).toHaveCount(0);
 });
 test('modal Escape returns focus to its opener',async({page})=>{
-  await boot(page); await settings(page,'appearance');
-  const button=page.locator('[data-action="look"]'); await button.click();
+  await boot(page); await settings(page);
+  const button=page.locator('[data-action="presets"]'); await button.click();
   await expect(page.locator('.sheet.is-open')).toBeVisible();await page.keyboard.press('Escape');
   await expect(button).toBeFocused();
 });
-test('saved looks can be previewed again and discarded',async({page})=>{
-  await boot(page);await settings(page,'appearance');await page.locator('[data-action="presets"]').click();
+test('saved looks are put back on in one tap',async({page})=>{
+  await boot(page);await settings(page);await page.locator('[data-action="presets"]').click();
   await page.getByRole('button',{name:'Save current look',exact:true}).click();
   await page.locator('.dialog input').fill('Evening');await page.getByRole('button',{name:'Save',exact:true}).click();
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('musique.settings')).lookPresets.length)).toBe(1);
-  await page.locator('[data-action="presets"]').click();await page.getByRole('button',{name:'Evening',exact:true}).click();await page.getByRole('button',{name:'Apply',exact:true}).click();
-  await expect(page.locator('.look-preview')).toBeVisible();await page.keyboard.press('Escape');
+  await page.locator('[data-picks="colorTheme"] [data-value="noir"]').click();
+  await page.locator('[data-action="presets"]').click();await page.getByRole('button',{name:/^Evening/}).click();await page.getByRole('button',{name:'Put it on',exact:true}).click();
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme','noir');
 });
 test('search suggestions support keyboard; results survive a failed refresh and retry',async({page})=>{
   await boot(page); await page.locator('[data-tab="search"]').click();
@@ -59,7 +56,7 @@ test('search suggestions support keyboard; results survive a failed refresh and 
   await expect(input).toHaveAttribute('aria-activedescendant','suggestion-0');await input.press('Enter');
   await expect(page.locator('.search__body .track')).toHaveCount(12);
   await page.route('**/api/search?**',route=>route.fulfill({status:503,json:{}}));
-  await input.fill('new query');await expect(page.locator('.search__status')).toContainText('Could not refresh');
+  await input.fill('new query');await expect(page.locator('.search__status')).toContainText('Could not load');
   await expect(page.locator('.search__body .track')).toHaveCount(12);
   await page.unroute('**/api/search?**');await page.getByRole('button',{name:'Retry',exact:true}).click();
   await expect(page.locator('.search__status')).toBeEmpty();
@@ -80,21 +77,18 @@ test('queue removal and undo preserve the current track; new queues reject old u
   await page.locator('.toast__action').click();await expect(page.locator('.queue__list .qrow')).toHaveCount(0);
 });
 test('downloads screen can pause and resume without deleting liked songs',async({page})=>{
-  await boot(page);await settings(page,'offline');await page.locator('[data-action="downloads"]').click();
+  await boot(page);await settings(page);await page.locator('[data-action="downloads"]').click();
   await page.locator('[data-pause]').click();await expect(page.locator('[data-pause]')).toHaveText('Resume');
   await page.locator('[data-pause]').click();await expect(page.locator('[data-pause]')).toHaveText('Pause');
 });
-test('radio settings and locked effects; all device modes open without audio',async({page})=>{
-  await boot(page,{playerMode:'radio-car'});await settings(page,'device');
-  await page.locator('[data-idle-value="60"]').click();
-  await expect(page.locator('[data-idle-value="60"]')).toHaveAttribute('aria-checked','true');
-  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('musique.settings')).idleDelay)).toBe(60);
-  await expect(page.locator('select')).toHaveCount(0);
-  await page.locator('[data-radio-setting="radioProfileCar"][data-value="car-80"]').click();
-  await expect(page.locator('[data-radio-setting="radioCountry"][data-value="jp"]')).toHaveAttribute('aria-checked','true');
-  await expect(page.locator('[data-radio-setting="radioDecade"][data-value="1980"]')).toHaveAttribute('aria-checked','true');
+test('radio: the receiver decides the era, its keys tune stations; all device modes open without audio',async({page})=>{
+  await boot(page,{playerMode:'radio-car'});await settings(page);
+  await page.locator('[data-action="receiver"]').click();
+  await page.locator('.garage__item[data-id="w123"]').click();
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('musique.settings')).radioCar)).toBe('w123');
   await page.evaluate(async()=>{const {openControlPanel}=await import('/js/eq.js');openControlPanel();});
-  for(const button of await page.locator('[data-seg] button').all())await expect(button).toBeDisabled();
+  await expect(page.locator('[data-seg="speed"]')).toHaveCount(0);
+  await expect(page.locator('[data-seg="radioRain"]')).toBeVisible();
   await page.keyboard.press('Escape');
   for(const mode of ['record','turntable','cassette','reel','cd','phonograph','radio-car','radio-home']){
     await page.evaluate(async({mode,tracks})=>{const {updateSettings}=await import('/js/store.js');const {player}=await import('/js/player.js');updateSettings({playerMode:mode,deviceHints:{[mode]:true}});player.queue=[tracks[0]];player.index=0;const {openPlayer}=await import('/js/vinyl.js');openPlayer();},{mode,tracks});
@@ -103,10 +97,12 @@ test('radio settings and locked effects; all device modes open without audio',as
   }
   expect(await page.evaluate(()=>window.__audioAttempts||0)).toBe(0);
 });
-test('bare-device mode has an explicit exit and no horizontal overflow in landscape',async({page})=>{
+test('only the machine: no button on the stage, left through the player menu; no sideways overflow',async({page})=>{
   await boot(page,{playerMode:'cd',bareDeck:true});await page.setViewportSize({width:812,height:375});
   await page.evaluate(async(tracks)=>{const {player}=await import('/js/player.js');player.queue=[tracks[0]];player.index=0;const {openPlayer}=await import('/js/vinyl.js');openPlayer();},tracks);
-  await expect(page.locator('[data-bare-exit]')).toBeVisible();await page.locator('[data-bare-exit]').click();await expect(page.locator('.fp')).not.toHaveClass(/is-bare/);
+  await expect(page.locator('.fp')).toHaveClass(/is-bare/);await expect(page.locator('.bare-exit, [data-bare-exit]')).toHaveCount(0);
+  await page.locator('.fp [data-more]').click();await page.getByRole('button',{name:/Show the player/}).click();
+  await expect(page.locator('.fp')).not.toHaveClass(/is-bare/);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });
 test('removing a downloaded file keeps the favourite and does not download it again',async({page})=>{
@@ -115,7 +111,7 @@ test('removing a downloaded file keeps the favourite and does not download it ag
     const db=await new Promise((resolve,reject)=>{const open=indexedDB.open('musique-offline',1);open.onsuccess=()=>resolve(open.result);open.onerror=()=>reject(open.error);});
     await new Promise((resolve,reject)=>{const tx=db.transaction('tracks','readwrite');tx.objectStore('tracks').put({id:track.id,meta:track,blob:new Blob(['test'],{type:'audio/mp4'}),size:4});tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);}); db.close();
   },tracks[0]);
-  await page.reload();await expect(page.locator('.boot')).toHaveCount(0);await settings(page,'offline');await page.locator('[data-action="downloads"]').click();
+  await page.reload();await expect(page.locator('.boot')).toHaveCount(0);await settings(page);await page.locator('[data-action="downloads"]').click();
   await expect(page.locator('.download-row')).toHaveCount(1);await page.locator('[data-action="remove"]').click();
   await expect(page.locator('.download-row')).toHaveCount(0);
   expect(await page.evaluate(async()=>{const {likes}=await import('/js/store.js');return likes.has('track000000');})).toBe(true);

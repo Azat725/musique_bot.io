@@ -22,6 +22,8 @@ function migrate() {
     if (NATIVE_MODE[settings.colorTheme]) settings.theme = NATIVE_MODE[settings.colorTheme];
     settings.themeModeSet = true;
   }
+  // Codex's first radio kept a model, a country and a decade apart: the receiver now decides all three
+  for (const k of ['radioDecade', 'radioCountry', 'radioColor', 'radioSource', 'radioProfileCar', 'radioProfileHome']) delete settings[k];
   // the 33 / 45 switch grew into a speed with a slowed setting
   if (settings.rpm45 && settings.speed === 'normal') settings.speed = 'fast';
   delete settings.rpm45;
@@ -37,14 +39,16 @@ export const settings = {
   searchMode: 'all',
   name: '', // optional name for the home greeting
   colorTheme: 'classic', // themes.js; 'classic' follows `theme` (auto / light / dark)
-  playerMode: 'record', // devices/index.js PLAYER_MODES: record, turntable, cassette, reel, cd, phonograph
+  playerMode: 'record', // devices/index.js PLAYER_MODES: record, turntable, cassette, reel, cd, phonograph, radio-car, radio-home
   bareDeck: false, // "only the machine": no title, bar or buttons under it, the device itself is played
   lidColor: 'clear', // the portable CD player's lid: 'clear' or 'silver'
   cdColor: 'silver', // the portable player's body
   reelColor: 'silver', // the reel-to-reel recorder's cabinet
   themeFont: false, // keep the familiar type until explicitly enabled
-  radioDecade: '1960', radioCountry: 'us', radioColor: 'walnut',
-  radioSource: 'forYou', radioProfileCar: 'car-60', radioProfileHome: 'home-60',
+  // the radio: which car and which home set (devices/receivers.js), the station on air, and the car's surroundings
+  radioCar: 'fiat500', radioHome: 'spidola', radioStation: '',
+  radioEra: true, // sets of the 30s-60s sound like medium wave (rendered by the server: fx "am")
+  radioRain: false, radioRoad: false,
   recordColor: 'black',
   deckColor: 'walnut', // the turntable's colourway, see css/tokens.css
   tapeColor: 'black', // the cassette's shell, see themes.js TAPE_COLORS

@@ -7,27 +7,6 @@
 .dk { position: absolute; inset: 0; display: none; pointer-events: none; }
 .dk > * { position: absolute; }
 .fp.is-reel .dk--reel, .fp.is-cd .dk--cd, .fp.is-phonograph .dk--phonograph { display: block; }
-.fp.is-radio-car .rd--car, .fp.is-radio-home .rd--home { display: block; }
-.fp:is(.is-radio-car, .is-radio-home) { --size: min(78vw, 40vh, 380px); }
-.fp:is(.is-radio-car, .is-radio-home) .fp__stage { min-height: calc(var(--size) * .75 + 20px); }
-.record.radio-medium { width: var(--size); height: calc(var(--size) * .6); border-radius: 0; box-shadow: none; opacity: 0; pointer-events: none; }
-.rd__cabinet { position: absolute; left: 50%; top: 50%; width: var(--size); height: calc(var(--size) * .68); transform: translate(-50%, -50%); border-radius: 8px; padding: 5%; background: var(--radio-body, #76513A); box-shadow: 0 16px 40px var(--shadow), inset 0 0 0 2px rgba(0, 0, 0, .2); }
-.rd--car .rd__cabinet { height: calc(var(--size) * .48); border-radius: 4px; }
-.rd__brand { color: #F2EBD8; font: 700 calc(var(--size) * .032)/1 var(--font-sans); letter-spacing: .18em; margin-bottom: 3%; }
-.rd__dial { position: relative; height: 20%; border-radius: 3px; background: #E6D3A7; color: #342B23; font: 600 calc(var(--size) * .025)/1 var(--font-sans); display: grid; place-items: center; }
-.rd__dial i { position: absolute; left: 55%; top: 0; bottom: 0; width: 2px; background: #9F2930; }
-.rd__face { display: flex; align-items: center; gap: 6%; height: 28%; }
-.rd__knob { flex: none; width: 13%; aspect-ratio: 1; border-radius: 50%; background: #D3C9B3; color: #34302D; display: grid; place-items: center; box-shadow: 0 2px 0 rgba(0,0,0,.4); }
-.rd__knob svg { width: 50%; height: 50%; fill: currentColor; }
-.rd__display { flex: 1; min-width: 0; text-align: center; color: #F2EBD8; font: 600 calc(var(--size) * .034)/1.3 var(--font-sans); }
-.rd__display b { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }.rd__display small { font-size: .75em; opacity: .8; }
-.rd__speaker { height: 20%; border-radius: 3px; background: #574638; border: 2px solid #8D795B; }
-.rd--car .rd__speaker { display: none; }
-.rd__keys { height: 20%; display: flex; gap: 4%; justify-content: center; align-items: center; }.rd__keys span { width: 13%; height: 70%; display: grid; place-items: center; border-radius: 2px; background: #C6B99D; color: #2E2925; }.rd__keys svg { width: 55%; height: 70%; fill: currentColor; }
-:root[data-radio="black"] { --radio-body: #303134; } :root[data-radio="cream"] { --radio-body: #B6A483; } :root[data-radio="silver"] { --radio-body: #797D81; }
-:root:is([data-radio-decade="1940"], [data-radio-decade="1950"]) .rd--home .rd__cabinet { border-radius: 32% 32% 8px 8px; padding-top: 12%; }
-:root:is([data-radio-decade="1980"], [data-radio-decade="1990"], [data-radio-decade="2000"]) .rd__cabinet { border-radius: 3px; }
-:root:is([data-radio-decade="1990"], [data-radio-decade="2000"]) .rd__dial { background: #A4B591; font-family: ui-monospace, monospace; }
 /* a device's own keys work: play, pause, a tap on ◀◀ / ▶▶ changes the track, holding one winds (vinyl.js keyDown) */
 .dev [data-key] { pointer-events: auto; cursor: pointer; touch-action: none; -webkit-tap-highlight-color: transparent; }
 .rec__key.is-down { transform: translateY(calc(var(--size) * .012)); box-shadow: 0 calc(var(--size) * .002) 0 var(--rc-key-down); background: var(--rc-key-down); }
@@ -237,10 +216,7 @@
 .sleeve.is-tube .sleeve__brand { font-size: calc(var(--size) * .08); color: #3A2414; }
 .sleeve.is-tube .sleeve__hinge { height: 14%; background: #6B4A26; }
 
-/* ---------- Settings: the players as cards, locked panel for the phonograph ---------- */
-.player-card__icon, .player-dot { display: grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: var(--r-sm); background: var(--surface-2);
-  color: var(--accent-text); box-shadow: 0 0 0 1px var(--line); }
-.player-card__icon .ic, .player-dot .ic { width: 22px; height: 22px; }
+/* ---------- the control panel locked for the phonograph ---------- */
 .eqp__lock { margin: 0 0 10px; padding: 10px 12px; border-radius: var(--r-md); background: var(--surface-2); font-size: 13.5px; line-height: 1.35; color: var(--text-2); }
 .eqp.is-locked > :not(.eqp__title):not(.eqp__lock) { opacity: .35; pointer-events: none; }
 
@@ -267,18 +243,112 @@
 .shelf__play { margin-bottom: 12px; display: inline-flex; align-items: center; gap: 8px; }
 .shelf__play .ic { width: 16px; height: 16px; }
 
-.rd__cabinet[data-design="arch"] { border-radius: 32% 32% 8px 8px; padding-top: 12%; }
-.rd__cabinet[data-design="chrome"] { border: 6px solid #B8B7AF; border-radius: 14px; }
-.rd__cabinet[data-design="ivory"] .rd__dial { background: #EFE4CF; border: 2px solid #C6B793; }
-.rd__cabinet[data-design="portable"]::before { content: ''; position: absolute; left: 25%; right: 25%; top: -16px; height: 20px; border: 4px solid #A6A7AA; border-bottom: 0; border-radius: 5px 5px 0 0; }
-.rd__cabinet:is([data-design="digital"], [data-design="lcd"]) .rd__dial { background: #99AC8F; font-family: ui-monospace, monospace; }
-.rd__cabinet[data-design="lcd"] .rd__knob { border-radius: 4px; }
-.rd__speaker { position: relative; overflow: hidden; }
-.rd__speaker::before { content: ''; position: absolute; left: 7%; top: 0; bottom: 0; width: 2px; background: #9B896D; box-shadow: 12px 0 #9B896D,24px 0 #9B896D,36px 0 #9B896D,48px 0 #9B896D,60px 0 #9B896D,72px 0 #9B896D,84px 0 #9B896D,96px 0 #9B896D,108px 0 #9B896D,120px 0 #9B896D,132px 0 #9B896D,144px 0 #9B896D,156px 0 #9B896D,168px 0 #9B896D,180px 0 #9B896D,192px 0 #9B896D,204px 0 #9B896D; }
-.bare-exit { display: none; position: absolute; z-index: 8; top: 62px; right: 16px; font-size: 12px; min-height: 44px; }
-.fp.is-bare .bare-exit { display: inline-flex; }
-.device-hint { position: absolute; z-index: 9; left: 16px; right: 16px; top: 62px; padding: 12px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: 0 6px 18px var(--shadow); font-size: 13px; line-height: 1.5; }
+/* the first time with a device: how it is played, under the top bar, in the player's column; it fades with the bar */
+.device-hint { position: absolute; z-index: 9; left: var(--gutter); right: var(--gutter); top: 62px; max-width: calc(var(--col) - 2 * var(--gutter));
+  margin: 0 auto; padding: var(--s3) var(--s3) var(--s3) var(--card-x); transition: opacity .45s var(--ease-io); display: flex; align-items: center; flex-wrap: wrap; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: 0 6px 18px var(--shadow); font-size: 13px; line-height: 1.5; }
 .device-hint span { flex: 1 1 200px; }.device-hint .icon-btn { margin-left: auto; }
 .device-help { padding: 4px 8px; line-height: 1.6; }.device-help > .ic { display: block; width: 72px; height: 72px; margin: 0 auto 16px; color: var(--accent-text); }.device-help li { margin: 0 0 14px; }
 .fp:not(.is-open) .device-hint { display: none; }
-@media (orientation: landscape) and (max-height: 500px) { .device-hint { top: 52px; left: 8px; right: auto; max-width: 42vw; font-size: 12px; }.bare-exit { top: 52px; } }
+.fp.is-idle .device-hint { opacity: 0; pointer-events: none; }
+@media (orientation: landscape) and (max-height: 500px) { .device-hint { top: 52px; left: var(--gutter); right: auto; max-width: 42vw; font-size: 12px; } }
+
+/* ---------- the radios: a receiver drawn whole (js/devices/receivers.js), its dial or display laid over it ---------- */
+
+.fp.is-radio-car .dk--radio.rx--car, .fp.is-radio-home .dk--radio.rx--home { display: block; }
+.fp:is(.is-radio-car, .is-radio-home) { --size: min(92vw, 52vh, 520px); }
+.fp.is-radio-car .fp__stage { min-height: calc(var(--size) * .92); }
+.fp.is-radio-home .fp__stage { min-height: calc(var(--size) * .8); }
+.fp.is-bare:is(.is-radio-car, .is-radio-home) { --size: min(94vw, 60vh, 560px); }
+.record.radio-medium { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.rx > * { position: absolute; left: 50%; transform: translateX(-50%); width: var(--size); }
+.rx--home .rx__body { top: 50%; transform: translate(-50%, -54%); aspect-ratio: 400 / 300; }
+.rx--car .rx__glass { top: calc(50% - var(--size) * .46); height: calc(var(--size) * .3); overflow: hidden; background: #9CC0D4;
+  border-radius: calc(var(--size) * .08) calc(var(--size) * .08) 0 0; }
+.rx--car .rx__body { top: calc(50% - var(--size) * .235); aspect-ratio: 400 / 240; overflow: hidden; }
+.rx--car .rx-art, .receiver-thumb .rx-art, .radio-card__art .rx-art, .garage__art .rx-art { overflow: hidden; } /* the wheel ends at the frame */
+.rx__draw, .rx__draw svg { display: block; width: 100%; height: 100%; }
+.rx-art { overflow: visible; }
+.rx .rx-key { cursor: pointer; transition: transform .12s var(--ease-io); transform-box: fill-box; transform-origin: center; }
+.rx .rx-key.is-down { transform: scale(.94) translateY(1px); }
+.rx [data-key="preset"].is-lit > rect:first-child { fill: #F2C14E; }
+.rx .rx-knob { transition: transform .6s var(--ease-io); }
+.rx.is-tuning .rx-knob { transform: rotate(140deg); }
+.rx-eye circle { transition: opacity .4s; opacity: .25; }
+.rx.is-on .rx-eye circle { opacity: 1; }
+
+/* the dial: a scale with a needle that travels to the station, and its name on a little plate */
+.rx__screen { position: absolute; overflow: hidden; pointer-events: none; transform: none; border-radius: calc(var(--size) * .008); }
+.rx__screen--dial { background: #EFE3C2; color: #3A2B1C; box-shadow: inset 0 0 0 1px #00000033; }
+.rx-dial__scale { position: absolute; left: 4%; right: 4%; top: 10%; display: flex; justify-content: space-between; padding-bottom: 3%;
+  border-bottom: calc(var(--size) * .005) dotted currentColor; font: 600 calc(var(--size) * .018)/1 var(--font-sans); letter-spacing: .02em; opacity: .8; }
+.rx-dial__needle { position: absolute; top: 0; bottom: 0; width: calc(var(--size) * .005); margin-left: calc(var(--size) * -.0025); background: #B3261E;
+  transition: left .8s var(--ease-io); }
+.rx-dial__plate { position: absolute; left: 0; right: 0; bottom: 9%; text-align: center; font: 700 calc(var(--size) * .022)/1 var(--font-serif);
+  letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 6%; }
+.rx.is-on .rx__screen--dial { background: #F8E7AE; box-shadow: inset 0 0 0 1px #00000033, 0 0 calc(var(--size) * .03) #F2C14E88; }
+/* a glowing display (VFD) or a liquid crystal one, lit green, red or orange as their makers did */
+.rx__screen--vfd, .rx__screen--lcd { display: flex; flex-direction: column; justify-content: center; gap: 8%; padding: 0 5%;
+  background: #031614; color: #4FE3D0; font: 700 calc(var(--size) * .021)/1.15 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; }
+.rx__screen--lcd { background: #160404; color: #FF4C4C; }
+.rx__screen--orange { background: #1A0E02; color: #FF9A2E; }
+.rx-lcd__top { display: flex; gap: 6%; white-space: nowrap; overflow: hidden; }
+.rx-lcd__band { opacity: .7; }
+.rx-lcd__text { overflow: hidden; white-space: nowrap; }
+.rx-lcd__text span { display: inline-block; }
+.rx-lcd__text.is-long span { padding-left: 100%; animation: rx-run 12s linear infinite; }
+@keyframes rx-run { to { transform: translateX(-100%); } }
+.rx:not(.is-on) :is(.rx__screen--vfd, .rx__screen--lcd) { opacity: .5; }
+.rx.is-tuning .rx__screen { animation: rx-flicker .7s steps(6) 1; }
+@keyframes rx-flicker { 50% { opacity: .35; } }
+/* with only the machine on screen, the song is a paper tag under the set */
+.rx__tag { display: none; top: auto; bottom: calc(50% - var(--size) * .52); text-align: center; pointer-events: none; color: var(--text-2); }
+.fp.is-bare .rx__tag { display: block; }
+.rx__tag b { display: block; font: 600 calc(var(--size) * .032)/1.25 var(--font-serif); color: var(--text); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rx__tag span { font-size: calc(var(--size) * .024); }
+
+/* the windshield: sky, the road running towards the car, posts going by, rain and the wipers */
+.rx__glass > i { position: absolute; display: block; }
+.rx__road { left: 20%; right: 20%; bottom: 0; height: 46%; background: #5A5F63; clip-path: polygon(45% 0, 55% 0, 100% 100%, 0 100%); }
+.rx__lines { left: 50%; width: 0; bottom: 0; height: 92%; border-left: calc(var(--size) * .01) dashed #F4F1E6; transform: translateX(-50%);
+  clip-path: inset(50% -10px 0 -10px); }
+.rx__posts { left: -10%; width: 120%; bottom: 22%; height: 26%; }
+.rx__posts::before, .rx__posts::after { content: ''; position: absolute; bottom: 0; width: calc(var(--size) * .012); height: 100%; background: #4D5A3F;
+  box-shadow: calc(var(--size) * .26) 30% 0 #4D5A3F, calc(var(--size) * .52) 0 0 #4D5A3F, calc(var(--size) * .78) 30% 0 #4D5A3F; }
+.rx__posts::before { left: 4%; }
+.rx__posts::after { left: 17%; height: 70%; opacity: .7; }
+.rx__rain { left: 0; top: -60%; width: 3px; height: 3px; border-radius: 50%; background: #FFFFFFAA; opacity: 0; transition: opacity .6s;
+  box-shadow: calc(var(--size) * .05) calc(var(--size) * .06) 0 #FFFFFFAA, calc(var(--size) * .18) calc(var(--size) * .02) 0 1px #FFFFFF99,
+    calc(var(--size) * .27) calc(var(--size) * .11) 0 #FFFFFFAA, calc(var(--size) * .38) calc(var(--size) * .05) 0 1px #FFFFFF88,
+    calc(var(--size) * .49) calc(var(--size) * .13) 0 #FFFFFFAA, calc(var(--size) * .61) calc(var(--size) * .03) 0 #FFFFFF99,
+    calc(var(--size) * .72) calc(var(--size) * .09) 0 1px #FFFFFFAA, calc(var(--size) * .84) calc(var(--size) * .14) 0 #FFFFFF88,
+    calc(var(--size) * .93) calc(var(--size) * .04) 0 #FFFFFFAA, calc(var(--size) * .12) calc(var(--size) * .17) 0 #FFFFFF99,
+    calc(var(--size) * .55) calc(var(--size) * .19) 0 1px #FFFFFFAA, calc(var(--size) * .78) calc(var(--size) * .21) 0 #FFFFFF99; }
+.rx__wiper { bottom: -4%; width: 46%; height: calc(var(--size) * .008); background: #151515; border-radius: 4px; transform-origin: 2% 50%; opacity: 0;
+  transition: opacity .4s; }
+.rx__wiper--l { left: 6%; transform: rotate(-4deg); }
+.rx__wiper--r { left: 50%; transform: rotate(-4deg); }
+.rx.is-rain .rx__glass { background: #7F97A4; }
+.rx.is-rain :is(.rx__rain, .rx__wiper) { opacity: 1; }
+.rx.is-rain.is-on .rx__wiper { animation: rx-wipe 3s var(--ease-io) infinite; }
+.rx.is-rain.is-on .rx__rain { animation: rx-drops 1.6s linear infinite; }
+@keyframes rx-wipe { 0%, 60%, 100% { transform: rotate(-4deg); } 30% { transform: rotate(-150deg); } }
+@keyframes rx-drops { to { transform: translateY(calc(var(--size) * .3)); } }
+.rx.is-road.is-moving .rx__lines { animation: rx-lines .6s linear infinite; }
+.rx.is-road.is-moving .rx__posts { animation: rx-posts 1.4s linear infinite; }
+.rx.is-road.is-moving .rx-needle { animation: rx-rev 2.6s var(--ease-io) infinite alternate; }
+.rx.is-road.is-moving .rx__draw { animation: rx-shake .35s ease-in-out infinite alternate; }
+@keyframes rx-lines { from { transform: translate(-50%, -12%); } to { transform: translate(-50%, 0); } }
+@keyframes rx-posts { to { transform: translateX(calc(var(--size) * -.26)); } }
+@keyframes rx-rev { from { transform: rotate(40deg); } to { transform: rotate(118deg); } }
+@keyframes rx-shake { to { transform: translateY(.6px); } }
+.rx.is-road .rx-ignition { transform: rotate(60deg); transform-box: fill-box; transform-origin: center; }
+/* night (the dark mode): a darker sky, the instruments lit */
+:root[data-mode="dark"] .rx--car .rx__glass { background: #1C2733; }
+:root[data-mode="dark"] .rx--car .rx__road { background: #2B2F33; }
+:root[data-mode="dark"] .rx.is-rain .rx__glass { background: #16202A; }
+@media (prefers-reduced-motion: reduce) { .rx *, .rx *::before, .rx *::after { animation: none !important; } }
+
+/* the receiver's picture elsewhere: Settings, Home, the Garage */
+.receiver-thumb { flex: none; display: block; width: 76px; aspect-ratio: 4 / 3; }
+.receiver-thumb .rx-art, .radio-card__art .rx-art, .garage__art .rx-art { width: 100%; height: 100%; display: block; }
+.rx-art .rx-key { cursor: inherit; }

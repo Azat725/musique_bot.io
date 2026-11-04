@@ -1,6 +1,7 @@
 import { api } from './api.js';
 import { heard, onSettings, phonoMode, radioMode, settings } from './store.js';
 import { audioUrl as savedUrl, isSaved } from './offline.js';
+import { receiver } from './radio.js';
 
 export const RATES = { slow: 0.85, normal: 1, fast: 45 / (100 / 3) }; // fast = 1.35: a 45 rpm record played at 45 instead of 33⅓
 const PLAIN = 'normal-off';
@@ -67,11 +68,26 @@ class Player extends EventTarget {
         this._reload();
         return;
       }
-      this.loading = false;
-      this.errors += 1;
-      this._emit('error', { track: this.current });
-      if (this.errors <= 3 && this.index < this.queue.length - 1) this._errTimer = setTimeout(() => this.next(true), 1200);
-      else this._state();
+      // why it failed decides what comes next: a server busy with many new tracks at once is asked again in a few
+      // seconds (the track is fine), a track that cannot be played anywhere is skipped
+      const track = this.current, seq = this._seq;
+      api.why(track.id).then((r) => r.reason || '', () => 'server').then((reason) => {
+        if (seq !== this._seq || track !== this.current) return; // the listener has moved on meanwhile
+        if (this._busyFor !== track.id) { this._busyFor = track.id; this._busyTries = 0; }
+        if (reason === 'busy' && this._busyTries < 5) {
+          this._busyTries += 1;
+          this.loading = true;
+          this._state();
+          this._emit('busy', { track });
+          this._errTimer = setTimeout(() => { if (track === this.current) this._reload(); }, 2500 * this._busyTries);
+          return;
+        }
+        this.loading = false;
+        this.errors += 1;
+        this._emit('error', { track, reason });
+        if (this.errors <= 3 && this.index < this.queue.length - 1) this._errTimer = setTimeout(() => this.next(true), 1200);
+        else this._state();
+      });
     });
     // WebKit (iOS 16.4+): declare this page a music player, so the audio is not treated as ambient and
     // is not cut by the mute switch or the lock screen. Unsupported browsers simply skip it.
@@ -177,7 +193,8 @@ class Player extends EventTarget {
     // without a network a saved track plays as it was saved: the server cannot render effects now
     if (track.id === this._plainFor || (!navigator.onLine && isSaved(track.id))) return PLAIN;
     if (phonoMode()) return 'phono'; // Edison's phonograph: narrow, crackling, unsteady, rendered by the server
-    if (radioMode()) return PLAIN; // no extra ffmpeg renders for radio
+    // a radio: no speed or reverb; the sets of the 30s-60s sound like medium wave (rendered once per song by the server)
+    if (radioMode()) return settings.radioEra && receiver().band === 'am' ? 'am' : PLAIN;
     return chosenFx();
   }
 

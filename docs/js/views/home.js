@@ -1,6 +1,6 @@
 import { api } from '../api.js';
 import { viewScope } from '../lifecycle.js';
-import { radioProfile, radioTracks } from '../radio.js';
+import { countryName, decadeOf, frequency, onAir, openReceivers, receiver, receiverArt, stations, tune } from '../radio.js';
 import { t } from '../i18n.js';
 import { player } from '../player.js';
 import { onSettings, phonoMode, radioMode, settings } from '../store.js';
@@ -74,24 +74,28 @@ export async function render(_, nav) {
   }
 
   if (radioMode()) {
-    const section = h(`<section class="section"><div class="section__head"><h2 class="section__title">${esc(t('radio_shelf'))}</h2></div>
-      <p class="shelf__sub" data-radio-selection></p><p class="shelf__sub">${esc(t('radio_recording_note'))}</p><button class="btn btn--accent" data-radio-play>${icon('radio')}<span>${esc(t('radio_start'))}</span></button><button class="link" data-radio-settings>${esc(t('nav_settings'))}</button><p role="status" data-radio-status></p></section>`);
-    const button = section.querySelector('[data-radio-play]');
-    const selection=()=>{section.querySelector('[data-radio-selection]').textContent=t('radio_ready',{model:radioProfile().name,country:t('radio_'+settings.radioCountry),decade:settings.radioDecade})+' · '+t('radio_source_'+settings.radioSource);};
-    selection(); scope.keep(onSettings(selection));
-    section.querySelector('[data-radio-settings]').addEventListener('click',()=>nav.push('settings',{section:'device'}));
-    button.addEventListener('click', async () => {
-      haptic('light'); button.disabled = true;
-      const fingerprint=JSON.stringify([settings.playerMode,settings.radioSource,settings.radioCountry,settings.radioDecade]);
-      const status=section.querySelector('[data-radio-status]'); status.textContent=t('radio_loading');
-      try {
-        const tracks = await radioTracks();
-        if(fingerprint!==JSON.stringify([settings.playerMode,settings.radioSource,settings.radioCountry,settings.radioDecade]) || root.disposed) return;
-        if (tracks.length && radioMode()) { player.playQueue(tracks, 0); status.textContent=''; }
-        else status.textContent=t('radio_no_match');
-      } catch { status.textContent=t('radio_no_match'); } finally { button.disabled = false; }
+    // the radio: the receiver itself, its era, and its stations as buttons; one tap tunes in
+    const r = receiver();
+    const card = h(`<section class="section radio-card">
+      <button class="radio-card__art" data-change aria-label="${esc(t(r.kind === 'car' ? 'radio_garage' : 'radio_room'))}">${receiverArt(r)}</button>
+      <div class="radio-card__meta"><span class="view__kicker">${esc(t('radio_era_of', { d: decadeOf(r) }))}</span>
+        <h2 class="section__title">${esc(r.name)}</h2><p class="shelf__sub">${r.year} · ${esc(countryName(r.country, r))} · ${esc(r.unit)}</p></div>
+      <div class="radio-card__stations" role="group" aria-label="${esc(t('radio_stations'))}">${stations(r).map((id) => `<button class="chip radio-chip" data-station="${id}">
+        <b>${esc(id === 'mine' ? t('station_mine_short') : countryName(id, r))}</b><small>${esc(frequency(id, r).text)}</small></button>`).join('')}</div>
+      <div class="radio-card__actions"><button class="btn btn--accent" data-tune>${icon('play')}<span>${esc(t('radio_start'))}</span></button>
+        <button class="btn btn--outline" data-change>${esc(t('radio_change'))}</button></div></section>`);
+    const mark = () => card.querySelectorAll('[data-station]').forEach((b) => b.classList.toggle('is-on', b.dataset.station === (onAir() || settings.radioStation || r.country)));
+    mark();
+    scope.keep(onSettings(mark));
+    card.addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-station], [data-tune], [data-change]');
+      if (!b) return;
+      haptic('light');
+      if (b.hasAttribute('data-change')) { await openReceivers(); return; }
+      b.disabled = true;
+      try { await tune(b.dataset.station || settings.radioStation || r.country); } finally { b.disabled = false; mark(); }
     });
-    body.append(section);
+    body.append(card);
   }
 
   if (data.recent?.length) {
@@ -109,12 +113,12 @@ export async function render(_, nav) {
       const {tracks}=await api.recommend(); if(root.disposed)return;
       forYou.replaceChildren();
       if(tracks?.length) forYou.append(sectionHead(t('home_for_you'),openList(t('home_for_you'),tracks)),cards(tracks.slice(0,15)));
-      else forYou.append(h(`<p class="empty__text">${esc(t('home_empty_text'))}</p>`));
+      else { forYou.hidden = true; maybeEmpty(); } // nothing played yet: the page's own empty state speaks instead
     } catch {
       if(root.disposed)return;
       const retry=h(`<button class="btn btn--outline">${esc(t('retry'))}</button>`);
       retry.addEventListener('click',()=>{retry.disabled=true;loadRecommendations();});
-      forYou.replaceChildren(h(`<p class="empty__text">${esc(t('search_failed'))}</p>`),retry);
+      forYou.replaceChildren(h(`<div class="empty empty--inline"><p class="empty__text">${esc(t('search_failed'))}</p></div>`),retry);
     } finally {forYou.removeAttribute('aria-busy');}
   }
   loadRecommendations();
@@ -133,13 +137,17 @@ export async function render(_, nav) {
     body.append(s);
   }
 
-  if (!body.children.length || [...body.children].every((c) => c.hidden)) {
-    // nothing came back: say so instead of leaving an empty page
-    const empty = h(`<div class="empty">${icon('vinyl', 'empty__icon')}
+  maybeEmpty();
+  return root;
+
+  function maybeEmpty() {
+    if ([...body.children].some((c) => !c.hidden && !c.classList.contains('empty'))) return;
+    if (body.querySelector('.empty--home')) return;
+    // nothing came back (or nothing played yet): say so instead of leaving an empty page
+    const empty = h(`<div class="empty empty--home">${icon('vinyl', 'empty__icon')}
       <div class="empty__title">${esc(t('home_empty'))}</div><div class="empty__text">${esc(t('home_empty_text'))}</div>
       <button class="btn btn--accent">${esc(t('nav_search'))}</button></div>`);
     empty.querySelector('button').addEventListener('click', () => document.querySelector('[data-tab="search"]')?.click());
     body.append(empty);
   }
-  return root;
 }

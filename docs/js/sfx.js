@@ -514,3 +514,87 @@ export function startPhonoNoise(volume = 1, background = false) {
     whirr.onended = release;
   };
 }
+
+// ---------- the radio: tuning between stations, and a car's rain and road ----------
+
+/** Turning the dial: a sweep of static and whistles between two stations (about `secs` long). */
+export function tuneStatic(secs = 0.7) {
+  play((t) => {
+    const src = noise(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    f.type = 'bandpass'; f.Q.value = 2.5;
+    f.frequency.setValueAtTime(600, t); f.frequency.exponentialRampToValueAtTime(3800, t + secs * 0.5); f.frequency.exponentialRampToValueAtTime(900, t + secs);
+    g.gain.setValueAtTime(0.0008, t); g.gain.linearRampToValueAtTime(0.16, t + 0.05); g.gain.setValueAtTime(0.16, t + secs * 0.8); g.gain.exponentialRampToValueAtTime(0.0008, t + secs);
+    src.connect(f).connect(g).connect(ctx.destination); src.start(t, Math.random()); src.stop(t + secs + 0.05);
+    tone(t + secs * 0.2, { freq: 1900, to: 700, dur: secs * 0.4, gain: 0.04 }); // a heterodyne whistle
+  }, secs + 0.1);
+}
+
+/** A car's surroundings under the music: rain on the roof and glass, the wipers, the engine and the tyres, now and
+ *  then a car going past. `rain`, `road`: which ones. Synthesised; returns a stop function that fades them out. */
+export function startCarAmbience({ rain = false, road = false } = {}) {
+  if ((!rain && !road) || !hold()) return () => {};
+  const now = ctx.currentTime, out = ctx.createGain(), nodes = [], timers = [];
+  out.gain.setValueAtTime(0, now); out.gain.linearRampToValueAtTime(1, now + 1.2);
+  out.connect(ctx.destination);
+  const loop = (filterType, freq, q, gain) => {
+    const src = noise(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+    f.type = filterType; f.frequency.value = freq; f.Q.value = q; g.gain.value = gain;
+    src.connect(f).connect(g).connect(out); src.start(now, Math.random() * 1.5);
+    nodes.push(src);
+    return g;
+  };
+  if (rain) {
+    loop('highpass', 900, 0.4, 0.05); // the patter on the roof
+    loop('bandpass', 4200, 0.6, 0.03); // the hiss on the glass
+    const drop = () => { // single heavier drops on the windshield
+      const t = ctx.currentTime;
+      const src = noise(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      f.type = 'bandpass'; f.frequency.value = 1400 + Math.random() * 2600; f.Q.value = 3;
+      g.gain.setValueAtTime(0.06 + Math.random() * 0.05, t); g.gain.exponentialRampToValueAtTime(0.0008, t + 0.05);
+      src.connect(f).connect(g).connect(out); src.start(t, Math.random()); src.stop(t + 0.07);
+      timers.push(setTimeout(drop, 40 + Math.random() * 180));
+    };
+    drop();
+    const wipe = () => { // the wiper's soft thump and rubber squeak at each turn
+      const t = ctx.currentTime;
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(95, t); o.frequency.exponentialRampToValueAtTime(55, t + 0.18);
+      g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.0008, t + 0.2);
+      o.connect(g).connect(out); o.start(t); o.stop(t + 0.22);
+      const s = noise(), f = ctx.createBiquadFilter(), sg = ctx.createGain();
+      f.type = 'bandpass'; f.frequency.setValueAtTime(1800, t + 0.3); f.frequency.linearRampToValueAtTime(2600, t + 0.9); f.Q.value = 8;
+      sg.gain.setValueAtTime(0.0008, t + 0.3); sg.gain.linearRampToValueAtTime(0.018, t + 0.6); sg.gain.exponentialRampToValueAtTime(0.0008, t + 1.1);
+      s.connect(f).connect(sg).connect(out); s.start(t + 0.3, Math.random()); s.stop(t + 1.15);
+      timers.push(setTimeout(wipe, 3000));
+    };
+    timers.push(setTimeout(wipe, 900));
+  }
+  if (road) {
+    loop('lowpass', 420, 0.7, road && rain ? 0.11 : 0.08); // the tyres (louder on a wet road)
+    const engine = ctx.createOscillator(), e2 = ctx.createOscillator(), ef = ctx.createBiquadFilter(), eg = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain();
+    engine.type = 'sawtooth'; engine.frequency.value = 46; e2.type = 'triangle'; e2.frequency.value = 92.6;
+    ef.type = 'lowpass'; ef.frequency.value = 240; eg.gain.value = 0.035;
+    lfo.frequency.value = 0.13; lg.gain.value = 3; lfo.connect(lg).connect(engine.frequency); // the revs breathe a little
+    engine.connect(ef); e2.connect(ef); ef.connect(eg).connect(out);
+    [engine, e2, lfo].forEach((o) => { o.start(now); nodes.push(o); });
+    const pass = () => { // a car going the other way: a swell of air and tyres, falling in pitch as it goes by
+      const t = ctx.currentTime, d = 2.4;
+      const src = noise(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      f.type = 'bandpass'; f.Q.value = 1.2; f.frequency.setValueAtTime(900, t); f.frequency.exponentialRampToValueAtTime(380, t + d);
+      g.gain.setValueAtTime(0.0008, t); g.gain.linearRampToValueAtTime(0.09, t + d * 0.45); g.gain.exponentialRampToValueAtTime(0.0008, t + d);
+      src.connect(f).connect(g).connect(out); src.start(t, Math.random()); src.stop(t + d + 0.05);
+      timers.push(setTimeout(pass, 9000 + Math.random() * 16000));
+    };
+    timers.push(setTimeout(pass, 4000 + Math.random() * 6000));
+  }
+  let stopped = false;
+  return () => {
+    if (stopped) return;
+    stopped = true;
+    timers.forEach(clearTimeout);
+    const at = ctx.currentTime;
+    out.gain.cancelScheduledValues(at); out.gain.setValueAtTime(out.gain.value, at); out.gain.linearRampToValueAtTime(0, at + 0.8);
+    nodes.forEach((n) => { try { n.stop(at + 0.85); } catch {} });
+    setTimeout(release, 900);
+  };
+}

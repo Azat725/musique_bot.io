@@ -3,7 +3,9 @@ import { settings, updateSettings } from './store.js';
 import { esc, h, haptic, icon, sheet } from './ui.js';
 
 export function showDeviceHelp() {
-  const keys = settings.playerMode.startsWith('radio-') ? ['help_radio','help_like','help_exit'] : ['help_play','help_seek','help_like','help_exit'];
+  const mode = settings.playerMode;
+  const keys = mode === 'radio-car' ? ['help_radio', 'help_radio_tune', 'help_car', 'help_like', 'help_exit']
+    : mode === 'radio-home' ? ['help_radio', 'help_radio_tune', 'help_like', 'help_exit'] : ['help_play', 'help_seek', 'help_like', 'help_exit'];
   return sheet({ title:esc(t('device_help')), content:h(`<div class="device-help">${icon('pm_' + settings.playerMode)}<ol>${keys.map((key)=>`<li>${esc(t(key))}</li>`).join('')}</ol></div>`),done:true,swipe:true });
 }
 

@@ -1,6 +1,7 @@
 import { t } from './i18n.js';
 import { BANDS, applyFx, enableFx } from './graph.js';
 import { phonoMode, radioMode, settings, updateSettings } from './store.js';
+import { receiver } from './radio.js';
 import { DEVICES } from './devices/index.js';
 import { initSfx } from './sfx.js';
 import { esc, h, haptic, sheet } from './ui.js';
@@ -77,17 +78,27 @@ function speedOptions() {
   return [['slow', t('sound_slow'), '0.85×'], ['normal', d.speed.normal, unit], ['fast', d.speed.fast, unit]];
 }
 
+/** A radio has no speed or reverb: its sound is the era's (medium wave for the old sets) and, in a car, the rain and
+ *  the road around it. */
+function radioSound() {
+  const old = receiver().band === 'am';
+  const onOff = (name) => SEG(name, [['true', t('radio_on')], ['false', t('radio_off')]]);
+  return `<div class="fx__label">${esc(t('radio_era'))}</div>
+    <p class="eqp__hint">${esc(t(old ? 'radio_era_hint' : 'radio_era_fm'))}</p>${old ? onOff('radioEra') : ''}
+    ${settings.playerMode === 'radio-car' ? `<div class="fx__label">${esc(t('radio_rain'))}</div>${onOff('radioRain')}
+    <div class="fx__label">${esc(t('radio_road'))}</div>${onOff('radioRoad')}` : ''}`;
+}
+
 export function openControlPanel() {
   // the phonograph sounds as it is: everything is shown, nothing can be changed
   const locked = phonoMode();
   const panel = h(`<div class="eqp ${locked ? 'is-locked' : ''}">
     <div class="eqp__title">${esc(t('panel_title'))}</div>
     ${locked ? `<p class="eqp__lock">${esc(t('panel_phono'))}</p>` : ''}
-    ${radioMode() ? `<p class="eqp__lock">${esc(t('radio_lock'))}</p>` : ''}
-    <div class="fx__label">${esc(t('sound_speed'))}</div>
+    ${radioMode() ? radioSound() : `<div class="fx__label">${esc(t('sound_speed'))}</div>
     ${SEG('speed', speedOptions())}
     <div class="fx__label">${esc(t('sound_reverb'))}</div>
-    ${SEG('reverb', [['off', t('sound_off')], ['room', t('sound_room')], ['hall', t('sound_hall')]])}
+    ${SEG('reverb', [['off', t('sound_off')], ['room', t('sound_room')], ['hall', t('sound_hall')]])}`}
     <div class="eqp__eq">
     <div class="eqp__head">
       <span class="eqp__sub">${esc(t('eq_title'))}</span>
@@ -114,7 +125,6 @@ export function openControlPanel() {
     </div>
   </div>`);
   const power = panel.querySelector('.eqp__power input');
-  if (radioMode()) panel.querySelectorAll('[data-seg] button').forEach((b) => { b.disabled = true; });
   const line = panel.querySelector('.eqp__line');
   const faders = [...panel.querySelectorAll('.fader')];
 
@@ -132,7 +142,7 @@ export function openControlPanel() {
   }
 
   const drawSound = () => panel.querySelectorAll('[data-seg]').forEach((g) => g.querySelectorAll('button').forEach((b) => {
-    const current = radioMode() ? (g.dataset.seg === 'speed' ? 'normal' : 'off') : settings[g.dataset.seg];
+    const current = String(settings[g.dataset.seg]);
     const on = b.dataset.v === current;
     b.classList.toggle('is-on', on);
     b.setAttribute('aria-pressed', on);
@@ -141,7 +151,9 @@ export function openControlPanel() {
     const b = e.target.closest('[data-seg] button');
     if (!b) return;
     haptic('select');
-    updateSettings({ [b.closest('[data-seg]').dataset.seg]: b.dataset.v }); // the player loads the track rendered this way
+    const seg = b.closest('[data-seg]').dataset.seg;
+    // radio switches are true / false; speed and reverb are names. The player loads the track rendered this way
+    updateSettings({ [seg]: seg.startsWith('radio') ? b.dataset.v === 'true' : b.dataset.v });
     drawSound();
   });
 

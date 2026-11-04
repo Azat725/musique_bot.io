@@ -111,7 +111,6 @@ export function isPlayerOpen() { return open; }
 
 export function initFullPlayer() {
   root = h(`<div class="fp" aria-hidden="true">
-    <button class="bare-exit btn btn--outline" data-bare-exit>${esc(t('help_show_controls'))}</button>
     <header class="fp__top">
       <button class="icon-btn" data-close aria-label="close">${icon('down')}</button>
       <div class="fp__head"><div class="fp__kicker"></div><button class="fp__marker" hidden></button></div>
@@ -171,6 +170,7 @@ export function initFullPlayer() {
     if (!player.current) return;
     trackMenu(player.current, { player: { sleep: sleepLabel() } }).then((r) => {
       if (r === 'sleep') openSleep();
+      if (r === 'bare') { haptic('select'); updateSettings({ bareDeck: !settings.bareDeck }); }
       syncLike();
     });
   });
@@ -201,7 +201,6 @@ export function initFullPlayer() {
     key.setAttribute('aria-label',t(['prev','rew'].includes(key.dataset.key) ? 'control_previous' : ['next','ff'].includes(key.dataset.key) ? 'control_next' : 'control_play_pause'));
     key.addEventListener('keydown',(e)=>{if(['Enter',' '].includes(e.key)){e.preventDefault();e.stopPropagation();haptic('light');pressKey(key.dataset.key);}});
   });
-  $('[data-bare-exit]').addEventListener('click', () => { haptic('select'); updateSettings({ bareDeck:false }); });
   setupGestures();
   setupIdle();
   applyMode();
@@ -947,10 +946,11 @@ function keyUp() {
   clearTimeout(hold.timer);
   hold.k.classList.remove('is-down');
   if (scrub?.byKey) { endScrub(); return; }
-  pressKey(hold.action);
+  pressKey(hold.action, hold.k);
 }
 
-function pressKey(action) {
+function pressKey(action, el = null) {
+  if (device()?.onKey?.(action, el)) return; // a key of the device's own (a radio's presets, a car's wipers)
   const playing = player.playing;
   if (action === 'like') { likeCurrent(); return; }
   if (action === 'play' && playing) return;

@@ -612,6 +612,8 @@ export async function trackMenu(track, context = null) {
   if (context?.player) {
     actions.splice(2, 1);
     actions.push({ icon: 'moon', label: context.player.sleep, run: 'sleep' });
+    // "only the machine" is left here as well as in Settings: no button on the stage of its own
+    actions.push({ icon: 'pm_' + settings.playerMode, label: t(settings.bareDeck ? 'menu_bare_off' : 'menu_bare_on'), run: 'bare' });
   }
   if (context?.playlistId) actions.push({ icon: 'trash', label: t('menu_remove'), run: 'remove', danger: true });
   const head = h(`<div class="sheet__track">${cover(track.cover)}<div><div class="track__title">${esc(track.title)}</div><div class="track__artist">${esc(track.artist)}</div></div></div>`);
@@ -622,8 +624,8 @@ export async function trackMenu(track, context = null) {
       case 'like': {
         const now = await toggleLike(track);
         haptic('success');
-        toast(t(now ? 'toast_liked' : 'toast_unliked'), now ? 'like' : 'unlike');
-        if (!now) offerLikeUndo(track);
+        if (now) toast(t('toast_liked'), 'like');
+        else offerLikeUndo(track); // one toast, with its "undo"
         document.dispatchEvent(new CustomEvent('likes-changed'));
         if (!now && context?.likes) return 'removed';
         break;
@@ -632,7 +634,7 @@ export async function trackMenu(track, context = null) {
       case 'next': player.playNext(track); toast(t('toast_next'), 'next'); break;
       case 'artist': await openArtist(track); break;
       case 'send': await api.send(track); toast(t('toast_sending'), 'send'); break;
-      case 'sleep': return actions[i].run; // the player handles its own switches
+      case 'sleep': case 'bare': return actions[i].run; // the player handles its own switches
       case 'remove':
         await api.removeFromPlaylist(context.playlistId, track.id);
         invalidatePlaylists();
