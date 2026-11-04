@@ -28,6 +28,9 @@ function themeSwatches() {
   return [CLASSIC_SWATCH[mode], ...Object.values(THEMES).filter(Boolean).map((th) => th[mode].swatch)];
 }
 
+/** Numbered steps under a picture: how to use what it shows. */
+const steps = (keys) => `<ol class="sx-steps">${keys.map((k, i) => `<li style="--i:${i}"><b>${i + 1}</b><span>${esc(t(k))}</span></li>`).join('')}</ol>`;
+
 const PLAYERS = ['record', 'turntable', 'cassette', 'reel', 'cd', 'phonograph', 'radio-car', 'radio-home'];
 
 const SLIDES = [
@@ -39,6 +42,12 @@ const SLIDES = [
     return `<div class="sx-radio"><div class="sx-radio__car"><span class="sx-radio__glass"><i></i><i></i></span>${receiverArt(r)}</div>
       <div class="sx-radio__years">${[1930, 1940, 1950, 1960, 1970, 1980, 1990, 2000].map((y, i) => `<b style="--i:${i}">${y}</b>`).join('')}</div>
       <div class="sx-radio__flags">${COUNTRIES.map((c, i) => `<span style="--i:${i}">${esc(t('country_' + c))}</span>`).join('')}</div></div>`; } },
+  // the car radio: what it is and three things to do with it
+  { key: 'st_car', tone: 'bordeaux', art: () => `<div class="sx-radio"><div class="sx-radio__car"><span class="sx-radio__glass"><i></i><i></i></span>${receiverArt(receiverById('ds'))}</div>${steps(['st_car_1', 'st_car_2', 'st_car_3'])}</div>` },
+  // the home radio
+  { key: 'st_home', tone: 'navy', art: () => `<div class="sx-radio"><div class="sx-radio__home">${receiverArt(receiverById('saba'))}</div>${steps(['st_home_1', 'st_home_2', 'st_home_3'])}</div>` },
+  // the little game in the car radio
+  { key: 'st_drive', tone: 'vinyl', art: () => `<div class="sx-radio"><div class="sx-radio__drive">${icon('steering')}</div>${steps(['st_drive_1', 'st_drive_2', 'st_drive_3'])}</div>` },
   {
     key: 'st2', tone: 'bordeaux',
     art: () => {
