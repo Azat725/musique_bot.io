@@ -370,6 +370,69 @@ const CARS = [
       ${knob('toggle', 120, 130, 10, '#2C2D31', '#3E3F44', '#FF9A2A')}${knob('tune', 306, 130, 10, '#2C2D31', '#3E3F44', '#FF9A2A')}${C(190, 200, 11, '#17171A')}${C(224, 200, 11, '#17171A')}${C(258, 200, 11, '#17171A')}
       ${wheel({ rim: '#17171A', hub: '#2C2D31', spokes: 3, width: 15, r: 106 })}${carSwitches(338, 190, '#17171A', '#B6B8BC')}`,
   },
+  {
+    id: 'bmw328', name: 'BMW 328', year: 1936, country: 'de', unit: 'Blaupunkt', band: 'am', screen: [166, 124, 68, 24, 'dial'],
+    art: () => `${R(0, 30, 400, 210, '#8F918C')}${R(0, 30, 400, 12, '#5E605C')}${Array.from({ length: 14 }, (_, i) => L(`M${i * 30 - 20} 44 L${i * 30 + 10} 120`, '#A4A6A0', 2)).join('')}${gauge(96, 78, 34, { rim: '#1B1B1A', face: '#EDE8D6', tick: '#1B1B1A', needle: '#9E1E24' })}${gauge(206, 78, 34, { rim: '#1B1B1A', face: '#EDE8D6', tick: '#1B1B1A', needle: '#9E1E24' })}${C(306, 70, 18, '#1B1B1A')}${C(306, 70, 13, '#EDE8D6')}
+      ${R(154, 114, 92, 64, '#1B1B1A', 8)}${R(160, 120, 80, 52, '#C9C4AE', 5)}${R(166, 124, 68, 24, '#1B1A14', 3)}${keys(166, 154, 4, 14, 10, 4, '#1B1B1A', null, 2)}
+      ${knob('toggle', 136, 146, 11, '#1B1B1A', '#C9C4AE', '#EDE8D6')}${knob('tune', 264, 146, 11, '#1B1B1A', '#C9C4AE', '#EDE8D6')}
+      ${wheel({ rim: '#1B1B1A', hub: '#8F918C', spokes: 3, width: 10, r: 112 })}${carSwitches(338, 186, '#1B1B1A', '#C9C4AE')}`,
+  },
+  {
+    id: 'merc170v', name: 'Mercedes-Benz 170 V', year: 1947, country: 'de', unit: 'Becker', band: 'am', screen: [196, 110, 88, 24, 'dial'],
+    art: () => `${R(0, 30, 400, 210, '#2B3A4A')}${R(0, 30, 400, 20, '#1A242F')}${R(0, 50, 400, 5, '#C9C9C4')}${R(30, 66, 124, 70, '#C9C9C4', 14)}${R(36, 72, 112, 58, '#101418', 10)}${gauge(92, 101, 24, { rim: '#C9C9C4', face: '#EDE8D6', tick: '#1B1B1A', needle: '#9E1E24', ticks: 8 })}
+      ${R(178, 88, 124, 66, '#C9C9C4', 6)}${R(184, 94, 112, 54, '#1A242F', 4)}${R(196, 110, 88, 24, '#1B1A14', 3)}${keys(194, 138, 5, 16, 8, 3, '#C9C9C4', null, 1.5)}
+      ${knob('toggle', 164, 126, 10, '#C9C9C4', '#8F9296', '#1B1B1A')}${knob('tune', 318, 126, 10, '#C9C9C4', '#8F9296', '#1B1B1A')}${R(306, 70, 62, 8, '#C9C9C4', 4)}
+      ${wheel({ rim: '#101418', hub: '#C9C9C4', spokes: 2, ring: '#C9C9C4', width: 11, r: 112 })}${carSwitches(338, 184, '#1A242F', '#C9C9C4')}`,
+  },
+  {
+    id: 'merc300sl', name: 'Mercedes-Benz 300 SL', year: 1954, country: 'de', unit: 'Becker Mexico', band: 'am', screen: [168, 112, 100, 22, 'dial'],
+    art: () => `${R(0, 30, 400, 210, '#A6AAAC')}${R(0, 30, 400, 16, '#1E1F20')}${R(24, 54, 168, 74, '#1E1F20', 37)}${gauge(78, 91, 30, { rim: '#E6E6E0', face: '#0F1011', tick: '#EDEDE4', needle: '#F2F2E8' })}${gauge(142, 91, 30, { rim: '#E6E6E0', face: '#0F1011', tick: '#EDEDE4', needle: '#F2F2E8' })}${C(244, 80, 14, '#1E1F20')}${C(244, 80, 10, '#E6E6E0')}${C(284, 80, 14, '#1E1F20')}${C(284, 80, 10, '#E6E6E0')}
+      ${R(148, 100, 134, 66, '#2A2B2D', 5)}${R(156, 106, 118, 54, '#C8C4B4', 4)}${R(168, 112, 100, 22, '#1B1A14', 3)}${keys(160, 140, 5, 18, 14, 4, '#2A2B2D', null, 2)}
+      ${knob('toggle', 126, 134, 12, '#2A2B2D', '#E6E6E0', '#1B1B1A')}${knob('tune', 304, 134, 12, '#2A2B2D', '#E6E6E0', '#1B1B1A')}${R(316, 54, 60, 44, '#C8302B', 6)}
+      ${wheel({ rim: '#1E1F20', hub: '#A6AAAC', spokes: 3, ring: '#E6E6E0', width: 9, r: 120 })}${carSwitches(338, 184, '#1E1F20', '#E6E6E0')}`,
+  },
+  {
+    id: 'quattro', name: 'Audi Quattro', year: 1980, country: 'de', unit: 'Blaupunkt', band: 'fm', screen: [150, 112, 120, 22, 'lcd-red'],
+    art: () => `${R(0, 30, 400, 210, '#1A1A1C')}${R(0, 30, 400, 10, '#2A2A2D')}${R(216, 56, 160, 4, '#C8302B')}${R(26, 42, 186, 56, '#0C0C0D', 4)}${gauge(76, 70, 22, { rim: '#2F2F33', face: '#0A0A0B', tick: '#EDEDE4', needle: '#FF6A1A' })}${gauge(142, 70, 22, { rim: '#2F2F33', face: '#0A0A0B', tick: '#EDEDE4', needle: '#FF6A1A' })}${R(176, 52, 26, 40, '#16161A', 3)}${Array.from({ length: 4 }, (_, i) => R(180, 56 + i * 9, 18, 5, '#FF6A1A', 1)).join('')}
+      ${R(136, 106, 152, 68, '#101011', 3)}${R(146, 112, 132, 26, '#0F0404', 3)}${keys(146, 144, 6, 20, 9, 4, '#2F2F33', '#E0343B', 1.5)}${key('prev', R(146, 158, 28, 9, '#2F2F33', 2))}${key('next', R(250, 158, 28, 9, '#2F2F33', 2))}
+      ${knob('toggle', 118, 128, 10, '#2F2F33', '#44444A', '#DDD')}${knob('tune', 306, 128, 10, '#2F2F33', '#44444A', '#DDD')}${R(232, 180, 130, 6, '#2A2A2D', 2)}
+      ${wheel({ rim: '#0F0F10', hub: '#26262A', spokes: 4, width: 14, r: 106 })}${carSwitches(338, 190, '#0F0F10', '#6A6A70')}`,
+  },
+  {
+    id: 'traction', name: 'Citroën Traction Avant', year: 1934, country: 'fr', unit: 'Radiola', band: 'am', screen: [168, 104, 96, 28, 'dial'],
+    art: () => `${R(0, 30, 400, 210, '#2A2A28')}${R(0, 30, 400, 18, '#171716')}${R(0, 48, 400, 4, '#B9AE8A')}${R(26, 62, 190, 40, '#C9C0A0', 20)}${R(32, 68, 178, 28, '#171716', 14)}${gauge(80, 82, 13, { rim: '#B9AE8A', face: '#EDE3C4', tick: '#2B2620', needle: '#9E1E24', ticks: 7 })}${gauge(146, 82, 13, { rim: '#B9AE8A', face: '#EDE3C4', tick: '#2B2620', needle: '#9E1E24', ticks: 7 })}
+      ${R(150, 92, 128, 74, '#171716', 8)}${R(156, 98, 116, 62, '#B9AE8A', 6)}${R(168, 104, 96, 28, '#1B1A14', 3)}${keys(164, 138, 4, 22, 14, 4, '#2A2A28', null, 2)}
+      ${knob('toggle', 130, 128, 12, '#C9C0A0', '#B9AE8A', '#171716')}${knob('tune', 298, 128, 12, '#C9C0A0', '#B9AE8A', '#171716')}${L('M310 98 L326 70', '#B9AE8A', 5)}${C(328, 66, 8, '#171716')}
+      ${wheel({ rim: '#171716', hub: '#B9AE8A', spokes: 3, ring: '#171716', width: 11, r: 116 })}${carSwitches(338, 186, '#171716', '#B9AE8A')}`,
+  },
+  {
+    id: 'renault4cv', name: 'Renault 4CV', year: 1947, country: 'fr', unit: 'Radiola', band: 'am', screen: [168, 126, 84, 20, 'dial'],
+    art: () => `${R(0, 30, 400, 210, '#D2A838')}${R(0, 30, 400, 22, '#7A5A18')}${R(0, 52, 400, 3, '#EDE3C4')}${C(104, 98, 38, '#EDE3C4')}${C(104, 98, 31, '#1B1A14')}${gauge(104, 98, 28, { rim: '#1B1A14', face: '#EDE3C4', tick: '#2B2620', needle: '#9E1E24', ticks: 8 })}
+      ${R(150, 108, 106, 66, '#7A5A18', 8)}${R(156, 114, 94, 54, '#EDE3C4', 5)}${R(168, 126, 84, 20, '#1B1A14', 3)}${keys(164, 150, 4, 18, 10, 4, '#7A5A18', null, 2)}
+      ${knob('toggle', 134, 142, 11, '#7A5A18', '#EDE3C4', '#EDE3C4')}${knob('tune', 274, 142, 11, '#7A5A18', '#EDE3C4', '#EDE3C4')}${R(300, 70, 64, 30, '#7A5A18', 6)}
+      ${wheel({ rim: '#1B1A14', hub: '#EDE3C4', spokes: 2, width: 10, r: 110 })}${carSwitches(338, 186, '#7A5A18', '#EDE3C4')}`,
+  },
+  {
+    id: 'renault5', name: 'Renault 5', year: 1972, country: 'fr', unit: 'Philips', band: 'fm', screen: [150, 118, 112, 22, 'dial'],
+    art: () => `${R(0, 30, 400, 210, '#E2761E')}${R(0, 30, 400, 26, '#1B1B1A')}${R(26, 44, 168, 52, '#1B1B1A', 26)}${gauge(76, 70, 21, { rim: '#4A4A48', face: '#0B0B0A', tick: '#EDEDE4', needle: '#FF9A1E' })}${gauge(144, 70, 21, { rim: '#4A4A48', face: '#0B0B0A', tick: '#EDEDE4', needle: '#FF9A1E' })}
+      ${R(134, 104, 148, 70, '#1B1B1A', 6)}${R(142, 112, 132, 28, '#0B0B0A', 3)}${keys(142, 148, 6, 19, 12, 4, '#E8E0CC', null, 2)}
+      ${knob('toggle', 116, 128, 11, '#E8E0CC', '#CFC6AA', '#1B1B1A')}${knob('tune', 300, 128, 11, '#E8E0CC', '#CFC6AA', '#1B1B1A')}${R(308, 62, 62, 14, '#1B1B1A', 7)}${R(308, 84, 62, 14, '#1B1B1A', 7)}
+      ${wheel({ rim: '#1B1B1A', hub: '#2E2E2C', spokes: 2, width: 14, r: 106 })}${carSwitches(338, 188, '#1B1B1A', '#E8E0CC')}`,
+  },
+  {
+    id: 'twingo', name: 'Renault Twingo', year: 1993, country: 'fr', unit: 'Philips', band: 'fm', screen: [150, 122, 112, 20, 'lcd-red'],
+    art: () => `${R(0, 30, 400, 210, '#2F4FA0')}${P('M0 30 H400 V64 Q300 96 200 70 Q110 52 0 70 Z', '#1F3578')}${R(150, 40, 100, 36, '#10142A', 18)}${R(160, 48, 80, 20, '#8FD14F', 10)}${C(112, 70, 24, '#10142A')}${C(112, 70, 18, '#8FD14F')}${L('M112 70 L100 80', '#10142A', 3)}${C(288, 70, 22, '#10142A')}${C(288, 70, 16, '#8FD14F')}
+      ${R(134, 104, 150, 66, '#10142A', 14)}${R(144, 112, 130, 26, '#190606', 4)}${keys(144, 146, 6, 18, 10, 4, '#2F4FA0', '#FF6A5A', 3)}
+      ${knob('toggle', 112, 130, 12, '#8FD14F', '#6EAF30', '#10142A')}${knob('tune', 306, 130, 12, '#8FD14F', '#6EAF30', '#10142A')}${R(300, 168, 50, 14, '#8FD14F', 7)}
+      ${wheel({ rim: '#10142A', hub: '#8FD14F', spokes: 2, width: 15, r: 104 })}${carSwitches(338, 190, '#10142A', '#8FD14F')}`,
+  },
+  {
+    id: 'peugeot206', name: 'Peugeot 206', year: 2002, country: 'fr', unit: 'Clarion', band: 'fm', screen: [152, 112, 116, 22, 'lcd-orange'],
+    art: () => `${R(0, 30, 400, 210, '#3D3F44')}${P('M0 30 H400 V56 Q200 100 0 56 Z', '#2A2B2F')}${R(28, 40, 172, 52, '#101012', 24)}${gauge(78, 66, 22, { rim: '#B6B8BC', face: '#101012', tick: '#FFFFFF', needle: '#FF6A1A' })}${gauge(148, 66, 22, { rim: '#B6B8BC', face: '#101012', tick: '#FFFFFF', needle: '#FF6A1A' })}${C(262, 78, 20, '#2A2B2F')}${L('M250 72 H274 M250 78 H274 M250 84 H274', '#8E9096', 2)}${C(336, 78, 20, '#2A2B2F')}${L('M324 72 H348 M324 78 H348 M324 84 H348', '#8E9096', 2)}
+      ${R(134, 100, 154, 78, '#B6B8BC', 12)}${R(140, 106, 142, 66, '#101012', 9)}${R(150, 110, 122, 26, '#150C02', 3)}${keys(148, 144, 6, 20, 8, 4, '#2A2B2F', '#FF8A1E', 1.5)}${key('prev', R(150, 158, 28, 9, '#2A2B2F', 2))}${key('next', R(244, 158, 28, 9, '#2A2B2F', 2))}
+      ${knob('toggle', 118, 130, 10, '#2A2B2F', '#44464B', '#FF8A1E')}${knob('tune', 304, 130, 10, '#2A2B2F', '#44464B', '#FF8A1E')}${C(180, 202, 10, '#101012')}${C(210, 202, 10, '#101012')}${C(240, 202, 10, '#101012')}
+      ${wheel({ rim: '#101012', hub: '#2A2B2F', spokes: 3, width: 15, r: 106 })}${carSwitches(338, 190, '#101012', '#B6B8BC')}`,
+  },
 ];
 
 // ---------- home sets (400 × 300): the receiver on a shelf ----------
