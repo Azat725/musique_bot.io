@@ -75,6 +75,7 @@ function start() {
     {
       lights: () => { lights = !lights; haptic('select'); $('[data-lights]').setAttribute('aria-pressed', String(lights)); $('[data-lights]').classList.toggle('is-on', lights); },
       horn: (on) => { horn = on; audio?.horn(on); },
+      station: (dir) => { haptic('medium'); tuneBy(dir).catch(() => {}); }, // N: the next station, Shift+N: the one before
     },
   );
 

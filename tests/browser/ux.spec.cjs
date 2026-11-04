@@ -158,6 +158,11 @@ test('drive: the mini game asks first, drives only on the road, tunes by holding
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('musique.settings')).radioStation||'')).toBe(before);
   await page.mouse.down();await page.waitForTimeout(2900);await page.mouse.up(); // held for 2.5 seconds: the next station
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('musique.settings')).radioStation||'')).not.toBe(before);
+  const held=await page.evaluate(()=>JSON.parse(localStorage.getItem('musique.settings')).radioStation||'');
+  await page.keyboard.press('n'); // the key does the same as holding the radio
+  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('musique.settings')).radioStation||'')).not.toBe(held);
+  await page.keyboard.press('Shift+N'); // and Shift goes back
+  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('musique.settings')).radioStation||'')).toBe(held);
   await page.keyboard.press('Escape');
   await expect(page.locator('.drive')).toHaveCount(0);
   await expect(page.locator('body')).not.toHaveClass(/drive-open/);
