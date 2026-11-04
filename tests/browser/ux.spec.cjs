@@ -125,7 +125,7 @@ test('drive: the mini game asks first, drives only on the road, tunes by holding
   await page.setViewportSize({width:812,height:375});
   const requests=[];
   page.on('request',(r)=>{ if(new URL(r.url()).pathname.startsWith('/api/')) requests.push(new URL(r.url()).pathname); });
-  await boot(page,{playerMode:'radio-car'});
+  await boot(page,{playerMode:'radio-car',firstUse:Date.now()}); // the day of first use is already stamped: nothing else is saved meanwhile
   await page.evaluate(async(tracks)=>{const {player}=await import('/js/player.js');const {openPlayer}=await import('/js/vinyl.js');player.queue=[tracks[0]];player.index=0;openPlayer();},tracks);
   await expect(page.locator('.fp.is-radio-car.is-open')).toBeVisible();
   await page.locator('[data-drive]').click();
