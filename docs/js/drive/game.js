@@ -1,6 +1,7 @@
 import { t } from '../i18n.js';
 import { esc, h, haptic, icon, sheet } from '../ui.js';
-import { initSfx, startDriveAudio } from '../sfx.js';
+import { initSfx, startCarAmbience, startDriveAudio } from '../sfx.js';
+import { settings } from '../store.js';
 import { receiver, tuneBy } from '../radio.js';
 import { makeWorld, rng, startSpot } from './world.js';
 import { carSpec, styleFor } from './styles.js';
@@ -23,6 +24,14 @@ export const driveState = () => session;
 
 const LIGHTS = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 5.5a6.5 6.5 0 0 0 0 13c1.2 0 2.3-.3 3.2-.9V6.4A6.4 6.4 0 0 0 13 5.5z"/><path d="M19 8.5h2.5M19 12h2.5M19 15.5h2.5"/></svg>';
 const HORN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5l5.5 4v-13l-5.5 4z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg>';
+const ENV_ICONS = {
+  night: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>',
+  dusk: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 18h17M7 18a5 5 0 0 1 10 0M12 7v2.5M5.4 10.4l1.8 1.8M18.6 10.4l-1.8 1.8"/></svg>',
+  day: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/></svg>',
+};
+const RAIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 15a4 4 0 0 1 .5-8 5 5 0 0 1 9.5 1.5A3.3 3.3 0 0 1 17 15H7zM9 18l-1 2.5M13 18l-1 2.5M17 18l-1 2.5"/></svg>';
+const TIMES = ['night', 'dusk', 'day'];
+const ENV_KEY = 'musique.drive-env'; // the time of day and the rain you left it with, on this device
 const PHONE = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/></svg>';
 
 /** Asks first (the game leaves the player), then starts. */
@@ -55,6 +64,10 @@ function start(mode = 'free') {
       <button class="drive__tool" data-lights aria-pressed="false" aria-label="${esc(t('drive_lights'))}">${LIGHTS}</button>
       <button class="drive__tool" data-horn aria-label="${esc(t('drive_horn'))}">${HORN}</button>
     </div>
+    <div class="drive__env">
+      <button class="drive__tool" data-env-time aria-label="${esc(t('drive_time'))}"></button>
+      <button class="drive__tool" data-env-rain aria-pressed="false" aria-label="${esc(t('drive_rain'))}">${RAIN}</button>
+    </div>
     <div class="drive__pedals">
       <button class="drive__pedal drive__pedal--brake" aria-label="${esc(t('drive_brake'))}"><span>${esc(t('drive_brake'))}</span></button>
       <button class="drive__pedal drive__pedal--gas" aria-label="${esc(t('drive_gas'))}"><span>${esc(t('drive_gas'))}</span></button>
@@ -74,6 +87,9 @@ function start(mode = 'free') {
   const canvas = $('.drive__view'), wheelArt = $('.drive__wheelart');
   const dash = mountDash($('.drive__dash'), wheelArt, r);
   const renderer = createRenderer(canvas, world, style);
+  // the time of day and the rain: a button each; they start as they were left (the rain as the car radio has it by default)
+  let env = { time: 'night', rain: !!settings.radioRain }, rainAudio = null;
+  try { const v = JSON.parse(store.getItem(ENV_KEY) || 'null'); if (v && TIMES.includes(v.time)) env = { time: v.time, rain: !!v.rain }; } catch { /* the default */ }
   initSfx();
   let quality = 1, audio = startDriveAudio(), lights = false, horn = false, shake = 0, raf = 0, last = 0, acc = 0, time = 0, slow = 0, frames = 0, closed = false, paused = false;
 
@@ -83,8 +99,23 @@ function start(mode = 'free') {
       lights: () => { lights = !lights; haptic('select'); $('[data-lights]').setAttribute('aria-pressed', String(lights)); $('[data-lights]').classList.toggle('is-on', lights); },
       horn: (on) => { horn = on; audio?.horn(on); },
       station: (dir) => { haptic('medium'); tuneBy(dir).catch(() => {}); }, // N: the next station, Shift+N: the one before
+      time: () => nextTime(), rain: () => toggleRain(),
     },
   );
+
+  const applyEnv = () => {
+    renderer.setEnv(env);
+    const tb = $('[data-env-time]'), rb = $('[data-env-rain]');
+    tb.innerHTML = ENV_ICONS[env.time]; tb.setAttribute('aria-label', `${t('drive_time')}: ${t('drive_t_' + env.time)}`);
+    rb.classList.toggle('is-on', env.rain); rb.setAttribute('aria-pressed', String(env.rain));
+    if (env.rain && !rainAudio && !document.hidden) rainAudio = startCarAmbience({ rain: true });
+    else if (!env.rain && rainAudio) { rainAudio(); rainAudio = null; }
+  };
+  const changeEnv = (next, word) => { env = { ...env, ...next }; store.setItem(ENV_KEY, JSON.stringify(env)); applyEnv(); haptic('select'); say(word()); };
+  const nextTime = () => changeEnv({ time: TIMES[(TIMES.indexOf(env.time) + 1) % TIMES.length] }, () => t('drive_t_' + env.time));
+  const toggleRain = () => changeEnv({ rain: !env.rain }, () => t(env.rain ? 'drive_rain_on' : 'drive_rain_off'));
+  $('[data-env-time]').addEventListener('click', nextTime);
+  $('[data-env-rain]').addEventListener('click', toggleRain);
 
   // holding the radio for 2.5 seconds tunes the next station
   let hold = null;
@@ -144,6 +175,7 @@ function start(mode = 'free') {
     }
   };
   updateHud();
+  applyEnv();
 
   const step = (dt) => {
     time += dt;
@@ -201,8 +233,8 @@ function start(mode = 'free') {
   };
 
   const onVisible = () => {
-    if (document.hidden) { cancelAnimationFrame(raf); audio?.stop(); audio = null; }
-    else if (!closed) { last = performance.now(); raf = requestAnimationFrame(frame); audio = startDriveAudio(); }
+    if (document.hidden) { cancelAnimationFrame(raf); audio?.stop(); audio = null; rainAudio?.(); rainAudio = null; }
+    else if (!closed) { last = performance.now(); raf = requestAnimationFrame(frame); audio = startDriveAudio(); applyEnv(); }
   };
   document.addEventListener('visibilitychange', onVisible);
 
@@ -211,7 +243,7 @@ function start(mode = 'free') {
     closed = true;
     cancelAnimationFrame(raf); stopHold(); clearTimeout(hintTimer);
     if (endRun(run, rec)) saveRecords(store, rec); // a run still going when the game is left may be a record too
-    controls.destroy(); audio?.stop(); dash.destroy();
+    controls.destroy(); audio?.stop(); rainAudio?.(); dash.destroy();
     removeEventListener('resize', layout); removeEventListener('orientationchange', layout);
     document.removeEventListener('visibilitychange', onVisible); document.removeEventListener('drive-close', close); removeEventListener('keydown', onKey, true);
     root.classList.add('is-leaving');

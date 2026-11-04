@@ -7,7 +7,7 @@ const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const norm = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 const KEYS = { KeyW: 'gas', ArrowUp: 'gas', KeyS: 'brake', ArrowDown: 'brake', KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right', Space: 'hand' };
 
-/** `parts` = { wheel (the finger target), gas, brake, horn, lights } elements; `on` = { lights(), horn(bool), station(dir) } callbacks. */
+/** `parts` = { wheel (the finger target), gas, brake, horn, lights } elements; `on` = { lights(), horn(bool), station(dir), time(), rain() } callbacks. */
 export function createControls(parts, on) {
   const held = new Set(), pressed = new Set();
   let throttle = 0, brake = 0, keySteer = 0, angle = 0, lastAngle = 0, finger = null;
@@ -20,6 +20,8 @@ export function createControls(parts, on) {
     else if (e.code === 'KeyL' && !e.repeat) on.lights();
     else if (e.code === 'KeyH' && !e.repeat) on.horn(true);
     else if (e.code === 'KeyN' && !e.repeat) on.station(e.shiftKey ? -1 : 1); // the next station, with Shift the one before
+    else if (e.code === 'KeyT' && !e.repeat) on.time(); // night, dusk, day
+    else if (e.code === 'KeyR' && !e.repeat) on.rain();
   });
   listen(window, 'keyup', (e) => {
     if (KEYS[e.code]) held.delete(KEYS[e.code]);

@@ -243,3 +243,31 @@ test('drive: the race shows the next checkpoint, ends with a result, and the bes
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.keyboard.press('Escape');
 });
+test('drive: night, dusk and day look different, rain can be switched on, and the choice is kept on this device',async({page})=>{
+  test.setTimeout(60000);
+  await page.setViewportSize({width:812,height:375});
+  const requests=[];
+  page.on('request',(r)=>{ if(new URL(r.url()).pathname.startsWith('/api/')) requests.push(r.url()); });
+  await boot(page,{playerMode:'radio-car',firstUse:Date.now(),radioRain:false});
+  await page.evaluate(async(tracks)=>{const {player}=await import('/js/player.js');const {openPlayer}=await import('/js/vinyl.js');player.queue=[tracks[0]];player.index=0;openPlayer();},tracks);
+  await page.locator('[data-drive]').click();
+  await page.locator('.sheet .sheet__item').first().click();
+  await expect(page.locator('.drive')).toBeVisible();
+  const quiet=requests.length; // what the app asked for before the game
+  const sky=()=>page.evaluate(()=>new Promise((res)=>setTimeout(()=>{const c=document.querySelector('.drive__view'),d=c.getContext('2d').getImageData(0,2,c.width,6).data;let s=0;for(let i=0;i<d.length;i+=4)s+=d[i]+d[i+1]+d[i+2];res(s/(d.length/4*3));},400)));
+  const night=await sky();
+  await page.locator('[data-env-time]').click();await page.locator('[data-env-time]').click(); // night → dusk → day
+  const day=await sky();
+  expect(day).toBeGreaterThan(night+80); // the sky is light by day
+  await expect(page.locator('[data-env-rain]')).toHaveAttribute('aria-pressed','false');
+  await page.locator('[data-env-rain]').click();
+  await expect(page.locator('[data-env-rain]')).toHaveAttribute('aria-pressed','true');
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('musique.drive-env')))).toEqual({time:'day',rain:true});
+  await page.keyboard.press('t'); // the key goes on round to the night again
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('musique.drive-env')).time)).toBe('night');
+  await page.keyboard.press('r'); // and the rain stops
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('musique.drive-env')).rain)).toBe(false);
+  expect(requests.length).toBe(quiet); // the game sent nothing
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  await page.keyboard.press('Escape');
+});
