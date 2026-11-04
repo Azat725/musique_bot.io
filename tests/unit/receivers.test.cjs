@@ -7,11 +7,13 @@ const path = require('node:path');
 const load = () => import('data:text/javascript,' + encodeURIComponent(fs.readFileSync(path.join(__dirname, '../../docs/js/devices/receivers.js'), 'utf8')));
 const COUNTRIES = ['us', 'uk', 'ussr', 'de', 'fr', 'it', 'jp'];
 
-test('every country has cars and three or four home sets, ids are unique', async () => {
+test('every country has a car for each decade and three or four home sets, ids are unique', async () => {
   const { RECEIVERS } = await load();
   assert.equal(new Set(RECEIVERS.map((r) => r.id)).size, RECEIVERS.length);
   for (const c of COUNTRIES) {
-    assert.ok(RECEIVERS.filter((r) => r.country === c && r.kind === 'car').length >= 3, `${c} cars`);
+    // a car for every decade from the thirties to the 2000s, as the radio has stations for each
+    const decades = new Set(RECEIVERS.filter((r) => r.country === c && r.kind === 'car').map((r) => Math.floor((r.era || r.year) / 10) * 10));
+    for (let d = 1930; d <= 2000; d += 10) assert.ok(decades.has(d), `${c} has no car for the ${d}s`);
     const homes = RECEIVERS.filter((r) => r.country === c && r.kind === 'home').length;
     assert.ok(homes >= 3 && homes <= 4, `${c} home: ${homes}`);
   }

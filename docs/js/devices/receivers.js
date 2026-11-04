@@ -433,6 +433,84 @@ const CARS = [
       ${knob('toggle', 118, 130, 10, '#2A2B2F', '#44464B', '#FF8A1E')}${knob('tune', 304, 130, 10, '#2A2B2F', '#44464B', '#FF8A1E')}${C(180, 202, 10, '#101012')}${C(210, 202, 10, '#101012')}${C(240, 202, 10, '#101012')}
       ${wheel({ rim: '#101012', hub: '#2A2B2F', spokes: 3, width: 15, r: 106 })}${carSwitches(338, 190, '#101012', '#B6B8BC')}`,
   },
+  {
+    id: 'fiat508', name: 'Fiat 508 Balilla', year: 1932, country: 'it', unit: 'Magneti Marelli', band: 'am', screen: [160, 124, 80, 24, 'dial'],
+    art: () => `${R(0, 30, 400, 210, '#6F7F6A')}${R(0, 30, 400, 18, '#3E4A3B')}${R(0, 48, 400, 4, '#D6CDAA')}${C(200, 84, 34, '#D6CDAA')}${C(200, 84, 27, '#171A14')}${gauge(200, 84, 24, { rim: '#171A14', face: '#EDE8D2', tick: '#2B2620', needle: '#9E1E24', ticks: 9 })}${R(56, 66, 70, 30, '#3E4A3B', 15)}${R(286, 66, 70, 30, '#3E4A3B', 15)}
+      ${R(148, 112, 104, 62, '#171A14', 6)}${R(154, 118, 92, 50, '#D6CDAA', 4)}${R(160, 124, 80, 24, '#1B1A14', 3)}${keys(160, 152, 4, 17, 10, 4, '#171A14', null, 2)}
+      ${knob('toggle', 130, 144, 11, '#D6CDAA', '#B8AE88', '#171A14')}${knob('tune', 270, 144, 11, '#D6CDAA', '#B8AE88', '#171A14')}
+      ${wheel({ rim: '#171A14', hub: '#D6CDAA', spokes: 3, width: 8, r: 112 })}${carSwitches(338, 184, '#3E4A3B', '#D6CDAA')}`,
+  },
+  {
+    id: 'topolino', name: 'Fiat 500 C Topolino', year: 1949, country: 'it', unit: 'Voxson', band: 'am', screen: [180, 132, 76, 20, 'dial'],
+    art: () => `${R(0, 30, 400, 210, '#8FB4C9')}${R(0, 30, 400, 20, '#2F4A5E')}${R(0, 50, 400, 3, '#EEF0EA')}${R(30, 64, 90, 56, '#EEF0EA', 28)}${C(75, 92, 21, '#1B1B1A')}${gauge(75, 92, 19, { rim: '#1B1B1A', face: '#EEF0EA', tick: '#222', needle: '#9E1E24', ticks: 7 })}
+      ${C(212, 92, 34, '#2F4A5E')}${dots(212, 92, 26, 8, '#EEF0EA', 2.2)}${R(168, 122, 110, 52, '#2F4A5E', 6)}${R(174, 128, 98, 40, '#EEF0EA', 4)}${R(180, 132, 76, 20, '#1B1A14', 3)}${keys(178, 156, 4, 17, 8, 4, '#2F4A5E', null, 2)}
+      ${knob('toggle', 148, 150, 12, '#EEF0EA', '#C9D3D8', '#2F4A5E')}${knob('tune', 298, 150, 12, '#EEF0EA', '#C9D3D8', '#2F4A5E')}
+      ${wheel({ rim: '#1B1B1A', hub: '#EEF0EA', spokes: 2, width: 10, r: 104 })}${carSwitches(338, 186, '#2F4A5E', '#EEF0EA')}`,
+  },
+  {
+    id: 'giulietta', name: 'Alfa Romeo Giulietta', year: 1955, country: 'it', unit: 'Autovox', band: 'am', screen: [168, 130, 100, 22, 'dial'],
+    art: () => `${R(0, 30, 400, 210, '#7A1F1F')}${R(0, 30, 400, 46, '#D6CFB8')}${R(0, 76, 400, 4, '#C9C9C4')}${R(30, 44, 234, 28, '#171512', 14)}${R(38, 50, 218, 16, '#EDE8D2', 8)}${L('M50 58 H244', '#2B2620', 2)}<g class="rx-needle" style="transform-origin:50px 58px">${L('M50 58 L84 58', '#C8302B', 3)}</g>${C(306, 58, 18, '#171512')}${C(306, 58, 13, '#EDE8D2')}
+      ${R(146, 104, 134, 72, '#171512', 6)}${R(152, 110, 122, 60, '#C9C9C4', 4)}${R(168, 130, 100, 22, '#1B1A14', 3)}${R(168, 116, 100, 10, '#171512', 3)}${keys(160, 156, 5, 20, 10, 4, '#171512', null, 2)}
+      ${knob('toggle', 124, 140, 13, '#C9C9C4', '#8E8E88', '#171512')}${knob('tune', 302, 140, 13, '#C9C9C4', '#8E8E88', '#171512')}
+      ${wheel({ rim: '#2B1D12', hub: '#C9C9C4', spokes: 3, ring: '#C9C9C4', width: 11, r: 112 })}${carSwitches(338, 186, '#171512', '#C9C9C4')}`,
+  },
+  {
+    id: 'fiat127', name: 'Fiat 127', year: 1971, country: 'it', unit: 'Voxson', band: 'fm', screen: [158, 120, 96, 26, 'dial'],
+    art: () => `${R(0, 30, 400, 210, '#6B4A2A')}${R(0, 30, 400, 24, '#2A1E12')}${R(26, 42, 80, 60, '#171310', 4)}${gauge(66, 72, 25, { rim: '#4A3A2A', face: '#0B0A08', tick: '#EDEDE4', needle: '#FF9A1E' })}${R(114, 42, 80, 60, '#171310', 4)}${gauge(154, 72, 25, { rim: '#4A3A2A', face: '#0B0A08', tick: '#EDEDE4', needle: '#FF9A1E' })}
+      ${R(140, 108, 132, 70, '#171310', 3)}${R(148, 116, 116, 34, '#0B0A08', 2)}${keys(148, 156, 5, 18, 12, 4, '#E8D9B0', null, 1.5)}
+      ${knob('toggle', 118, 132, 11, '#E8D9B0', '#CDB98A', '#2A1E12')}${knob('tune', 296, 132, 11, '#E8D9B0', '#CDB98A', '#2A1E12')}${R(304, 60, 66, 8, '#2A1E12', 3)}${R(304, 76, 66, 8, '#2A1E12', 3)}
+      ${wheel({ rim: '#171310', hub: '#2A1E12', spokes: 2, width: 14, r: 106 })}${carSwitches(338, 188, '#171310', '#CDB98A')}`,
+  },
+  {
+    id: 'punto', name: 'Fiat Punto', year: 1993, country: 'it', unit: 'Clarion', band: 'fm', screen: [150, 114, 120, 22, 'lcd-red'],
+    art: () => `${R(0, 30, 400, 210, '#4A4E55')}${P('M0 30 H400 V58 Q310 80 230 66 Q160 54 0 62 Z', '#33363B')}${R(28, 42, 150, 46, '#0F1013', 22)}${gauge(76, 65, 20, { rim: '#6A6E75', face: '#0A0B0D', tick: '#CFE8FF', needle: '#FF3A2A' })}${gauge(134, 65, 20, { rim: '#6A6E75', face: '#0A0B0D', tick: '#CFE8FF', needle: '#FF3A2A' })}${L('M196 56 H372', '#2F6EFF', 3)}
+      ${R(134, 100, 152, 72, '#15161A', 6)}${R(144, 108, 132, 28, '#14060A', 3)}${keys(144, 142, 6, 20, 10, 4, '#2C2E34', '#E0343B', 2)}${R(144, 156, 132, 10, '#1D1E22', 3)}
+      ${knob('toggle', 114, 124, 10, '#2C2E34', '#42454C', '#DDD')}${knob('tune', 308, 124, 10, '#2C2E34', '#42454C', '#DDD')}${C(190, 200, 11, '#15161A')}${C(224, 200, 11, '#15161A')}${C(258, 200, 11, '#15161A')}
+      ${wheel({ rim: '#15161A', hub: '#2C2E34', spokes: 3, width: 15, r: 106 })}${carSwitches(338, 190, '#15161A', '#8E9096')}`,
+  },
+  {
+    id: 'alfa147', name: 'Alfa Romeo 147', year: 2001, country: 'it', unit: 'Blaupunkt', band: 'fm', screen: [152, 112, 116, 22, 'lcd-red'],
+    art: () => `${R(0, 30, 400, 210, '#2E2F33')}${R(0, 30, 400, 24, '#1A1B1E')}${C(84, 74, 38, '#0C0C0E')}${gauge(84, 74, 31, { rim: '#9A9CA2', face: '#0C0C0E', tick: '#FFFFFF', needle: '#E8342B' })}${C(200, 74, 30, '#0C0C0E')}${gauge(200, 74, 23, { rim: '#9A9CA2', face: '#0C0C0E', tick: '#FFFFFF', needle: '#E8342B' })}${C(316, 74, 38, '#0C0C0E')}${gauge(316, 74, 31, { rim: '#9A9CA2', face: '#0C0C0E', tick: '#FFFFFF', needle: '#E8342B' })}
+      ${R(136, 120, 152, 62, '#101012', 8)}${R(146, 126, 132, 28, '#150404', 3)}${keys(146, 160, 6, 20, 9, 4, '#26272B', '#E0343B', 1.5)}${key('prev', R(146, 172, 30, 7, '#26272B', 2))}${key('next', R(248, 172, 30, 7, '#26272B', 2))}
+      ${knob('toggle', 114, 142, 10, '#26272B', '#3C3D42', '#DDD')}${knob('tune', 310, 142, 10, '#26272B', '#3C3D42', '#DDD')}
+      ${wheel({ rim: '#101012', hub: '#26272B', spokes: 3, ring: '#9A9CA2', width: 15, r: 106 })}${carSwitches(338, 192, '#101012', '#9A9CA2')}`,
+  },
+  {
+    id: 'toyotaaa', name: 'Toyota AA', year: 1936, country: 'jp', unit: 'Hitachi', band: 'am', screen: [166, 112, 76, 30, 'dial'],
+    art: () => `${R(0, 30, 400, 210, '#2F3F32')}${R(0, 30, 400, 16, '#1B261D')}${R(0, 46, 400, 4, '#C9BE96')}${P('M24 108 V78 Q24 58 52 58 H220 Q248 58 248 78 V108 Z', '#C9BE96')}${R(32, 68, 208, 30, '#161A14', 15)}${gauge(100, 83, 14, { rim: '#C9BE96', face: '#EDE3C4', tick: '#2B2620', needle: '#9E1E24', ticks: 7 })}${gauge(170, 83, 14, { rim: '#C9BE96', face: '#EDE3C4', tick: '#2B2620', needle: '#9E1E24', ticks: 7 })}
+      ${R(150, 100, 112, 70, '#161A14', 6)}${R(156, 106, 100, 58, '#C9BE96', 4)}${R(166, 112, 76, 30, '#1B1A14', 3)}${keys(164, 148, 4, 18, 10, 4, '#161A14', null, 2)}
+      ${knob('toggle', 130, 140, 11, '#C9BE96', '#A89E78', '#161A14')}${knob('tune', 282, 140, 11, '#C9BE96', '#A89E78', '#161A14')}${R(312, 66, 54, 30, '#1B261D', 5)}
+      ${wheel({ rim: '#161A14', hub: '#C9BE96', spokes: 3, ring: '#161A14', width: 9, r: 114 })}${carSwitches(338, 186, '#161A14', '#C9BE96')}`,
+  },
+  {
+    id: 'toyotasa', name: 'Toyota SA', year: 1947, country: 'jp', unit: 'Matsushita', band: 'am', screen: [152, 128, 96, 22, 'dial'],
+    art: () => `${R(0, 30, 400, 210, '#6E2B2B')}${R(0, 30, 400, 22, '#2B1313')}${R(0, 52, 400, 3, '#E0D4B0')}${C(96, 90, 36, '#E0D4B0')}${C(96, 90, 29, '#181212')}${gauge(96, 90, 26, { rim: '#181212', face: '#EDE3C4', tick: '#2B2620', needle: '#9E1E24', ticks: 8 })}${C(306, 86, 30, '#2B1313')}${dots(306, 86, 22, 7, '#E0D4B0', 2)}
+      ${R(138, 108, 118, 66, '#2B1313', 6)}${R(144, 114, 106, 54, '#E0D4B0', 4)}${R(152, 128, 96, 22, '#1B1A14', 3)}${keys(150, 154, 5, 16, 9, 3, '#2B1313', null, 2)}
+      ${knob('toggle', 120, 140, 11, '#E0D4B0', '#C4B78F', '#2B1313')}${knob('tune', 274, 140, 11, '#E0D4B0', '#C4B78F', '#2B1313')}
+      ${wheel({ rim: '#181212', hub: '#E0D4B0', spokes: 2, width: 10, r: 106 })}${carSwitches(338, 186, '#2B1313', '#E0D4B0')}`,
+  },
+  {
+    id: 'crown', name: 'Toyopet Crown', year: 1955, country: 'jp', unit: 'Hitachi', band: 'am', screen: [152, 112, 124, 24, 'dial'],
+    art: () => `${R(0, 30, 400, 210, '#B7D6C9')}${R(0, 30, 400, 40, '#3C5A52')}${R(0, 70, 400, 4, '#EDEDE4')}${R(26, 80, 140, 28, '#1D2A26', 14)}${R(32, 85, 128, 18, '#EDEDE4', 9)}${L('M42 94 H150', '#2B2B28', 2)}<g class="rx-needle" style="transform-origin:42px 94px">${L('M42 94 L68 94', '#C8302B', 3)}</g>
+      ${R(138, 104, 150, 76, '#3C5A52', 8)}${R(144, 110, 138, 64, '#EDEDE4', 5)}${R(152, 112, 124, 24, '#1B1A14', 3)}${keys(150, 142, 7, 15, 20, 4, '#3C5A52', '#EDEDE4', 2)}
+      ${knob('toggle', 120, 132, 12, '#EDEDE4', '#CFD6CF', '#3C5A52')}${knob('tune', 306, 132, 12, '#EDEDE4', '#CFD6CF', '#3C5A52')}${R(300, 82, 70, 14, '#3C5A52', 7)}
+      ${wheel({ rim: '#1D2A26', hub: '#EDEDE4', spokes: 2, ring: '#EDEDE4', width: 10, r: 112 })}${carSwitches(338, 188, '#3C5A52', '#EDEDE4')}`,
+  },
+  {
+    id: '2000gt', name: 'Toyota 2000GT', year: 1967, country: 'jp', unit: 'Toyota', band: 'am', screen: [154, 128, 112, 22, 'dial'],
+    art: () => `${R(0, 30, 400, 210, '#6B3F26')}${Array.from({ length: 10 }, (_, i) => L(`M0 ${44 + i * 20} Q200 ${36 + i * 20} 400 ${46 + i * 20}`, '#7C4C30', 3)).join('')}${R(0, 30, 400, 8, '#151412')}${R(24, 44, 232, 52, '#151412', 10)}${gauge(60, 70, 19, { rim: '#B9BCC0', face: '#0A0A09', tick: '#EDEDE4', needle: '#FF9A1E' })}${gauge(118, 70, 19, { rim: '#B9BCC0', face: '#0A0A09', tick: '#EDEDE4', needle: '#FF9A1E' })}${gauge(176, 70, 19, { rim: '#B9BCC0', face: '#0A0A09', tick: '#EDEDE4', needle: '#FF9A1E' })}${gauge(228, 70, 19, { rim: '#B9BCC0', face: '#0A0A09', tick: '#EDEDE4', needle: '#FF9A1E' })}
+      ${R(140, 106, 142, 74, '#151412', 5)}${R(146, 112, 130, 62, '#B9BCC0', 3)}${R(154, 128, 112, 22, '#0A0A09', 3)}${keys(150, 156, 5, 20, 12, 4, '#151412', null, 2)}
+      ${knob('toggle', 122, 138, 11, '#B9BCC0', '#8E9094', '#151412')}${knob('tune', 300, 138, 11, '#B9BCC0', '#8E9094', '#151412')}${C(330, 70, 16, '#151412')}${C(330, 70, 12, '#EDEDE4')}
+      ${wheel({ rim: '#2B1D12', hub: '#B9BCC0', spokes: 3, ring: '#B9BCC0', width: 12, r: 108 })}${carSwitches(338, 188, '#151412', '#B9BCC0')}`,
+  },
+  {
+    id: 's2000', name: 'Honda S2000', year: 2001, country: 'jp', unit: 'Honda', band: 'fm', screen: [158, 116, 104, 20, 'lcd-red'],
+    art: () => `${R(0, 30, 400, 210, '#1A1B1E')}${R(0, 30, 400, 28, '#101113')}${R(30, 38, 190, 48, '#07080A', 10)}${Array.from({ length: 18 }, (_, i) => R(40 + i * 9.5, 46, 6.5, 10, i < 12 ? '#E8E8E0' : '#E8342B', 1)).join('')}${gauge(80, 71, 12, { rim: '#26272B', face: '#0A0A0B', tick: '#EEE', needle: '#E8342B', ticks: 5 })}${gauge(168, 71, 12, { rim: '#26272B', face: '#0A0A0B', tick: '#EEE', needle: '#E8342B', ticks: 5 })}
+      ${C(320, 86, 17, '#C8302B')}${C(320, 86, 11, '#8E1C18')}${R(284, 58, 70, 5, '#2B2C30', 2)}
+      ${R(142, 100, 138, 72, '#C0C2C6', 8)}${R(146, 104, 130, 64, '#0E0F11', 6)}${R(154, 110, 114, 24, '#140505', 3)}${keys(152, 142, 6, 18, 9, 4, '#2B2C30', '#E0343B', 1.5)}${key('prev', R(152, 156, 28, 8, '#2B2C30', 2))}${key('next', R(240, 156, 28, 8, '#2B2C30', 2))}
+      ${knob('toggle', 118, 124, 10, '#2B2C30', '#40414A', '#DDD')}${knob('tune', 304, 124, 10, '#2B2C30', '#40414A', '#DDD')}
+      ${wheel({ rim: '#0E0F11', hub: '#2B2C30', spokes: 3, width: 14, r: 104 })}${carSwitches(338, 190, '#0E0F11', '#8E9096')}`,
+  },
 ];
 
 // ---------- home sets (400 × 300): the receiver on a shelf ----------
