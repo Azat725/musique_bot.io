@@ -4,7 +4,9 @@ import { phonoMode, radioMode, settings, tapeMode } from './store.js';
  *  The context is created lazily (only with sounds on) and suspended whenever nothing is playing:
  *  a running AudioContext keeps iOS rendering silence for the whole session.
  *  Recorded samples: the needle and the swipe of a record, and the keys and cassette of a tape deck (CC0 recordings by
- *  Joseph Sardin, bigsoundbank.com: assets/sfx/CREDITS.md). The noises (crackle, scratch, tape hiss, rewinding) are synthesised. */
+ *  Joseph Sardin, bigsoundbank.com: assets/sfx/CREDITS.md). The noises (crackle, scratch, tape hiss, rewinding) are synthesised.
+ *  The rain, road, engine, passing cars and horn of the car are recordings too (assets/sfx/car-*.mp3), fetched only when the car radio
+ *  or the driving game starts; until they arrive, and if they cannot be fetched, the synthesised versions play. */
 
 let ctx = null;
 const buffers = {};
@@ -47,6 +49,36 @@ function hold(always = false) {
 function release() {
   active = Math.max(0, active - 1);
   if (!active && ctx?.state === 'running') ctx.suspend().catch(() => {});
+}
+
+// ---------- the car recordings: loaded on first use, never with the sounds off ----------
+
+const loading = {};
+/** The buffer of assets/sfx/<name>.mp3, fetched once; null when it cannot be had (the caller keeps its synthesised sound). */
+function loadSample(name) {
+  if (buffers[name]) return Promise.resolve(buffers[name]);
+  if (!loading[name]) {
+    const c = ctx;
+    loading[name] = fetch(`assets/sfx/${name}.mp3`).then((r) => { if (!r.ok) throw new Error('missing'); return r.arrayBuffer(); })
+      .then((d) => c.decodeAudioData(d)).then((b) => (buffers[name] = b)).catch(() => { delete loading[name]; return null; });
+  }
+  return loading[name];
+}
+
+/** A looping recording into `dest`; `start` and `end` (seconds) loop only a part of it (the horn holds its sustain). */
+function loopSource(buf, dest, gain, { start = 0, end = 0 } = {}) {
+  const src = ctx.createBufferSource(), g = ctx.createGain();
+  src.buffer = buf; src.loop = true;
+  if (end) { src.loopStart = start; src.loopEnd = end; }
+  g.gain.value = gain;
+  src.connect(g).connect(dest);
+  return { src, g };
+}
+
+/** The recordings have arrived: one second of crossfade from the synthesised fallback to them. */
+function crossfade(from, to) {
+  const t = ctx.currentTime;
+  for (const [g, v] of [[from, 0], [to, 1]]) { g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t); g.gain.linearRampToValueAtTime(v, t + 1); }
 }
 
 export function playSfx(name, volume = 0.55) {
@@ -536,10 +568,13 @@ export function startCarAmbience({ rain = false, road = false } = {}) {
   const now = ctx.currentTime, out = ctx.createGain(), nodes = [], timers = [];
   out.gain.setValueAtTime(0, now); out.gain.linearRampToValueAtTime(1, now + 1.2);
   out.connect(ctx.destination);
+  const synth = ctx.createGain(), real = ctx.createGain(); // the synthesised version, and the recordings that replace it
+  real.gain.value = 0; synth.connect(out); real.connect(out);
+  let stopped = false, samplesOn = false, passBuf = null;
   const loop = (filterType, freq, q, gain) => {
     const src = noise(), f = ctx.createBiquadFilter(), g = ctx.createGain();
     f.type = filterType; f.frequency.value = freq; f.Q.value = q; g.gain.value = gain;
-    src.connect(f).connect(g).connect(out); src.start(now, Math.random() * 1.5);
+    src.connect(f).connect(g).connect(synth); src.start(now, Math.random() * 1.5);
     nodes.push(src);
     return g;
   };
@@ -551,7 +586,7 @@ export function startCarAmbience({ rain = false, road = false } = {}) {
       const src = noise(), f = ctx.createBiquadFilter(), g = ctx.createGain();
       f.type = 'bandpass'; f.frequency.value = 1400 + Math.random() * 2600; f.Q.value = 3;
       g.gain.setValueAtTime(0.06 + Math.random() * 0.05, t); g.gain.exponentialRampToValueAtTime(0.0008, t + 0.05);
-      src.connect(f).connect(g).connect(out); src.start(t, Math.random()); src.stop(t + 0.07);
+      src.connect(f).connect(g).connect(synth); src.start(t, Math.random()); src.stop(t + 0.07);
       timers.push(setTimeout(drop, 40 + Math.random() * 180));
     };
     drop();
@@ -575,19 +610,33 @@ export function startCarAmbience({ rain = false, road = false } = {}) {
     engine.type = 'sawtooth'; engine.frequency.value = 46; e2.type = 'triangle'; e2.frequency.value = 92.6;
     ef.type = 'lowpass'; ef.frequency.value = 240; eg.gain.value = 0.035;
     lfo.frequency.value = 0.13; lg.gain.value = 3; lfo.connect(lg).connect(engine.frequency); // the revs breathe a little
-    engine.connect(ef); e2.connect(ef); ef.connect(eg).connect(out);
+    engine.connect(ef); e2.connect(ef); ef.connect(eg).connect(synth);
     [engine, e2, lfo].forEach((o) => { o.start(now); nodes.push(o); });
     const pass = () => { // a car going the other way: a swell of air and tyres, falling in pitch as it goes by
+      if (samplesOn) { // the recording of cars passing, now and then
+        if (passBuf) { const s = ctx.createBufferSource(), g = ctx.createGain(); s.buffer = passBuf; g.gain.value = 0.35; s.connect(g).connect(real); s.start(); nodes.push(s); }
+        timers.push(setTimeout(pass, 18000 + Math.random() * 24000));
+        return;
+      }
       const t = ctx.currentTime, d = 2.4;
       const src = noise(), f = ctx.createBiquadFilter(), g = ctx.createGain();
       f.type = 'bandpass'; f.Q.value = 1.2; f.frequency.setValueAtTime(900, t); f.frequency.exponentialRampToValueAtTime(380, t + d);
       g.gain.setValueAtTime(0.0008, t); g.gain.linearRampToValueAtTime(0.09, t + d * 0.45); g.gain.exponentialRampToValueAtTime(0.0008, t + d);
-      src.connect(f).connect(g).connect(out); src.start(t, Math.random()); src.stop(t + d + 0.05);
+      src.connect(f).connect(g).connect(synth); src.start(t, Math.random()); src.stop(t + d + 0.05);
       timers.push(setTimeout(pass, 9000 + Math.random() * 16000));
     };
     timers.push(setTimeout(pass, 4000 + Math.random() * 6000));
   }
-  let stopped = false;
+  // the recordings (rain on the glass and on the roof, the road with the engine, a car passing): fetched now and only for this mode
+  const want = [];
+  if (rain) want.push(['car-rain-glass', 0.28], ['car-rain-roof', 0.22]);
+  if (road) want.push(['car-road', rain ? 0.34 : 0.3]);
+  Promise.all([...want.map(([n]) => loadSample(n)), road ? loadSample('car-pass') : null]).then((bufs) => {
+    if (stopped || bufs.slice(0, want.length).some((b) => !b)) return; // not all of them: the synthesised sound stays
+    want.forEach(([, gain], i) => { const { src } = loopSource(bufs[i], real, gain); src.start(ctx.currentTime, Math.random() * bufs[i].duration); nodes.push(src); });
+    passBuf = bufs[want.length];
+    samplesOn = true; crossfade(synth, real);
+  });
   return () => {
     if (stopped) return;
     stopped = true;
@@ -606,19 +655,34 @@ export function startDriveAudio() {
   const now = ctx.currentTime, out = ctx.createGain(), nodes = [];
   out.gain.setValueAtTime(0, now); out.gain.linearRampToValueAtTime(0.9, now + 0.6);
   out.connect(ctx.destination);
+  const synth = ctx.createGain(), real = ctx.createGain(); // the synthesised engine and tyres, and the recordings that replace them
+  real.gain.value = 0; synth.connect(out); real.connect(out);
   const saw = ctx.createOscillator(), tri = ctx.createOscillator(), lp = ctx.createBiquadFilter(), eg = ctx.createGain();
   saw.type = 'sawtooth'; tri.type = 'triangle'; lp.type = 'lowpass'; lp.frequency.value = 260; eg.gain.value = 0.04;
-  saw.connect(lp); tri.connect(lp); lp.connect(eg).connect(out);
+  saw.connect(lp); tri.connect(lp); lp.connect(eg).connect(synth);
   const road = noise(), rf = ctx.createBiquadFilter(), rg = ctx.createGain();
   rf.type = 'lowpass'; rf.frequency.value = 520; rg.gain.value = 0;
-  road.connect(rf).connect(rg).connect(out);
+  road.connect(rf).connect(rg).connect(synth);
   [saw, tri].forEach((o) => { o.start(now); nodes.push(o); });
   road.start(now, Math.random()); nodes.push(road);
-  let horn = null, stopped = false;
+  let horn = null, stopped = false, eng = null, tyres = null, hornBuf = null;
+  // the recordings (idle engine, road, horn): fetched now and only for the game; the engine pitch follows the revs
+  Promise.all([loadSample('car-engine'), loadSample('car-road'), loadSample('car-horn')]).then(([e, r, h]) => {
+    if (stopped || !e || !r) return; // not there: the synthesised engine stays
+    eng = loopSource(e, real, 0.3); tyres = loopSource(r, real, 0);
+    eng.src.start(ctx.currentTime, Math.random() * e.duration); tyres.src.start(ctx.currentTime, Math.random() * r.duration);
+    nodes.push(eng.src, tyres.src);
+    hornBuf = h;
+    crossfade(synth, real);
+  });
   return {
     update({ rpm, red, speed, throttle }) {
       if (stopped) return;
       const t = ctx.currentTime, k = Math.min(1.2, rpm / red);
+      if (eng) {
+        eng.src.playbackRate.setTargetAtTime(0.8 + 1.5 * k, t, 0.06); eng.g.gain.setTargetAtTime(0.22 + 0.32 * throttle + 0.12 * k, t, 0.08);
+        tyres.g.gain.setTargetAtTime(Math.min(0.4, speed / 30 * 0.4), t, 0.1);
+      }
       saw.frequency.setTargetAtTime(24 + 78 * k, t, 0.05); tri.frequency.setTargetAtTime(48 + 156 * k, t, 0.05);
       lp.frequency.setTargetAtTime(180 + 900 * k, t, 0.08); eg.gain.setTargetAtTime(0.03 + 0.05 * throttle + 0.02 * k, t, 0.08);
       rg.gain.setTargetAtTime(Math.min(0.14, speed / 30 * 0.14), t, 0.1); rf.frequency.setTargetAtTime(400 + speed * 22, t, 0.1);
@@ -630,16 +694,20 @@ export function startDriveAudio() {
     },
     horn(on) {
       const t = ctx.currentTime;
-      if (on && !horn) {
+      if (on && !horn && hornBuf) { // the recorded horn: its attack, then the sustain looped until the button is let go
+        const h = loopSource(hornBuf, out, 0.5, { start: 0.12, end: 0.62 });
+        h.src.start(t);
+        horn = { g: h.g.gain, src: h.src };
+      } else if (on && !horn) {
         const g = ctx.createGain(), a = ctx.createOscillator(), b = ctx.createOscillator();
         a.type = b.type = 'sawtooth'; a.frequency.value = 410; b.frequency.value = 515;
         g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.07, t + 0.03);
         a.connect(g); b.connect(g); g.connect(out); a.start(t); b.start(t);
-        horn = { g, a, b };
+        horn = { g: g.gain, a, b };
       } else if (!on && horn) {
         const h = horn; horn = null;
-        h.g.gain.cancelScheduledValues(t); h.g.gain.setValueAtTime(h.g.gain.value, t); h.g.gain.linearRampToValueAtTime(0, t + 0.06);
-        h.a.stop(t + 0.1); h.b.stop(t + 0.1);
+        h.g.cancelScheduledValues(t); h.g.setValueAtTime(h.g.value, t); h.g.linearRampToValueAtTime(0, t + 0.06);
+        if (h.src) h.src.stop(t + 0.1); else { h.a.stop(t + 0.1); h.b.stop(t + 0.1); }
       }
     },
     stop() {
