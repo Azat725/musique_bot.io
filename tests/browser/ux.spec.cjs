@@ -170,6 +170,24 @@ test('drive: the mini game asks first, drives only on the road, tunes by holding
   await page.evaluate(async()=>{const {updateSettings}=await import('/js/store.js');updateSettings({playerMode:'record'});const {openPlayer}=await import('/js/vinyl.js');openPlayer();});
   await expect(page.locator('[data-drive]')).toBeHidden(); // only a car can be driven
 });
+test('support: after two weeks one page offers to support the author through the bot, only once',async({page})=>{
+  test.setTimeout(60000);
+  const day=24*3600*1000;
+  await page.addInitScript(()=>{window.__opened=[];window.open=(u)=>{window.__opened.push(u);return null;};});
+  await boot(page,{firstUse:Date.now()-5*day});
+  await page.waitForTimeout(5000);
+  await expect(page.locator('.stories')).toHaveCount(0); // five days: not yet
+  await page.evaluate(async(d)=>{const {updateSettings}=await import('/js/store.js');updateSettings({firstUse:Date.now()-15*d});const m=await import('/js/stories.js');m.maybeShowSupport();},day);
+  await expect(page.locator('.stories')).toBeVisible();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('[data-support]')).toBeVisible();
+  await page.locator('[data-support]').click();
+  expect(await page.evaluate(()=>window.__opened)).toEqual(['https://t.me/musiqueenbot']);
+  await expect(page.locator('.stories')).toHaveCount(0);
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('musique.settings')).supportAsked)).toBe(true);
+  await page.evaluate(async()=>{const m=await import('/js/stories.js');await m.maybeShowSupport();});
+  await expect(page.locator('.stories')).toHaveCount(0); // never again
+});
 test('only the machine: no button on the stage, left through the player menu; no sideways overflow',async({page})=>{
   await boot(page,{playerMode:'cd',bareDeck:true});await page.setViewportSize({width:812,height:375});
   await page.evaluate(async(tracks)=>{const {player}=await import('/js/player.js');player.queue=[tracks[0]];player.index=0;const {openPlayer}=await import('/js/vinyl.js');openPlayer();},tracks);

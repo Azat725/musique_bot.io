@@ -2,7 +2,7 @@ import { api } from './api.js';
 import { t } from './i18n.js';
 import { settings, updateSettings } from './store.js';
 import { CLASSIC_SWATCH, THEMES } from './themes.js';
-import { EASE_IO, brandMark, esc, h, haptic, icon } from './ui.js';
+import { EASE_IO, brandMark, esc, h, haptic, icon, tg } from './ui.js';
 import { RECEIVERS } from './devices/receivers.js';
 import { COUNTRIES, receiverArt } from './radio.js';
 
@@ -103,24 +103,27 @@ const SLIDES = [
     ${icon('pm_' + m)}<span>${esc(t('player_' + m))}</span></button>`).join('')}</div>` },
 ];
 
+// the pages shown now (the intro, or the one-off page asking to support the author)
+let deck = SLIDES;
 let root = null, index = 0, fill = null, done = null, keyHandler = null, visHandler = null;
 
 /** Shows the stories; resolves once they are closed. */
-export function showStories() {
+export function showStories(slides = SLIDES) {
   if (root) return Promise.resolve();
-  const last = SLIDES.length - 1;
-  const keys = SLIDES.map((s) => s.key);
+  deck = slides;
+  const last = deck.length - 1;
+  const keys = deck.map((s) => s.key);
   root = h(`<div class="stories" role="dialog" aria-modal="true" aria-label="Musique">
-    ${SLIDES.map((s, i) => `<section class="story story--${s.tone}" aria-hidden="true">
+    ${deck.map((s, i) => `<section class="story story--${s.tone}" aria-hidden="true">
       <div class="story__art">${s.art()}</div>
       <div class="story__copy">
         <h2 class="story__title">${esc(t(`${keys[i]}_t`))}</h2>
         <p class="story__text">${esc(t(`${keys[i]}_s`))}</p>
-        ${i === last ? `<button class="btn story__cta" data-start>${esc(t('st_start'))}</button>` : ''}
+        ${i === last ? (s.cta || `<button class="btn story__cta" data-start>${esc(t('st_start'))}</button>`) : ''}
       </div>
     </section>`).join('')}
     <div class="stories__top">
-      <div class="stories__bars">${SLIDES.map(() => '<span class="stories__bar"><i></i></span>').join('')}</div>
+      <div class="stories__bars">${deck.map(() => '<span class="stories__bar"><i></i></span>').join('')}</div>
       <div class="stories__head">${brandMark()}<span class="stories__brand">Musique</span>
         <button class="stories__close" data-close aria-label="${esc(t('st_close'))}">${icon('close')}</button></div>
     </div>
@@ -141,6 +144,31 @@ export function showStories() {
   return new Promise((resolve) => { done = resolve; });
 }
 
+const TWO_WEEKS = 14 * 24 * 60 * 60 * 1000;
+const BOT_URL = 'https://t.me/musiqueenbot';
+
+/** The bot is where support is given (Telegram Stars or a tea): the app itself never takes a payment. */
+export function openSupport() {
+  if (tg?.initData && tg.openTelegramLink) tg.openTelegramLink(BOT_URL); // inside Telegram; in a browser an ordinary link
+  else window.open(BOT_URL, '_blank', 'noopener');
+}
+
+const SUPPORT = [
+  { key: 'st_support1', tone: 'bordeaux', art: () => `<div class="sx-hero">${record('sx-spin')}<span class="sx-heart">${icon('heart')}</span></div>` },
+  { key: 'st_support2', tone: 'navy', art: () => `<div class="sx-hero sx-hero--small">${icon('pm_record')}</div>`,
+    cta: `<button class="btn story__cta" data-support>${icon('heart')}<span>${esc(t('st_support_btn'))}</span></button><button class="story__later" data-start>${esc(t('st_support_later'))}</button>` },
+];
+
+/** Once, after two weeks of use: a page in the style of the intro offering to support the author. The first launch only
+ *  stamps the day; it never shows while something else is on screen (it waits for the next launch). */
+export async function maybeShowSupport() {
+  if (!settings.firstUse) { updateSettings({ firstUse: Date.now() }); return; }
+  if (settings.supportAsked || !settings.storiesSeen || Date.now() - settings.firstUse < TWO_WEEKS) return;
+  if (root || document.body.classList.contains('player-open') || document.body.classList.contains('drive-open') || document.querySelector('.sheet, .dialog')) return;
+  updateSettings({ supportAsked: true }); // asked once, however it is closed
+  await showStories(SUPPORT);
+}
+
 /** First launch only. Someone who has used Musique before (saved settings or a listening history) never sees it. */
 export async function maybeShowStories() {
   if (settings.storiesSeen) return;
@@ -154,24 +182,24 @@ export async function maybeShowStories() {
 }
 
 function go(i) {
-  index = Math.max(0, Math.min(SLIDES.length - 1, i));
+  index = Math.max(0, Math.min(deck.length - 1, i));
   root.querySelectorAll('.story').forEach((s, j) => {
     s.classList.toggle('is-active', j === index);
     s.setAttribute('aria-hidden', String(j !== index));
   });
-  root.dataset.tone = SLIDES[index].tone;
+  root.dataset.tone = deck[index].tone;
   const bars = [...root.querySelectorAll('.stories__bar i')];
   fill?.cancel();
   bars.forEach((b, j) => { b.style.transform = j < index ? 'scaleX(1)' : 'scaleX(0)'; });
   fill = bars[index].animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: SLIDE_MS, fill: 'forwards' });
   // the last story waits for "Start listening" instead of closing on its own
-  if (index < SLIDES.length - 1) fill.onfinish = () => go(index + 1);
+  if (index < deck.length - 1) fill.onfinish = () => go(index + 1);
   if (document.hidden) fill.pause();
 }
 
 function next() {
   haptic('select');
-  if (index === SLIDES.length - 1) close();
+  if (index === deck.length - 1) close();
   else go(index + 1);
 }
 
@@ -213,6 +241,7 @@ function bindGestures() {
   root.addEventListener('click', (e) => {
     if (e.target.closest('[data-close]')) { haptic('light'); close(); }
     else if (e.target.closest('[data-start]')) { haptic('success'); close(); }
+    else if (e.target.closest('[data-support]')) { haptic('success'); openSupport(); close(); }
     else if (e.target.closest('[data-pick]')) { // the player chosen on the last page: on at once, the intro ends
       const pick = e.target.closest('[data-pick]');
       haptic('success');

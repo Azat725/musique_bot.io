@@ -30,6 +30,13 @@
 .story__title { margin: 0; font: 600 32px/1.12 var(--font-serif); letter-spacing: -.01em; }
 .story__text { margin: 12px 0 0; font-size: 16px; line-height: 1.45; opacity: .84; }
 .story__cta { margin-top: 24px; width: 100%; height: 52px; font-size: 16px; background: #F8F1E3; color: var(--bordeaux); }
+.story__cta { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.story__cta .ic { width: 20px; height: 20px; }
+.story__later { display: block; width: 100%; margin-top: 12px; height: 44px; color: #F3E7D3; font-size: 14px; opacity: .8; }
+.sx-hero { position: relative; }
+.sx-heart { position: absolute; left: 50%; top: 50%; width: 64px; height: 64px; margin: -32px; display: grid; place-items: center; border-radius: 50%; background: #F8F1E3; color: var(--bordeaux); }
+.sx-heart .ic { width: 32px; height: 32px; fill: currentColor; stroke: none; }
+.sx-hero--small .ic { width: 120px; height: 120px; stroke-width: 1; color: #F3E7D3; }
 .story__cta:active { background: var(--paper); }
 .story.is-active .story__art { animation: st-pop .6s var(--ease) both; }
 .story.is-active .story__copy { animation: st-up .5s var(--ease) .08s both; }

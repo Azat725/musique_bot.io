@@ -4,7 +4,7 @@ import { t } from '../i18n.js';
 import { heard, onSettings, phonoMode, radioMode, settings, updateSettings } from '../store.js';
 import { PLAYER_MODES } from '../devices/index.js';
 import { openControlPanel } from '../eq.js';
-import { showStories } from '../stories.js';
+import { openSupport, showStories } from '../stories.js';
 import { openPresets } from '../customization.js';
 import { clearAll, offline, savingId, stopReason, usage } from '../offline.js';
 import { viewScope } from '../lifecycle.js';
@@ -148,7 +148,7 @@ function aboutPage() {
       <p>${esc(t('about_text'))}</p>
       <ul class="about__features">${features.map(([ic, key]) => `<li>${icon(ic)}<span>${esc(t(key))}</span></li>`).join('')}</ul>
       <p class="about__credit">${esc(t('about_credits'))}</p>
-    </div>${row('stories', t('about_stories'))}</div></section>`;
+    </div>${row('stories', t('about_stories'))}${row('support', t('about_support'))}</div></section>`;
 }
 
 export async function render(params = {}, nav) {
@@ -244,6 +244,7 @@ export async function render(params = {}, nav) {
       else if (action === 'downloads') nav.push('downloads');
       else if (action === 'panel') { await openControlPanel(); sync(); }
       else if (action === 'stories') showStories();
+      else if (action === 'support') openSupport();
       else if (action === 'login') openLogin();
       else if (action === 'logout') {
         if (!await confirmSheet({ title: t('account_logout'), text: t('logout_confirm'), action: t('account_logout') })) return;

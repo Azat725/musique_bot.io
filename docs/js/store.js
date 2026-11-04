@@ -60,6 +60,8 @@ export const settings = {
   reverb: 'off', // 'room' | 'hall'; with a slowed record this is the slowed + reverb sound
   offlineLikes: false, // favourites are downloaded to the phone and play without a network (offline.js)
   downloadsPaused: false,
+  firstUse: 0, // when Musique was first opened (ms): two weeks later the one-time "support the author" page may come (stories.js)
+  supportAsked: false,
   lookPresets: [],
   deviceHints: {},
   ...load(),

@@ -7,7 +7,7 @@ import { initFx } from './graph.js';
 import { initOffline, syncOffline } from './offline.js';
 import { initSync } from './sync.js';
 import { syncVinylNoise } from './sfx.js';
-import { maybeShowStories } from './stories.js';
+import { maybeShowStories, maybeShowSupport } from './stories.js';
 import { CLASSIC_BG, THEMES } from './themes.js';
 import { loadTypeface } from './fonts.js';
 import { closePlayer, deviceKey, initFullPlayer, isPlayerOpen, openPlayer, translate as translatePlayer } from './vinyl.js';
@@ -474,7 +474,7 @@ async function boot() {
   setTimeout(dismissBoot, 6000); // a slow first screen keeps its own small loader, not the launch screen
   await show();
   dismissBoot();
-  maybeShowStories(); // the intro, once, for someone who has never used Musique
+  maybeShowStories().then(() => setTimeout(maybeShowSupport, 4000)); // the intro, once, for someone who has never used Musique; after two weeks, the support page, once
 }
 
 boot();
