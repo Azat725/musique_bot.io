@@ -17,7 +17,8 @@ const FM = { us: 101.1, uk: 98.8, ussr: 104.2, de: 93.6, fr: 95.2, it: 92.4, jp:
 
 export const radioKind = () => (settings.playerMode === 'radio-car' ? 'car' : 'home');
 export const receiver = (kind = radioKind()) => receiverById(settings[kind === 'car' ? 'radioCar' : 'radioHome']) || receiverById(DEFAULT[kind]);
-export const decadeOf = (r = receiver()) => Math.floor(r.year / 10) * 10;
+// `era` moves a set into the decade whose stations suit it when its own year falls between two (a car of 1938 may sit in the forties)
+export const decadeOf = (r = receiver()) => Math.floor((r.era || r.year) / 10) * 10;
 export const stations = (r = receiver()) => [r.country, ...COUNTRIES.filter((c) => c !== r.country), 'mine'];
 
 /** The figure on the dial, and where on the scale (0..1) the needle stands for it. */

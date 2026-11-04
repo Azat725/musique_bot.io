@@ -113,12 +113,13 @@ test('radio: Home and Settings show the chosen receiver at once',async({page})=>
 test('radio: the Garage lists every car and can be narrowed to one country',async({page})=>{
   await boot(page,{playerMode:'radio-car'});
   await page.locator('[data-change]').first().click();
-  await expect(page.locator('.garage__item')).toHaveCount(25);
+  const cars=await page.evaluate(async()=>{const {RECEIVERS}=await import('/js/devices/receivers.js');const all=RECEIVERS.filter((r)=>r.kind==='car'),fr=all.filter((r)=>r.country==='fr').sort((a,b)=>a.year-b.year);return {all:all.length,fr:fr.length,firstFr:fr[0].name};});
+  await expect(page.locator('.garage__item')).toHaveCount(cars.all);
   await page.locator('.garage__filter [data-country="fr"]').click();
-  await expect(page.locator('.garage__item:visible')).toHaveCount(3);
-  await expect(page.locator('.garage__item:visible .garage__meta')).toHaveText([/France/,/France/,/France/]);
+  await expect(page.locator('.garage__item:visible')).toHaveCount(cars.fr);
+  await expect(page.locator('.garage__item:visible .garage__meta')).toHaveText(Array(cars.fr).fill(/France/));
   await page.locator('.garage__item:visible').first().click();
-  await expect(page.locator('.radio-card .section__title')).toHaveText('Citroën 2CV');
+  await expect(page.locator('.radio-card .section__title')).toHaveText(cars.firstFr);
 });
 test('drive: the mini game asks first, drives only on the road, tunes by holding the radio, leaves on Escape and talks to no server',async({page})=>{
   test.setTimeout(60000);

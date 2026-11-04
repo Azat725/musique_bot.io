@@ -1,8 +1,9 @@
 /** The radio's receivers: cars seen from the driver's seat (the dashboard with its radio) and sets for the home
- *  (three or four of each for every country), each drawn with what makes it recognisable (the DS's single spoke, the Fiat 500's body-coloured dash, the
+ *  (three or four home sets for every country, and for every country a car in each decade from the thirties to the 2000s), each drawn with what makes it recognisable (the DS's single spoke, the Fiat 500's body-coloured dash, the
  *  Mini's middle speedometer, the cube that opens, the ball on a chain...). Flat shapes only, stylised, not replicas.
  *
- *  A receiver is { id, kind: 'car' | 'home', name, year, country, unit, band: 'am' | 'fm', screen, art() }:
+ *  A receiver is { id, kind: 'car' | 'home', name, year, era?, country, unit, band: 'am' | 'fm', screen, art() }
+ *  (`era` is an optional year that puts the set in another decade than its own year does):
  *  `screen` is where its dial or display lies in the drawing ([x, y, w, h] of the viewBox: 400×240 for a car, 400×300
  *  at home) and how it shows the station: 'dial' (a scale and a needle), 'vfd' (a glowing display) or 'lcd'. Parts a
  *  finger can press carry data-key: toggle (power), tune (the tuning knob), preset (with data-n), prev / next (seek),
