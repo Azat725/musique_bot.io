@@ -3,6 +3,10 @@ import { t } from './i18n.js';
 import { settings, updateSettings } from './store.js';
 import { CLASSIC_SWATCH, THEMES } from './themes.js';
 import { EASE_IO, brandMark, esc, h, haptic, icon } from './ui.js';
+import { RECEIVERS } from './devices/receivers.js';
+import { COUNTRIES, receiverArt } from './radio.js';
+
+const receiverById = (id) => RECEIVERS.find((r) => r.id === id);
 
 /** The product intro shown on the very first launch, as stories: tap the right side for the next one,
  *  the left side for the previous, hold to pause, swipe down or tap the cross to close.
@@ -24,10 +28,19 @@ function themeSwatches() {
   return [CLASSIC_SWATCH[mode], ...Object.values(THEMES).filter(Boolean).map((th) => th[mode].swatch)];
 }
 
+const PLAYERS = ['record', 'turntable', 'cassette', 'reel', 'cd', 'phonograph', 'radio-car', 'radio-home'];
+
 const SLIDES = [
-  { tone: 'navy', art: () => `<div class="sx-turntable">${record('sx-spin')}</div>` },
+  // music you can touch: one machine after another takes the record's place
+  { key: 'st_hero', tone: 'navy', art: () => `<div class="sx-hero">${record('sx-spin')}
+    <div class="sx-orbit">${PLAYERS.map((m, i) => `<span class="sx-orbit__item" style="--i:${i}">${icon('pm_' + m)}</span>`).join('')}</div></div>` },
+  // the radio as a time machine: a car of its time under the rain, the dial running through the decades
+  { key: 'st_radio', tone: 'vinyl', art: () => { const r = receiverById('fiat500');
+    return `<div class="sx-radio"><div class="sx-radio__car"><span class="sx-radio__glass"><i></i><i></i></span>${receiverArt(r)}</div>
+      <div class="sx-radio__years">${[1930, 1940, 1950, 1960, 1970, 1980, 1990, 2000].map((y, i) => `<b style="--i:${i}">${y}</b>`).join('')}</div>
+      <div class="sx-radio__flags">${COUNTRIES.map((c, i) => `<span style="--i:${i}">${esc(t('country_' + c))}</span>`).join('')}</div></div>`; } },
   {
-    tone: 'bordeaux',
+    key: 'st2', tone: 'bordeaux',
     art: () => {
       const q = t('st2_q');
       return `<div class="sx-search">
@@ -37,23 +50,15 @@ const SLIDES = [
     },
   },
   {
-    tone: 'vinyl',
+    key: 'st3', tone: 'vinyl',
     art: () => `<div class="sx-hand">
       <span class="sx-arrow sx-arrow--l">${icon('prev')}</span>${record('sx-scrub')}<span class="sx-arrow sx-arrow--r">${icon('next')}</span>
     </div>`,
   },
+  { key: 'st_tape', tone: 'navy', art: () => `<div class="sx-players">${PLAYERS
+    .map((m, i) => `<span class="sx-player" style="--d:${i * 0.08}s">${icon('pm_' + m)}<small>${esc(t('player_' + m))}</small></span>`).join('')}</div>` },
   {
-    tone: 'cream',
-    art: () => `<div class="sx-grid">${[['heart', 'lib_likes'], ['shelf', 'lib_playlists'], ['clock', 'lib_history'], ['mic', 'lib_artists']]
-      .map(([ic, key], i) => `<div class="sx-tile" style="--d:${i * 0.1}s">${icon(ic)}<span>${esc(t(key))}</span></div>`).join('')}</div>`,
-  },
-  {
-    tone: 'navy',
-    art: () => `<div class="sx-eq">${[['60', '18%', '62%'], ['230', '40%', '12%'], ['910', '58%', '30%'], ['3.6k', '24%', '50%'], ['14k', '46%', '8%']]
-      .map(([label, a, b], i) => `<div class="sx-f" style="--a:${a};--b:${b};--d:${i * -0.35}s"><span><b></b></span><small>${label}</small></div>`).join('')}</div>`,
-  },
-  {
-    tone: 'bordeaux',
+    key: 'st6', tone: 'bordeaux',
     art: () => `<div class="sx-sound">
       <div class="sx-rings"><i></i><i></i><i></i>${record('sx-slow')}</div>
       <div class="sx-chips">${['0.85×', '33⅓', '45'].map((c, i) => `<span class="sx-chip${i ? '' : ' is-on'}">${c}</span>`).join('')}</div>
@@ -61,7 +66,7 @@ const SLIDES = [
     </div>`,
   },
   {
-    tone: 'vinyl',
+    key: 'st7', tone: 'vinyl',
     art: () => `<div class="sx-custom">
       <div class="sx-discs">${['#101218', '#5A1420', '#D5BF9B', '#1E3A2C', '#B08D57']
         .map((c, i) => `<span class="sx-disc" style="--c:${c};--d:${i * 0.09}s"></span>`).join('')}</div>
@@ -70,14 +75,12 @@ const SLIDES = [
     </div>`,
   },
   {
-    key: 'st_tape', // a slide added later: its texts have their own keys, the numbered ones keep theirs
-    tone: 'navy',
-    art: () => `<div class="sx-players">${['record', 'turntable', 'cassette', 'reel', 'cd', 'phonograph']
-      .map((m, i) => `<span class="sx-player" style="--d:${i * 0.1}s">${icon('pm_' + m)}<small>${esc(t('player_' + m))}</small></span>`).join('')}</div>`,
+    key: 'st4', tone: 'cream',
+    art: () => `<div class="sx-grid">${[['heart', 'lib_likes'], ['shelf', 'lib_playlists'], ['clock', 'lib_history'], ['offline', 'st_offline']]
+      .map(([ic, key], i) => `<div class="sx-tile" style="--d:${i * 0.1}s">${icon(ic)}<span>${esc(t(key))}</span></div>`).join('')}</div>`,
   },
-  { key: 'st_radio', tone: 'cream', art: () => `<div class="sx-players"><span class="sx-player">${icon('pm_radio-car')}<small>${esc(t('player_radio-car'))}</small></span><span class="sx-player">${icon('pm_radio-home')}<small>${esc(t('player_radio-home'))}</small></span></div>` },
   {
-    tone: 'bordeaux',
+    key: 'st8', tone: 'bordeaux',
     art: () => `<div class="sx-chat">
       <div class="sx-msg">${esc(t('st8_query'))}</div>
       <div class="sx-audio"><span class="sx-play">${icon('play')}</span>
@@ -86,6 +89,9 @@ const SLIDES = [
         </span></div>
     </div>`,
   },
+  // the last one: choose a player right here, and it is what you open the app with
+  { key: 'st_pick', tone: 'navy', art: () => `<div class="sx-pick">${PLAYERS.map((m) => `<button class="sx-pick__item ${m === settings.playerMode ? 'is-on' : ''}" data-pick="${m}">
+    ${icon('pm_' + m)}<span>${esc(t('player_' + m))}</span></button>`).join('')}</div>` },
 ];
 
 let root = null, index = 0, fill = null, done = null, keyHandler = null, visHandler = null;
@@ -94,8 +100,7 @@ let root = null, index = 0, fill = null, done = null, keyHandler = null, visHand
 export function showStories() {
   if (root) return Promise.resolve();
   const last = SLIDES.length - 1;
-  let n = 0;
-  const keys = SLIDES.map((s) => s.key || `st${++n}`); // st1…st8, plus slides with keys of their own
+  const keys = SLIDES.map((s) => s.key);
   root = h(`<div class="stories" role="dialog" aria-modal="true" aria-label="Musique">
     ${SLIDES.map((s, i) => `<section class="story story--${s.tone}" aria-hidden="true">
       <div class="story__art">${s.art()}</div>
@@ -175,7 +180,7 @@ function bindGestures() {
     root.classList.remove('is-held');
   };
   root.addEventListener('pointerdown', (e) => {
-    if (e.target.closest('button')) return;
+    if (e.target.closest('button')) { x0 = null; return; }
     x0 = e.clientX; y0 = e.clientY; held = false;
     holdTimer = setTimeout(() => { held = true; fill?.pause(); root.classList.add('is-held'); }, 220);
   });
@@ -186,7 +191,7 @@ function bindGestures() {
     if (dy > 0) root.style.transform = `translateY(${dy * 0.5}px) scale(${1 - Math.min(dy, 300) / 3000})`;
   });
   root.addEventListener('pointerup', (e) => {
-    if (x0 === null) return;
+    if (x0 === null || e.target.closest('button')) return;
     const dx = e.clientX - x0, dy = e.clientY - y0, wasHeld = held;
     reset();
     if (dy > 90 && dy > Math.abs(dx)) { close(); return; }
@@ -199,6 +204,13 @@ function bindGestures() {
   root.addEventListener('click', (e) => {
     if (e.target.closest('[data-close]')) { haptic('light'); close(); }
     else if (e.target.closest('[data-start]')) { haptic('success'); close(); }
+    else if (e.target.closest('[data-pick]')) { // the player chosen on the last page: on at once, the intro ends
+      const pick = e.target.closest('[data-pick]');
+      haptic('success');
+      root.querySelectorAll('[data-pick]').forEach((b) => b.classList.toggle('is-on', b === pick));
+      updateSettings({ playerMode: pick.dataset.pick });
+      setTimeout(close, 450);
+    }
   });
 }
 
