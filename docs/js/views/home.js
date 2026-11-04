@@ -74,26 +74,34 @@ export async function render(_, nav) {
   }
 
   if (radioMode()) {
-    // the radio: the receiver itself, its era, and its stations as buttons; one tap tunes in
-    const r = receiver();
-    const card = h(`<section class="section radio-card">
-      <button class="radio-card__art" data-change aria-label="${esc(t(r.kind === 'car' ? 'radio_garage' : 'radio_room'))}">${receiverArt(r)}</button>
+    // the radio: the receiver itself, its era, and its stations as buttons; one tap tunes in.
+    // It is painted again whenever the chosen receiver changes, so Home always shows the current one
+    const card = h('<section class="section radio-card"></section>');
+    const current = () => `${settings.playerMode}|${settings.radioCar}|${settings.radioHome}`;
+    let shown = '';
+    const mark = () => { const r = receiver(); card.querySelectorAll('[data-station]').forEach((b) => b.classList.toggle('is-on', b.dataset.station === (onAir() || settings.radioStation || r.country))); };
+    const paint = () => {
+      if (!radioMode()) return;
+      shown = current();
+      const r = receiver();
+      card.innerHTML = `<button class="radio-card__art" data-change aria-label="${esc(t(r.kind === 'car' ? 'radio_garage' : 'radio_room'))}">${receiverArt(r)}</button>
       <div class="radio-card__meta"><span class="view__kicker">${esc(t('radio_era_of', { d: decadeOf(r) }))}</span>
         <h2 class="section__title">${esc(r.name)}</h2><p class="shelf__sub">${r.year} · ${esc(countryName(r.country, r))} · ${esc(r.unit)}</p></div>
       <div class="radio-card__stations" role="group" aria-label="${esc(t('radio_stations'))}">${stations(r).map((id) => `<button class="chip radio-chip" data-station="${id}">
         <b>${esc(id === 'mine' ? t('station_mine_short') : countryName(id, r))}</b><small>${esc(frequency(id, r).text)}</small></button>`).join('')}</div>
       <div class="radio-card__actions"><button class="btn btn--accent" data-tune>${icon('play')}<span>${esc(t('radio_start'))}</span></button>
-        <button class="btn btn--outline" data-change>${esc(t('radio_change'))}</button></div></section>`);
-    const mark = () => card.querySelectorAll('[data-station]').forEach((b) => b.classList.toggle('is-on', b.dataset.station === (onAir() || settings.radioStation || r.country)));
-    mark();
-    scope.keep(onSettings(mark));
+        <button class="btn btn--outline" data-change>${esc(t('radio_change'))}</button></div>`;
+      mark();
+    };
+    paint();
+    scope.keep(onSettings(() => { if (current() !== shown) paint(); else mark(); }));
     card.addEventListener('click', async (e) => {
       const b = e.target.closest('[data-station], [data-tune], [data-change]');
       if (!b) return;
       haptic('light');
       if (b.hasAttribute('data-change')) { await openReceivers(); return; }
       b.disabled = true;
-      try { await tune(b.dataset.station || settings.radioStation || r.country); } finally { b.disabled = false; mark(); }
+      try { await tune(b.dataset.station || settings.radioStation || receiver().country); } finally { b.disabled = false; mark(); }
     });
     body.append(card);
   }

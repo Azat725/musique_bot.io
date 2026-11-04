@@ -65,7 +65,7 @@ function playerColours() {
   const m = settings.playerMode;
   if (radioMode()) {
     const r = receiver();
-    return `<button class="group__item" data-action="receiver"><span class="receiver-thumb">${receiverArt(r)}</span>
+    return `<button class="group__item" data-action="receiver" data-id="${r.id}"><span class="receiver-thumb">${receiverArt(r)}</span>
       ${text(t(m === 'radio-car' ? 'radio_garage' : 'radio_room'), `${r.name} · ${r.year} · ${t('country_' + r.country)}`)}${icon('right', 'group__chev')}</button>`;
   }
   if (m === 'phonograph') return '';
@@ -179,6 +179,8 @@ export async function render(params = {}, nav) {
       const v = String(settings[seg.dataset.name] ?? '');
       seg.querySelectorAll('button').forEach((b) => { const on = b.dataset.value === v; b.classList.toggle('is-on', on); b.setAttribute('aria-checked', String(on)); });
     });
+    const rb = $('[data-action="receiver"]'); // the receiver chosen in the garage shows at once
+    if (rb && radioMode() && rb.dataset.id !== receiver().id) rb.replaceWith(h(playerColours()));
     setState('panel', soundHint());
     setState('offline', offlineHint());
     const off = $('[data-offline]'); if (off) off.checked = !!settings.offlineLikes;

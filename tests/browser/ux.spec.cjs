@@ -97,6 +97,19 @@ test('radio: the receiver decides the era, its keys tune stations; all device mo
   }
   expect(await page.evaluate(()=>window.__audioAttempts||0)).toBe(0);
 });
+test('radio: Home and Settings show the chosen receiver at once',async({page})=>{
+  await boot(page,{playerMode:'radio-car',radioCar:'fiat500'});
+  await expect(page.locator('.radio-card .section__title')).toHaveText('Fiat 500');
+  await page.evaluate(async()=>{ const m=await import('/js/store.js'); m.updateSettings({radioCar:'ds'}); });
+  await expect(page.locator('.radio-card .section__title')).toHaveText('Citroën DS');
+  await expect(page.locator('.radio-card .shelf__sub')).toContainText('1965');
+  await settings(page);
+  await expect(page.locator('[data-action="receiver"]')).toContainText('Citroën DS');
+  await page.evaluate(async()=>{ const m=await import('/js/store.js'); m.updateSettings({radioCar:'volga'}); });
+  await expect(page.locator('[data-action="receiver"]')).toContainText('ГАЗ-21');
+  await page.locator('[data-tab="home"]').click();
+  await expect(page.locator('.radio-card .section__title')).toContainText('ГАЗ-21');
+});
 test('only the machine: no button on the stage, left through the player menu; no sideways overflow',async({page})=>{
   await boot(page,{playerMode:'cd',bareDeck:true});await page.setViewportSize({width:812,height:375});
   await page.evaluate(async(tracks)=>{const {player}=await import('/js/player.js');player.queue=[tracks[0]];player.index=0;const {openPlayer}=await import('/js/vinyl.js');openPlayer();},tracks);
