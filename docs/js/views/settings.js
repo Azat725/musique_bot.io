@@ -124,6 +124,7 @@ function mainPage() {
       + (radioMode() ? '' : toggle('sleeve', t('custom_sleeve'), t('custom_sleeve_hint')))
       + row('help', t('device_help'), t('device_help_hint')))}
     ${radioMode() ? group(t('radio_settings'), toggle('radioEra', t('radio_era'), t('radio_era_hint'))
+      + stacked(t('radio_night'), t('radio_night_hint'), segmented('radioNight', [['off', t('radio_off')], ['on', t('radio_on')], ['auto', t('radio_night_auto')]], settings.radioNight || 'off'))
       + (settings.playerMode === 'radio-car' ? toggle('radioRain', t('radio_rain'), t('radio_rain_hint')) + toggle('radioRoad', t('radio_road'), t('radio_road_hint')) : '')) : ''}
     ${group(t('settings_sound'), row('panel', t('panel_title'), soundHint(), '', 'data-state="panel"')
       + (settings.playerMode === 'cd' || phonoMode() ? '' : stacked(t('settings_noise'), t('settings_noise_hint'),

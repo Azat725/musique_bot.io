@@ -49,6 +49,7 @@ export const settings = {
   radioCar: 'fiat500', radioHome: 'spidola', radioStation: '',
   radioEra: true, // sets of the 30s-60s sound like medium wave (rendered by the server: fx "am")
   radioRain: false, radioRoad: false,
+  radioNight: 'off', // night mode of the radio: 'off' | 'on' | 'auto' (22:00 to 07:00): the set dims and the sound is 6 dB quieter
   recordColor: 'black',
   deckColor: 'walnut', // the turntable's colourway, see css/tokens.css
   tapeColor: 'black', // the cassette's shell, see themes.js TAPE_COLORS

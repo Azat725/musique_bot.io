@@ -14,7 +14,7 @@ async function radio({ liked = [] } = {}) {
   const deps = {
     './api.js': mock({ api: { recommend: async () => { calls.recommend += 1; return { tracks: [{ id: 'server-pick' }] }; }, radio: async () => { calls.radio += 1; return { tracks: [{ id: 'station' }] }; } } }),
     './player.js': mock({ player }),
-    './store.js': mock({ settings, updateSettings: (patch) => Object.assign(settings, patch), likedList: async () => liked }),
+    './store.js': mock({ settings, updateSettings: (patch) => Object.assign(settings, patch), likedList: async () => liked, onSettings: () => {}, radioMode: () => true }),
     './i18n.js': mock({ t: (k) => k }),
     './devices/receivers.js': mock({ RECEIVERS: [car], receiverById: (id) => (id === 'fiat500' ? car : null) }),
     './ui.js': mock({ esc: (s) => s, h: () => ({}), haptic() {}, sheet: async () => null, toast: (m) => calls.toast.push(m) }),
@@ -52,4 +52,15 @@ test('tuning your wave plays the favourites without asking the server; too few f
   await country.radio.tune('it'); // another station does not touch the favourites
   assert.equal(country.calls.radio, 1);
   assert.equal(country.calls.queued[0].id, 'station');
+});
+
+test('night mode: on, off, or by the clock from 22:00 to 07:00', async () => {
+  const { radio: r, settings } = await radio();
+  const at = (h) => new Date(2026, 0, 5, h, 30);
+  settings.radioNight = 'off';
+  assert.equal(r.nightOn(at(23)), false);
+  settings.radioNight = 'on';
+  assert.equal(r.nightOn(at(12)), true);
+  settings.radioNight = 'auto';
+  for (const [hour, night] of [[6, true], [7, false], [12, false], [21, false], [22, true], [23, true], [0, true]]) assert.equal(r.nightOn(at(hour)), night, `${hour}:30`);
 });

@@ -267,6 +267,11 @@
 .rx--car .rx__body { top: calc(50% - var(--size) * .235); aspect-ratio: 400 / 240; overflow: hidden; }
 .rx--car .rx-art, .receiver-thumb .rx-art, .radio-card__art .rx-art, .garage__art .rx-art { overflow: hidden; } /* the wheel ends at the frame */
 .rx__draw, .rx__draw svg { display: block; width: 100%; height: 100%; }
+/* night mode: a flat dark veil over the set and over the street, the dial and the display stay lit above it */
+.rx__draw { position: relative; }
+.rx__draw::after, .rx__glass::after { content: ''; position: absolute; inset: 0; background: #050813; opacity: 0; pointer-events: none; transition: opacity .6s var(--ease-io); }
+html[data-radio-night] .rx__draw::after { opacity: .5; }
+html[data-radio-night] .rx__glass::after { opacity: .45; }
 .rx-art { overflow: visible; }
 .rx .rx-key { cursor: pointer; transition: transform .12s var(--ease-io); transform-box: fill-box; transform-origin: center; }
 .rx .rx-key.is-down { transform: scale(.94) translateY(1px); }

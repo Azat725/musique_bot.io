@@ -271,3 +271,22 @@ test('drive: night, dusk and day look different, rain can be switched on, and th
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.keyboard.press('Escape');
 });
+test('radio: the night mode dims the set, makes the sound half as loud and goes with the setting',async({page})=>{
+  await boot(page,{playerMode:'radio-car'});await settings(page);
+  await expect(page.locator('html')).not.toHaveAttribute('data-radio-night','');
+  expect(await page.evaluate(async()=>(await import('/js/player.js')).player.audio.volume)).toBe(1);
+  await page.locator('[data-name="radioNight"] [data-value="on"]').click();
+  await expect(page.locator('html')).toHaveAttribute('data-radio-night','');
+  expect(await page.evaluate(async()=>(await import('/js/player.js')).player.audio.volume)).toBe(0.5);
+  await page.evaluate(async(tracks)=>{const {player}=await import('/js/player.js');const {openPlayer}=await import('/js/vinyl.js');player.queue=[tracks[0]];player.index=0;openPlayer();},tracks);
+  await expect(page.locator('.fp.is-radio-car.is-open')).toBeVisible();
+  await expect.poll(()=>page.evaluate(()=>Number(getComputedStyle(document.querySelector('.rx--car .rx__draw'),'::after').opacity))).toBeGreaterThan(0.3); // a veil over the dashboard (after its fade), the dial above it
+  await page.locator('.fp [data-close]').click();
+  await page.locator('[data-name="radioNight"] [data-value="off"]').click();
+  await expect(page.locator('html')).not.toHaveAttribute('data-radio-night','');
+  expect(await page.evaluate(async()=>(await import('/js/player.js')).player.audio.volume)).toBe(1);
+  await page.locator('[data-name="radioNight"] [data-value="on"]').click();
+  await page.locator('[data-picks="playerMode"] [data-value="record"]').click(); // not a radio: nothing dimmed, full volume
+  await expect(page.locator('html')).not.toHaveAttribute('data-radio-night','');
+  expect(await page.evaluate(async()=>(await import('/js/player.js')).player.audio.volume)).toBe(1);
+});

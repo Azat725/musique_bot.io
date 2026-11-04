@@ -66,7 +66,7 @@ function stopFade(restore) {
   if (!fading) return;
   clearInterval(fading);
   fading = 0;
-  if (restore) player.audio.volume = 1;
+  if (restore) player.audio.volume = player.baseVolume ?? 1; // 1, or half in the radio's night mode
 }
 
 player.addEventListener('time', check);

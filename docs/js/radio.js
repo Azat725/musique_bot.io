@@ -1,6 +1,6 @@
 import { api } from './api.js';
 import { player } from './player.js';
-import { likedList, settings, updateSettings } from './store.js';
+import { likedList, onSettings, radioMode, settings, updateSettings } from './store.js';
 import { t } from './i18n.js';
 import { RECEIVERS, receiverById } from './devices/receivers.js';
 import { esc, h, haptic, sheet, toast } from './ui.js';
@@ -39,6 +39,27 @@ export const countryName = (c, r = receiver()) => t(c === 'ussr' && decadeOf(r) 
 
 /** The drawing of a receiver at any size (Settings, the Garage, Home). */
 export const receiverArt = (r) => `<svg class="rx-art" viewBox="0 0 400 ${r.kind === 'car' ? 240 : 300}" aria-hidden="true">${r.art()}</svg>`;
+
+// ---------- night mode: the set dims, the sound is 6 dB quieter (where the page can set the volume: not on iPhone) ----------
+
+/** Is it night for the radio: switched on, or "at night" and between 22:00 and 07:00. */
+export const nightOn = (now = new Date()) => settings.radioNight === 'on' || (settings.radioNight === 'auto' && (now.getHours() >= 22 || now.getHours() < 7));
+
+let nightApplied = false;
+function applyNight() {
+  const night = radioMode() && nightOn();
+  if (night === nightApplied) return;
+  nightApplied = night;
+  document.documentElement.toggleAttribute('data-radio-night', night); // css/devices.css dims the set
+  const a = player.audio, was = player.baseVolume ?? 1, now = night ? 0.5 : 1;
+  player.baseVolume = now; // sleep.js and the alarm fade to and from this
+  if (a && Math.abs(a.volume - was) < 0.01) a.volume = now; // not in the middle of a fade
+}
+if (typeof document !== 'undefined') {
+  onSettings(applyNight);
+  setInterval(applyNight, 60000); // "at night" begins and ends by the clock
+  Promise.resolve().then(applyNight); // after the whole graph is loaded: player.js and this file import each other
+}
 
 // ---------- on air ----------
 
