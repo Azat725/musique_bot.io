@@ -167,6 +167,22 @@ class Gate:
 # copies), which leaves two cores for yt-dlp and the API; background work never takes more than two of either
 DOWNLOADS = 6
 downloads = Gate(DOWNLOADS, bg_max=2)
+
+
+def status() -> dict:
+    """For the owner's /status: the downloads' line and whether YouTube is refusing us now."""
+    return {"slots": DOWNLOADS - downloads.free, "slots_total": DOWNLOADS, "waiting": downloads.waiting,
+            "yt_pause": max(0.0, _yt_blocked_until - time.time()), "files": len(_files)}
+
+
+def cache_bytes() -> int:
+    total = 0
+    for path in list(_files.values()):
+        try:
+            total += path.stat().st_size
+        except OSError:
+            pass
+    return total
 encoders = Gate(4, bg_max=2)
 # offline copies for phones: at most two at a time for the whole server, always as background work
 _save_slots = asyncio.Semaphore(2)

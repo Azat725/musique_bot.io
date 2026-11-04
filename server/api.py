@@ -13,11 +13,35 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import auth, config, db, importer, lyrics, music, radio, sources, weblogin
+from . import auth, config, db, importer, lyrics, metrics, music, radio, sources, weblogin
 
 log = logging.getLogger("musique.api")
 
 app = FastAPI(title="Musique API", docs_url=None, redoc_url=None)
+class _Count:
+    """Counts the status of every answered request for the owner's /status (nothing else about it is kept)."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        status = 500
+
+        async def counted(message):
+            nonlocal status
+            if message["type"] == "http.response.start":
+                status = message["status"]
+            await send(message)
+
+        try:
+            await self.app(scope, receive, counted)
+        finally:
+            metrics.hit(status)
+
+
+app.add_middleware(_Count)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -106,7 +130,13 @@ class NameBody(BaseModel):
     name: str = Field(min_length=1, max_length=64)
 
 
-User = Depends(auth.current_user)
+async def _user(request: Request) -> dict:
+    user = await auth.current_user(request)
+    metrics.seen(user["id"])
+    return user
+
+
+User = Depends(_user)
 
 
 def _track(body: TrackBody) -> dict:

@@ -1,6 +1,8 @@
 """Telegram bot: /start with the Mini App button, in-chat search, sending tracks as audio."""
 import asyncio
 import logging
+import shutil
+import time
 
 import httpx
 from aiogram import Bot, Dispatcher, F, Router
@@ -8,7 +10,7 @@ from aiogram.filters import Command, CommandStart
 from aiogram.types import (BotCommand, BufferedInputFile, CallbackQuery, FSInputFile, InlineKeyboardButton,
                            InlineKeyboardMarkup, LabeledPrice, MenuButtonWebApp, Message, PreCheckoutQuery, WebAppInfo)
 
-from . import backup, config, db, music, weblogin
+from . import backup, config, db, metrics, music, weblogin
 
 log = logging.getLogger("musique.bot")
 
@@ -263,6 +265,44 @@ async def backup_command(message: Message):
     except Exception:
         log.exception("manual backup failed")
         await message.answer(_t(code, "backup_failed"))
+
+
+async def _health_state(with_cache: bool = False) -> dict:
+    """What /status and the alarms look at: the downloads, YouTube, the disk, the database and the newest backup."""
+    state = music.status()
+    disk = shutil.disk_usage(config.DATA_DIR)
+    last = backup.latest()
+    state.update(disk_free=disk.free, disk_total=disk.total, db_bytes=config.DB_PATH.stat().st_size if config.DB_PATH.exists() else 0,
+                 backup_age=time.time() - last.stat().st_mtime if last else None, cache_bytes=0)
+    if with_cache:
+        state["cache_bytes"] = await asyncio.to_thread(music.cache_bytes)
+    return state
+
+
+@router.message(Command("status"))
+async def status_command(message: Message):
+    if not config.ADMIN_ID or message.from_user.id != config.ADMIN_ID:
+        return  # only the owner; nobody else needs to know the command exists
+    try:
+        await message.answer(metrics.status_text(_lang(message.from_user.language_code), metrics.snapshot(), await _health_state(True)))
+    except Exception:
+        log.exception("status failed")
+        await message.answer("status failed, see the server logs")
+
+
+async def watch_health() -> None:
+    """Once a minute: tell the owner when something goes wrong (and when it is fine again). Without ADMIN_ID, only the log."""
+    alarms = metrics.Alarms()
+    await asyncio.sleep(120)  # let the server settle after a start
+    while True:
+        try:
+            for text in alarms.check(metrics.alarm_conditions(metrics.snapshot(), await _health_state()), time.time()):
+                log.warning("alarm: %s", text)
+                if config.ADMIN_ID:
+                    await _bot.send_message(config.ADMIN_ID, text)
+        except Exception as e:
+            log.warning("health watch skipped: %s", str(e)[:200])
+        await asyncio.sleep(60)
 
 
 @router.pre_checkout_query()

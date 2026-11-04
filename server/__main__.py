@@ -6,12 +6,21 @@ import uvicorn
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 
-from . import api, backup, bot, config, db, music, radio, tunnel
+from . import api, backup, bot, config, db, metrics, music, radio, tunnel
+
+
+class _Errors(logging.Handler):
+    """Keeps the last few error lines (short, no traces) for the owner's /status."""
+
+    def emit(self, record):
+        if record.levelno >= logging.ERROR:
+            metrics.error(f"{record.name}: {record.getMessage()}")
 
 
 async def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger().addHandler(_Errors())
     if not config.FFMPEG:
         logging.warning("ffmpeg not found — SoundCloud fallback may fail for HLS tracks")
 
@@ -46,6 +55,7 @@ async def main() -> None:
     polling = asyncio.create_task(bot.dp.start_polling(tg, handle_signals=False))
     tasks.add(polling)
     tasks.add(asyncio.create_task(backup.run_daily(bot.send_backup)))
+    tasks.add(asyncio.create_task(bot.watch_health()))  # warns the owner (ADMIN_ID) when something goes wrong
     tasks.add(asyncio.create_task(radio.warm()))  # the stations' songs into the cache, slowly, in the background
     logging.info("API on http://127.0.0.1:%s  public: %s", config.PORT, config.PUBLIC_API_URL or "-")
     try:
