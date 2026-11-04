@@ -175,7 +175,7 @@ const CARS = [
   {
     id: 'corvette', name: 'Chevrolet Corvette C4', year: 1984, country: 'us', unit: 'Delco-Bose', band: 'fm', screen: [142, 118, 132, 24, 'vfd'],
     art: () => `${R(0, 30, 400, 210, '#26272B')}${P('M0 30 H400 V58 L330 86 H70 L0 58 Z', '#1B1C1F')}${R(34, 42, 210, 50, '#050D0C', 8)}
-      ${Array.from({ length: 18 }, (_, i) => R(46 + i * 11, 50, 7, 22, i < 12 ? '#35E0C8' : '#0F3530', 1)).join('')}${Array.from({ length: 22 }, (_, i) => R(46 + i * 9, 78, 5, 8, i < 15 ? '#F2A33A' : '#3A2A10', 1)).join('')}
+      ${Array.from({ length: 18 }, (_, i) => R(46 + i * 11, 50, 7, 22, '#35E0C8', 1, `class="rx-seg" data-bar="speed"`)).join('')}${Array.from({ length: 22 }, (_, i) => R(46 + i * 9, 78, 5, 8, '#F2A33A', 1, `class="rx-seg" data-bar="rev"`)).join('')}
       ${R(134, 108, 156, 68, '#101012', 4)}${R(142, 114, 132, 28, '#041412', 3)}${key('prev', R(146, 148, 22, 10, '#2A2B2E', 2))}${key('next', R(172, 148, 22, 10, '#2A2B2E', 2))}${keys(200, 148, 6, 14, 10, 3, '#2A2B2E', '#35E0C8', 1.5)}${keys(146, 162, 6, 20, 8, 4, '#2A2B2E', null, 1.5)}
       ${knob('toggle', 124, 128, 9, '#2E2F33', '#404146', '#35E0C8')}${knob('tune', 300, 128, 9, '#2E2F33', '#404146', '#35E0C8')}
       ${wheel({ rim: '#131314', hub: '#26272B', spokes: 3, width: 14, r: 102 })}${carSwitches(336, 188, '#131314', '#6A6B70')}`,

@@ -40,6 +40,7 @@ const ICONS = {
   clock: '<circle cx="12" cy="12" r="8"/><g class="ic__hands">' + P('M12 8v4.5l3 1.5') + '</g>',
   vinyl: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><circle class="fill" cx="12" cy="12" r=".9"/>',
   close: P('M6 6l12 12M18 6 6 18'),
+  steering: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.2"/>' + P('M12 9.8V3.6M9.9 13.1 4 16.2M14.1 13.1 20 16.2'),
   // favourites: a record with a heart for its label (the record rolls a little, the heart beats on a press)
   shelf: '<g class="ic__roll"><circle cx="12" cy="12" r="8.5"/>' + P('M6.4 8.6a6.6 6.6 0 0 1 3.4-2.7M14.2 18.1a6.6 6.6 0 0 0 3.4-2.7') + '</g>'
     + '<path class="fill ic__heart" d="M12 15.67s-3.40-2.04-3.40-4.42a1.80 1.80 0 0 1 3.40-0.88 1.80 1.80 0 0 1 3.40 0.88c0 2.38-3.40 4.42-3.40 4.42z"/>',

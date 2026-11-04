@@ -10,17 +10,21 @@ import { glassHTML } from './scenery.js';
  *  stations, the tuning knob moves to the next one, power plays and pauses. In a car the wiper stalk brings the rain
  *  and the ignition key the road. */
 
-let ambience = null, ambienceKey = '';
+let ambience = null, ambienceKey = '', wasPlaying = false;
 
 /** Rain and road sounds: on while a car radio plays with them switched on, faded out otherwise. */
 function syncAmbience(playing) {
+  wasPlaying = playing;
   const car = settings.playerMode === 'radio-car';
-  const key = car && playing ? `${settings.radioRain ? 'rain' : ''}${settings.radioRoad ? 'road' : ''}` : '';
+  const key = car && playing && !document.body.classList.contains('drive-open') ? `${settings.radioRain ? 'rain' : ''}${settings.radioRoad ? 'road' : ''}` : '';
   if (key === ambienceKey) return;
   ambience?.();
   ambienceKey = key;
   ambience = key ? startCarAmbience({ rain: settings.radioRain, road: settings.radioRoad }) : null;
 }
+
+// the driving game has its own engine and road: the car radio's rain and road step aside while it is open
+document.addEventListener('drive-open', () => syncAmbience(wasPlaying));
 
 /** The scale under the needle: kHz or MHz figures across, the needle at the station. */
 function dialScale(r) {

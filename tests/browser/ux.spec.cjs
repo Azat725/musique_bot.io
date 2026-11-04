@@ -120,6 +120,56 @@ test('radio: the Garage lists every car and can be narrowed to one country',asyn
   await page.locator('.garage__item:visible').first().click();
   await expect(page.locator('.radio-card .section__title')).toHaveText('Citroën 2CV');
 });
+test('drive: the mini game asks first, drives only on the road, tunes by holding the radio, leaves on Escape and talks to no server',async({page})=>{
+  test.setTimeout(60000);
+  await page.setViewportSize({width:812,height:375});
+  const requests=[];
+  page.on('request',(r)=>{ if(new URL(r.url()).pathname.startsWith('/api/')) requests.push(new URL(r.url()).pathname); });
+  await boot(page,{playerMode:'radio-car'});
+  await page.evaluate(async(tracks)=>{const {player}=await import('/js/player.js');const {openPlayer}=await import('/js/vinyl.js');player.queue=[tracks[0]];player.index=0;openPlayer();},tracks);
+  await expect(page.locator('.fp.is-radio-car.is-open')).toBeVisible();
+  await page.locator('[data-drive]').click();
+  await expect(page.locator('.sheet .drive-warn')).toBeVisible(); // the warning comes first
+  await page.locator('.sheet__cancel').click();
+  await expect(page.locator('.drive')).toHaveCount(0);
+  await expect(page.locator('.sheet')).toHaveCount(0);
+  await page.locator('[data-drive]').click();
+  await page.locator('.sheet .sheet__item').click();
+  await expect(page.locator('.drive')).toBeVisible();
+  await expect(page.locator('.drive .rx-needle').first()).toBeAttached(); // the car's own dashboard, alive
+  const coloursSeen=await page.evaluate(()=>{const c=document.querySelector('.drive__view'),d=c.getContext('2d').getImageData(0,0,c.width,Math.round(c.height*.5)).data,seen=new Set();for(let i=0;i<d.length;i+=4*97)seen.add(d[i]+','+d[i+1]+','+d[i+2]);return seen.size;});
+  expect(coloursSeen).toBeGreaterThan(8); // the town is drawn, not a blank canvas
+  const quiet=requests.length;
+  await page.keyboard.down('w');
+  await page.waitForTimeout(2500);
+  await page.keyboard.down('d');
+  await page.waitForTimeout(3500);
+  await page.keyboard.up('d');await page.keyboard.up('w');
+  const state=await page.evaluate(async()=>{const g=(await import('/js/drive/game.js')).driveState(),P=await import('/js/drive/physics.js');return {v:g.car.v,odo:g.car.odo,onRoad:P.outline(g.car).every(([x,y])=>g.world.onRoad(x,y))};});
+  expect(state.odo).toBeGreaterThan(5);
+  expect(state.onRoad).toBe(true);
+  expect(requests.length).toBe(quiet); // driving sends nothing
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  const before=await page.evaluate(()=>JSON.parse(localStorage.getItem('musique.settings')).radioStation||'');
+  const box=await page.locator('.dv-radio').boundingBox();
+  await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
+  await page.mouse.down();await page.waitForTimeout(800);await page.mouse.up(); // a short press does nothing
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('musique.settings')).radioStation||'')).toBe(before);
+  await page.mouse.down();await page.waitForTimeout(2900);await page.mouse.up(); // held for 2.5 seconds: the next station
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('musique.settings')).radioStation||'')).not.toBe(before);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.drive')).toHaveCount(0);
+  await expect(page.locator('body')).not.toHaveClass(/drive-open/);
+  await expect(page.locator('.fp.is-open')).toBeVisible(); // back in the player
+  await expect(page.locator('.sheet')).toHaveCount(0);
+  await page.setViewportSize({width:375,height:812});
+  await page.locator('[data-drive]').click();await page.locator('.sheet .sheet__item').click();
+  await expect(page.locator('.drive__rotate')).toBeVisible(); // held upright: asks to turn the phone
+  await page.keyboard.press('Escape');
+  await page.locator('.fp [data-close]').click();
+  await page.evaluate(async()=>{const {updateSettings}=await import('/js/store.js');updateSettings({playerMode:'record'});const {openPlayer}=await import('/js/vinyl.js');openPlayer();});
+  await expect(page.locator('[data-drive]')).toBeHidden(); // only a car can be driven
+});
 test('only the machine: no button on the stage, left through the player menu; no sideways overflow',async({page})=>{
   await boot(page,{playerMode:'cd',bareDeck:true});await page.setViewportSize({width:812,height:375});
   await page.evaluate(async(tracks)=>{const {player}=await import('/js/player.js');player.queue=[tracks[0]];player.index=0;const {openPlayer}=await import('/js/vinyl.js');openPlayer();},tracks);

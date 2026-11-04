@@ -598,3 +598,58 @@ export function startCarAmbience({ rain = false, road = false } = {}) {
     setTimeout(release, 900);
   };
 }
+
+/** The driving game's sounds: the engine follows the revs, the tyres the speed; a thud for the kerb, a horn. Returns null
+ *  (silence) with the sounds switched off. `update({ rpm, red, speed, throttle })` is called every frame. */
+export function startDriveAudio() {
+  if (!hold()) return null;
+  const now = ctx.currentTime, out = ctx.createGain(), nodes = [];
+  out.gain.setValueAtTime(0, now); out.gain.linearRampToValueAtTime(0.9, now + 0.6);
+  out.connect(ctx.destination);
+  const saw = ctx.createOscillator(), tri = ctx.createOscillator(), lp = ctx.createBiquadFilter(), eg = ctx.createGain();
+  saw.type = 'sawtooth'; tri.type = 'triangle'; lp.type = 'lowpass'; lp.frequency.value = 260; eg.gain.value = 0.04;
+  saw.connect(lp); tri.connect(lp); lp.connect(eg).connect(out);
+  const road = noise(), rf = ctx.createBiquadFilter(), rg = ctx.createGain();
+  rf.type = 'lowpass'; rf.frequency.value = 520; rg.gain.value = 0;
+  road.connect(rf).connect(rg).connect(out);
+  [saw, tri].forEach((o) => { o.start(now); nodes.push(o); });
+  road.start(now, Math.random()); nodes.push(road);
+  let horn = null, stopped = false;
+  return {
+    update({ rpm, red, speed, throttle }) {
+      if (stopped) return;
+      const t = ctx.currentTime, k = Math.min(1.2, rpm / red);
+      saw.frequency.setTargetAtTime(24 + 78 * k, t, 0.05); tri.frequency.setTargetAtTime(48 + 156 * k, t, 0.05);
+      lp.frequency.setTargetAtTime(180 + 900 * k, t, 0.08); eg.gain.setTargetAtTime(0.03 + 0.05 * throttle + 0.02 * k, t, 0.08);
+      rg.gain.setTargetAtTime(Math.min(0.14, speed / 30 * 0.14), t, 0.1); rf.frequency.setTargetAtTime(400 + speed * 22, t, 0.1);
+    },
+    bump(strength) { // the kerb: a short low thud
+      const t = ctx.currentTime, s = noise(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      f.type = 'lowpass'; f.frequency.value = 260; g.gain.setValueAtTime(0.28 * Math.min(1, strength / 6), t); g.gain.exponentialRampToValueAtTime(0.0008, t + 0.22);
+      s.connect(f).connect(g).connect(out); s.start(t, Math.random()); s.stop(t + 0.25);
+    },
+    horn(on) {
+      const t = ctx.currentTime;
+      if (on && !horn) {
+        const g = ctx.createGain(), a = ctx.createOscillator(), b = ctx.createOscillator();
+        a.type = b.type = 'sawtooth'; a.frequency.value = 410; b.frequency.value = 515;
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.07, t + 0.03);
+        a.connect(g); b.connect(g); g.connect(out); a.start(t); b.start(t);
+        horn = { g, a, b };
+      } else if (!on && horn) {
+        const h = horn; horn = null;
+        h.g.gain.cancelScheduledValues(t); h.g.gain.setValueAtTime(h.g.gain.value, t); h.g.gain.linearRampToValueAtTime(0, t + 0.06);
+        h.a.stop(t + 0.1); h.b.stop(t + 0.1);
+      }
+    },
+    stop() {
+      if (stopped) return;
+      stopped = true;
+      this.horn(false);
+      const at = ctx.currentTime;
+      out.gain.cancelScheduledValues(at); out.gain.setValueAtTime(out.gain.value, at); out.gain.linearRampToValueAtTime(0, at + 0.5);
+      nodes.forEach((n) => { try { n.stop(at + 0.55); } catch {} });
+      setTimeout(release, 650);
+    },
+  };
+}

@@ -115,6 +115,7 @@ export function initFullPlayer() {
       <button class="icon-btn" data-close aria-label="close">${icon('down')}</button>
       <div class="fp__head"><div class="fp__kicker"></div><button class="fp__marker" hidden></button></div>
       <div class="fp__end">
+        <button class="icon-btn" data-drive aria-label="${esc(t('drive_open'))}" hidden>${icon('steering')}</button>
         <button class="icon-btn" data-queue aria-label="queue">${icon('queue')}</button>
         <button class="icon-btn" data-more aria-label="more">${icon('more')}</button>
       </div>
@@ -175,6 +176,7 @@ export function initFullPlayer() {
     });
   });
   $('[data-queue]').addEventListener('click', openQueue);
+  $('[data-drive]').addEventListener('click', () => { haptic('light'); import('./drive/game.js').then((m) => m.openDrive()).catch(() => toast(t('toast_error'), 'error')); }); // the little driving game, loaded when asked for
   $('.fp__marker').addEventListener('click', () => (sleepMode() ? openSleep() : openControlPanel()));
   $('[data-eq]').addEventListener('click', () => { haptic('light'); openControlPanel(); });
   $('[data-add]').addEventListener('click', () => player.current && chooseAndAddToPlaylist(player.current).catch(() => toast(t('toast_error'), 'error')));
@@ -643,6 +645,7 @@ function applyMode() {
   if (!root) return;
   root.classList.toggle('is-bare', !!settings.bareDeck); // "only the machine": no title, bar or buttons under it
   const mode = PLAYER_MODES.includes(settings.playerMode) ? settings.playerMode : 'record';
+  root.querySelector('[data-drive]').hidden = mode !== 'radio-car'; // only a car can be driven
   if (root.classList.contains(`is-${mode}`)) return;
   PLAYER_MODES.forEach((m) => root.classList.toggle(`is-${m}`, m === mode));
   armShown = '';

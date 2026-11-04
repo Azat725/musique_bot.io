@@ -1,0 +1,64 @@
+/* "At the wheel": the little driving game. The world is a canvas; the dashboard of the chosen car (its own drawing) sits
+   at the bottom, the wheel on its left, the pedals at the right edge. Colours inside the drawn car and town are flat. */
+.drive { position: fixed; inset: 0; z-index: 79; overflow: hidden; background: #04070D; color: #F3E7D3; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  --dw: 328px; --dh: 172px; animation: dv-in .3s var(--ease-io) both; }
+.drive.is-leaving { animation: dv-out .25s var(--ease-io) both; }
+@keyframes dv-in { from { opacity: 0; } }
+@keyframes dv-out { to { opacity: 0; } }
+.drive__view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* the top of the dashboard, carried across the whole width so the car has a body beyond the drawing */
+.drive__cowl { position: absolute; left: 0; right: 0; bottom: 0; height: var(--dh); background: var(--base); box-shadow: 0 -2px 0 #00000066; }
+.drive__dash { position: absolute; left: 50%; bottom: 0; width: var(--dw); height: var(--dh); transform: translateX(-50%); --u: calc(var(--dw) / 400); }
+.drive__dash > svg { display: block; width: 100%; height: 100%; }
+.drive__wheel { position: absolute; width: calc(var(--dw) * .64); aspect-ratio: 1; left: calc(50% - var(--dw) / 2 + var(--dw) * .21 - var(--dw) * .32); bottom: calc(var(--dh) * -.08 - var(--dw) * .32); pointer-events: none; }
+.drive__wheelart { position: absolute; inset: 0; will-change: transform; }
+.drive__wheelart svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 0 .6px #E8E0CC) drop-shadow(0 0 .6px #E8E0CC); } /* a thin light edge: a black wheel on a black dash would vanish */
+.drive__wheelhit { position: absolute; inset: -2%; border-radius: 50%; pointer-events: auto; cursor: grab; touch-action: none; }
+
+/* the radio on the dashboard: its dial or display shows the station; pressed and held for 2.5 s it tunes the next one */
+.dv-radio { position: absolute; display: flex; flex-direction: column; justify-content: center; gap: 6%; padding: 0 4%; overflow: visible; border-radius: calc(var(--dw) * .008); cursor: pointer; touch-action: none;
+  font: 700 calc(var(--dw) * .019)/1.15 var(--font-sans); color: #3A2B1C; background: #F4E3AC; box-shadow: inset 0 0 0 1px #00000033; }
+.dv-radio::before { content: ''; position: absolute; inset: -14px; }
+.dv-radio > span { position: relative; display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.dv-radio__b { opacity: .8; font-weight: 600; }
+.dv-radio__b > span { display: inline-block; }
+.dv-radio__b.is-long > span { padding-left: 100%; animation: dv-run 12s linear infinite; }
+@keyframes dv-run { to { transform: translateX(-100%); } }
+.dv-radio__needle { position: absolute; top: 0; bottom: 0; width: calc(var(--dw) * .005); background: #B3261E; transition: left .8s var(--ease-io); display: none; }
+.dv-radio--dial .dv-radio__needle { display: block; }
+.dv-radio--vfd, .dv-radio--lcd { font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: .05em; background: #031614; color: #4FE3D0; }
+.dv-radio--lcd { background: #160404; color: #FF4C4C; }
+.dv-radio--orange { background: #1A0E02; color: #FF9A2E; }
+.dv-radio__bar { position: absolute; left: 0; bottom: calc(var(--dw) * -.012); height: calc(var(--dw) * .007); width: 0; background: #F2C14E; border-radius: 3px; pointer-events: none; }
+.dv-radio.is-holding .dv-radio__bar { animation: dv-hold 2.5s linear forwards; }
+@keyframes dv-hold { to { width: 100%; } }
+
+.dv-lamps { position: absolute; right: 3%; top: 5%; display: flex; gap: calc(var(--dw) * .02); pointer-events: none; }
+.dv-lamp { width: calc(var(--dw) * .026); height: calc(var(--dw) * .026); border-radius: 50%; background: #11151C; box-shadow: inset 0 0 0 1px #FFFFFF22; }
+.dv-lamp--lights.is-on { background: #4D8DFF; box-shadow: 0 0 0 1px #9CC0FF; }
+.dv-lamp--brake.is-on { background: #FF4A3D; box-shadow: 0 0 0 1px #FF9A90; }
+
+/* the pedals and the two small buttons, on the right edge */
+.drive__pedals { position: absolute; right: max(var(--gutter), env(safe-area-inset-right)); bottom: max(var(--s3), env(safe-area-inset-bottom)); display: flex; align-items: flex-end; gap: var(--s3); }
+.drive__pedal { position: relative; width: clamp(64px, 11vw, 96px); border-radius: var(--r-md); background: #1A1E27; color: #F3E7D3; box-shadow: inset 0 0 0 2px #FFFFFF26; touch-action: none; transition: transform .08s; display: grid; place-items: end center; padding-bottom: var(--s2); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.drive__pedal--gas { height: clamp(112px, 34vh, 168px); }
+.drive__pedal--brake { height: clamp(84px, 24vh, 124px); }
+.drive__pedal::before { content: ''; position: absolute; left: 14%; right: 14%; top: 14%; height: 34%; border-top: 3px solid #FFFFFF2E; border-bottom: 3px solid #FFFFFF2E; border-radius: 3px; }
+.drive__pedal.is-down { transform: translateY(3px) scale(.97); background: var(--accent); color: var(--on-accent); }
+.drive__tools { position: absolute; right: max(var(--gutter), env(safe-area-inset-right)); bottom: calc(max(var(--s3), env(safe-area-inset-bottom)) + clamp(112px, 34vh, 168px) + var(--s3)); display: flex; gap: var(--s2); }
+.drive__tool { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: #1A1E27; color: #F3E7D3; box-shadow: inset 0 0 0 2px #FFFFFF26; touch-action: none; }
+.drive__tool svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.drive__tool.is-on, .drive__tool.is-down { background: #4D8DFF; color: #04070D; }
+.drive__exit { position: absolute; left: max(var(--gutter), env(safe-area-inset-left)); top: calc(var(--tg-safe-area-inset-top, env(safe-area-inset-top, 0px)) + var(--tg-content-safe-area-inset-top, 0px) + var(--s3)); background: #04070DB3; color: #F3E7D3; }
+.drive__hint { position: absolute; left: 50%; top: calc(var(--tg-safe-area-inset-top, env(safe-area-inset-top, 0px)) + var(--tg-content-safe-area-inset-top, 0px) + var(--s3)); transform: translateX(-50%); max-width: min(72vw, 460px); margin: 0; padding: var(--s2) var(--s3); border-radius: var(--r-md); background: #04070DB3; font-size: 13px; line-height: 1.35; text-align: center; transition: opacity .6s; pointer-events: none; }
+.drive__hint.is-gone { opacity: 0; }
+.drive__keys { display: none; position: absolute; left: var(--s3); bottom: var(--s3); margin: 0; padding: var(--s1) var(--s2); border-radius: var(--r-sm); background: #04070D99; font-size: 12px; pointer-events: none; }
+@media (hover: hover) and (pointer: fine) { .drive__keys { display: block; } }
+.drive__rotate { display: none; position: absolute; inset: 0; z-index: 2; place-content: center; justify-items: center; gap: var(--s4); background: #04070D; text-align: center; padding: var(--s5); }
+.drive__rotate span svg { width: 72px; height: 72px; fill: none; stroke: #F3E7D3; stroke-width: 1.4; stroke-linecap: round; animation: dv-turn 2.4s var(--ease-io) infinite; }
+.drive__rotate p { margin: 0; font-size: 16px; }
+@keyframes dv-turn { 0%, 20% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+.drive.is-portrait .drive__rotate { display: grid; }
+.drive.is-portrait .drive__exit { z-index: 3; }
+.drive-warn { margin: 0 0 var(--s3); font-size: 15px; line-height: 1.45; color: var(--text-2); }
+@media (prefers-reduced-motion: reduce) { .drive, .drive * { animation: none !important; transition: none !important; } }

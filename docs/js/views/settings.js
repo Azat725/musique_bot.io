@@ -141,7 +141,7 @@ function mainPage() {
 }
 
 function aboutPage() {
-  const features = [['vinyl', 'about_f_vinyl'], ['radio', 'about_f_radio'], ['eq', 'about_f_sound'], ['palette', 'about_f_custom'],
+  const features = [['vinyl', 'about_f_vinyl'], ['radio', 'about_f_radio'], ['steering', 'about_f_drive'], ['eq', 'about_f_sound'], ['palette', 'about_f_custom'],
     ['search', 'about_f_search'], ['shelf', 'about_f_library'], ['offline', 'about_f_offline'], ['send', 'about_f_chat']];
   return `<section class="group"><div class="group__card"><div class="group__item group__item--text">
       <div class="about__brand">${brandMark()}<span class="brand__name">Musique</span></div>

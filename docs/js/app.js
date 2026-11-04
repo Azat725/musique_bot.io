@@ -120,6 +120,11 @@ addEventListener('popstate', () => {
   if (!webNav) return;
   if (ignorePops) { ignorePops--; return; }
   const kind = webStack.pop();
+  if (document.body.classList.contains('drive-open')) { // the browser's Back leaves the game, not the player under it
+    if (kind) { webStack.push(kind); history.pushState({ musique: webStack.length }, ''); }
+    document.dispatchEvent(new Event('drive-close'));
+    return;
+  }
   if (kind === 'player' && isPlayerOpen()) {
     closingFromHistory = true;
     closePlayer();
@@ -128,7 +133,7 @@ addEventListener('popstate', () => {
 });
 
 document.addEventListener('keydown', (e) => { // a keyboard: Escape closes the player or goes back
-  if (e.key !== 'Escape' || document.querySelector('.sheet, .dialog')) return;
+  if (e.key !== 'Escape' || document.querySelector('.sheet, .dialog') || document.body.classList.contains('drive-open')) return;
   if (isPlayerOpen()) closePlayer();
   else if (stacks[tab].length > 1) goBack();
 });
@@ -260,6 +265,7 @@ function syncBackButton() {
 }
 
 if (hasBackButton) tg.BackButton.onClick(() => {
+  if (document.body.classList.contains('drive-open')) { document.dispatchEvent(new Event('drive-close')); return; } // the driving game goes first
   if (isPlayerOpen()) closePlayer();
   else navApi.back();
 });
