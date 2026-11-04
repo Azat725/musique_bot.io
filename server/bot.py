@@ -340,7 +340,7 @@ async def send_track(chat_id: int, track_id: str, lang: str | None) -> None:
             await _bot.send_audio(chat_id, file_id)
             return
         await _bot.send_chat_action(chat_id, "upload_document")
-        path = await music.ensure_file(track_id)
+        path = await music.ensure_file(track_id, music.NEXT)  # a person listening now goes first
         msg = await _bot.send_audio(
             chat_id,
             FSInputFile(path, filename=f"{meta['artist']} - {meta['title']}{path.suffix}"[:120]),

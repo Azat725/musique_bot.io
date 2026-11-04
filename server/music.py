@@ -43,7 +43,6 @@ _collection_cache: dict[str, tuple[float, list]] = {}
 _artist_cache: dict[str, tuple[float, dict | None]] = {}  # artists, albums and name lookups
 ARTIST_ID_RE = re.compile(r"^[A-Za-z0-9_-]{10,64}$")
 ALBUM_ID_RE = re.compile(r"^MPRE[A-Za-z0-9_-]{5,60}$")
-_locks: dict[str, asyncio.Lock] = {}
 _home_lock = asyncio.Lock()
 _NICE = shutil.which("nice")  # Linux (the VPS); elsewhere background encodes simply run at normal priority
 FFMPEG_TIMEOUT = 300
@@ -69,18 +68,34 @@ PLAY, NEXT, BG = 0, 1, 2
 
 
 class Busy(Exception):
-    """Background work dropped because the line is long: it is done when the track's turn comes."""
+    """No room now: background work dropped because the line is long, or someone pressing play who would wait too
+    long. The API answers 503 and the Mini App asks again a little later."""
+
+
+class Ticket:
+    """A place in a gate's line. Its priority can go up while it waits: a prefetch of the track someone then presses
+    play on moves to the front with them."""
+
+    def __init__(self, priority: int):
+        self.priority, self.future, self.gate = priority, None, None
+
+    def promote(self, priority: int) -> None:
+        if priority < self.priority:
+            self.priority = priority
+            if self.gate and self.future and not self.future.done():
+                self.gate._reorder()
 
 
 class Gate:
     """`size` slots handed out by priority. Background work (BG) takes at most `bg_max` of them, and when `drop` is
     asked and `bg_line` others already wait, it gives up at once (Busy) instead of queueing: someone pressing play is
-    never stuck behind a crowd of prefetches."""
+    never stuck behind a crowd of prefetches. Play and next-track waits are bounded too: at most `line_max` wait,
+    each at most `wait` seconds, then Busy (a clear "try again" beats a request hanging for minutes)."""
 
-    def __init__(self, size: int, bg_max: int, bg_line: int = 12):
-        self.free, self.bg_max, self.bg_line = size, bg_max, bg_line
+    def __init__(self, size: int, bg_max: int, bg_line: int = 12, line_max: int = 160, wait: float = 45):
+        self.free, self.bg_max, self.bg_line, self.line_max, self.wait = size, bg_max, bg_line, line_max, wait
         self.bg = 0  # background jobs running
-        self._line: list[tuple[int, int, asyncio.Future]] = []  # (priority, order, future), best first
+        self._line: list[tuple[int, int, Ticket]] = []  # (priority, order, ticket), best first
         self._order = itertools.count()
 
     def _fits(self, priority: int) -> bool:
@@ -90,38 +105,62 @@ class Gate:
         self.free -= 1
         self.bg += priority == BG
 
-    def _leave(self, priority: int) -> None:
-        self.free += 1
-        self.bg -= priority == BG
+    def _reorder(self) -> None:
+        self._line = sorted((t.priority, order, t) for _, order, t in self._line)
+        self._hand_out()
+
+    def _hand_out(self) -> None:
         for entry in list(self._line):  # the best waiting jobs that may run now
             if not self.free:
                 break
-            if self._fits(entry[0]):
+            ticket = entry[2]
+            if ticket.future.done():  # given up already (cancelled): never hand it a slot it would not give back
                 self._line.remove(entry)
-                self._grab(entry[0])
-                entry[2].set_result(None)
+            elif self._fits(ticket.priority):
+                self._line.remove(entry)
+                self._grab(ticket.priority)
+                ticket.future.set_result(ticket.priority)
+
+    def _leave(self, priority: int) -> None:
+        self.free += 1
+        self.bg -= priority == BG
+        self._hand_out()
+
+    @property
+    def waiting(self) -> int:
+        return len(self._line)
 
     @contextlib.asynccontextmanager
-    async def take(self, priority: int = PLAY, drop: bool = False):
-        if self._fits(priority):  # whoever waits cannot use this slot (or nobody waits): it is ours
-            self._grab(priority)
+    async def take(self, priority: int | Ticket = PLAY, drop: bool = False):
+        ticket = priority if isinstance(priority, Ticket) else Ticket(priority)
+        if self._fits(ticket.priority):  # whoever waits cannot use this slot (or nobody waits): it is ours
+            self._grab(ticket.priority)
+            held = ticket.priority
         else:
-            if drop and sum(1 for p, _, _ in self._line if p == BG) >= self.bg_line:
+            if ticket.priority == BG:
+                if drop and sum(1 for p, _, _ in self._line if p == BG) >= self.bg_line:
+                    raise Busy
+            elif sum(1 for p, _, _ in self._line if p != BG) >= self.line_max:
                 raise Busy
-            entry = (priority, next(self._order), asyncio.get_running_loop().create_future())
+            ticket.future, ticket.gate = asyncio.get_running_loop().create_future(), self
+            entry = (ticket.priority, next(self._order), ticket)
             bisect.insort(self._line, entry)
             try:
-                await entry[2]
-            except asyncio.CancelledError:
-                if entry[2].done() and not entry[2].cancelled():  # the slot was handed over just as we gave up
-                    self._leave(priority)
-                elif entry in self._line:
-                    self._line.remove(entry)
+                # background work waits as long as it takes (it is dropped up front instead); a person does not
+                held = await (ticket.future if ticket.priority == BG else asyncio.wait_for(asyncio.shield(ticket.future), self.wait))
+            except (asyncio.CancelledError, asyncio.TimeoutError) as e:
+                if ticket.future.done() and not ticket.future.cancelled():  # the slot was handed over just as we gave up
+                    self._leave(ticket.future.result())
+                else:
+                    ticket.future.cancel()
+                    self._line = [x for x in self._line if x[2] is not ticket]
+                if isinstance(e, asyncio.TimeoutError):
+                    raise Busy from None
                 raise
         try:
             yield
         finally:
-            self._leave(priority)
+            self._leave(held)
 
 
 # sized for the 6-core VPS: six downloads from YouTube at once and four encoders (slowed / reverb renders, offline
@@ -131,16 +170,20 @@ downloads = Gate(DOWNLOADS, bg_max=2)
 encoders = Gate(4, bg_max=2)
 # offline copies for phones: at most two at a time for the whole server, always as background work
 _save_slots = asyncio.Semaphore(2)
+# ffmpeg has threads of its own: renders never take the threads searches and lyrics run in
+_ffmpeg = ThreadPoolExecutor(6, thread_name_prefix="ffmpeg")
+DOWNLOAD_DEADLINE = 120  # seconds for one download, whatever hangs inside it (a stalled socket, a stuck HLS segment)
 
 # YouTube and SoundCloud downloads run in processes of their own: yt-dlp is busy Python (pages, signatures), and in
 # threads it would hold the interpreter lock every other request needs. Tests run without them, in threads.
 _procs: ProcessPoolExecutor | None = None
+_stuck = 0  # downloads past their deadline since the workers were started: each may still hold a worker
 
 
 def start_workers() -> None:
-    global _procs
+    global _procs, _stuck
     if _procs is None:
-        _procs = ProcessPoolExecutor(DOWNLOADS, mp_context=multiprocessing.get_context("spawn"))
+        _procs, _stuck = ProcessPoolExecutor(DOWNLOADS, mp_context=multiprocessing.get_context("spawn")), 0
         # start them all now: a worker is otherwise started on its first job, and starting one stalls the server
         for _ in range(DOWNLOADS):
             _procs.submit(time.sleep, 2)
@@ -153,6 +196,14 @@ def stop_workers() -> None:
         _procs = None
 
 
+def _restart_workers(broken: ProcessPoolExecutor) -> None:
+    """Fresh workers, once: several downloads see the same broken pool at the same moment."""
+    if _procs is broken:
+        log.warning("download workers broke or hung, restarting them")
+        stop_workers()
+        start_workers()
+
+
 def _in_worker(fn, *args):
     try:
         return fn(*args)
@@ -161,14 +212,24 @@ def _in_worker(fn, *args):
 
 
 async def _offload(fn, *args):
-    if _procs:
+    global _stuck
+    pool = _procs
+    if pool:
         try:
-            return await asyncio.get_running_loop().run_in_executor(_procs, _in_worker, fn, *args)
+            return await asyncio.wait_for(asyncio.get_running_loop().run_in_executor(pool, _in_worker, fn, *args),
+                                          DOWNLOAD_DEADLINE)
+        except asyncio.TimeoutError:
+            _stuck += 1
+            if _stuck >= 3:  # half the workers may be stuck: the pool would slowly stop working
+                _restart_workers(pool)
+            raise RuntimeError("download took too long") from None
         except BrokenProcessPool:  # a worker died (out of memory, killed): start fresh ones, run this one here
-            log.warning("download workers broke, restarting them")
-            stop_workers()
-            start_workers()
-    return await asyncio.to_thread(fn, *args)
+            _restart_workers(pool)
+    return await asyncio.wait_for(asyncio.to_thread(fn, *args), DOWNLOAD_DEADLINE)
+
+
+async def _ff(fn, *args):
+    return await asyncio.get_running_loop().run_in_executor(_ffmpeg, fn, *args)
 
 
 # ---------- metadata ----------
@@ -241,18 +302,25 @@ def _trim(cache: dict, limit: int) -> None:
         pass
 
 
+_claimed: dict[str, dict] = {}  # what clients said a track is: fine for a caption, never for finding its audio
+
+
 def remember(track: dict) -> None:
-    _meta[track["id"]] = track
-    _trim(_meta, 5000)
+    _claimed[track["id"]] = track
+    _trim(_claimed, 5000)
 
 
-async def track_meta(vid: str) -> dict | None:
+async def track_meta(vid: str, trusted: bool = False) -> dict | None:
+    """Title, artist and duration of a track. `trusted`: only what the server itself learned (its own searches,
+    YouTube Music), used to look for the same song elsewhere: a made-up title must not decide what everyone hears."""
     if vid in _meta:
         return _meta[vid]
-    stored = await db.get_track(vid)
-    if stored:
-        _meta[vid] = stored
-        return stored
+    if not trusted:
+        if vid in _claimed:
+            return _claimed[vid]
+        stored = await db.get_track(vid)
+        if stored:
+            return stored
     if sources.is_external(vid):
         return None
     try:
@@ -266,6 +334,26 @@ async def track_meta(vid: str) -> dict | None:
 
 # ---------- search & home ----------
 
+SEARCH_CACHE = 4000  # queries (and suggestions, artists, other sources) kept for ten minutes
+_flights: dict[str, asyncio.Future] = {}
+
+
+async def _once(key: str, make):
+    """Everyone asking the same thing at the same moment shares one call: a hundred people opening the same search
+    cost YouTube Music one request, not a hundred."""
+    fut = _flights.get(key)
+    if fut is None:
+        fut = _flights[key] = asyncio.ensure_future(make())
+
+        def done(f: asyncio.Future) -> None:
+            if _flights.get(key) is f:
+                del _flights[key]
+            if not f.cancelled():
+                f.exception()  # retrieved, even when every caller has gone
+        fut.add_done_callback(done)
+    return await asyncio.shield(fut)
+
+
 async def search(query: str, limit: int = 30, videos: bool = True) -> list[dict]:
     """Songs from YouTube Music, plus music videos unless `videos` is off (the 'Tracks' search mode)."""
     query = query.strip()[:200]
@@ -275,7 +363,10 @@ async def search(query: str, limit: int = 30, videos: bool = True) -> list[dict]
     cached = _search_cache.get(key)
     if cached and time.time() - cached[0] < 600:
         return cached[1]
+    return await _once("search:" + key, lambda: _search(query, key, limit, videos))
 
+
+async def _search(query: str, key: str, limit: int, videos: bool) -> list[dict]:
     songs, clips = await asyncio.gather(
         asyncio.to_thread(_yt.search, query, filter="songs", limit=limit),
         asyncio.to_thread(_yt.search, query, filter="videos", limit=15) if videos else asyncio.sleep(0, []),
@@ -291,8 +382,9 @@ async def search(query: str, limit: int = 30, videos: bool = True) -> list[dict]
             if t and t["id"] not in seen:
                 seen.add(t["id"])
                 out.append(t)
-    _search_cache[key] = (time.time(), out)
-    _trim(_search_cache, 500)
+    if not isinstance(songs, Exception):  # a failed search is asked again next time, not remembered as "nothing"
+        _search_cache[key] = (time.time(), out)
+        _trim(_search_cache, SEARCH_CACHE)
     return out
 
 
@@ -306,13 +398,13 @@ async def suggestions(query: str, limit: int = 8) -> list[str]:
     if cached and time.time() - cached[0] < 600:
         return cached[1]
     try:
-        found = await asyncio.to_thread(_yt.get_search_suggestions, query)
+        found = await _once(key, lambda: asyncio.to_thread(_yt.get_search_suggestions, query))
     except Exception as e:
         log.info("suggestions failed for %r: %s", query, str(e)[:120])
         return []
     out = [s.strip() for s in found if isinstance(s, str) and s.strip()][:limit]
     _search_cache[key] = (time.time(), out)
-    _trim(_search_cache, 500)
+    _trim(_search_cache, SEARCH_CACHE)
     return out
 
 
@@ -325,7 +417,7 @@ async def search_artists(query: str, limit: int = 12) -> list[dict]:
     if cached and time.time() - cached[0] < 600:
         return cached[1]
     try:
-        found = await asyncio.to_thread(_yt.search, query, filter="artists", limit=limit)
+        found = await _once(key, lambda: asyncio.to_thread(_yt.search, query, filter="artists", limit=limit))
     except Exception as e:
         log.warning("artist search failed: %s", str(e)[:160])
         return []
@@ -333,7 +425,7 @@ async def search_artists(query: str, limit: int = 12) -> list[dict]:
             "cover": _cover(r.get("thumbnails") or [], 300, crop=True), "subscribers": r.get("subscribers") or ""}
            for r in found if r.get("browseId") and ARTIST_ID_RE.match(r["browseId"])]
     _search_cache[key] = (time.time(), out)
-    _trim(_search_cache, 500)
+    _trim(_search_cache, SEARCH_CACHE)
     return out
 
 
@@ -346,11 +438,11 @@ async def search_more(query: str) -> list[dict]:
     cached = _search_cache.get(key)
     if cached and time.time() - cached[0] < 600:
         return cached[1]
-    out = await sources.search(query)
+    out = await _once(key, lambda: sources.search(query))
     for t in out:
         _meta[t["id"]] = t
     _search_cache[key] = (time.time(), out)
-    _trim(_search_cache, 500)
+    _trim(_search_cache, SEARCH_CACHE)
     return out
 
 
@@ -382,12 +474,15 @@ async def recommend(history: list[dict]) -> list[dict]:
     heard = {t["id"] for t in history}
 
     def build() -> list[dict]:
-        out, seen = [], set(heard)
+        out, seen, failed = [], set(heard), 0
         for vid in seeds:
             try:
                 data = _yt.get_watch_playlist(vid, radio=True, limit=25)
             except Exception as e:
                 log.info("radio for %s failed: %s", vid, str(e)[:120])
+                failed += 1
+                if failed == len(seeds):  # nothing came back: not an empty answer to keep for an hour
+                    raise
                 continue
             for r in data.get("tracks", []):
                 t = normalize(r)
@@ -406,8 +501,8 @@ async def home() -> dict:
         if _home_cache and time.time() - _home_cache[0] < 3600:
             return _home_cache[1]
         data = await asyncio.to_thread(_build_home)
-        if data["genres"]:  # an unreachable YouTube Music is asked again next time
-            _home_cache = (time.time(), data)
+        # an unreachable YouTube Music is asked again in a minute, not by every request standing in this line
+        _home_cache = (time.time() if data["genres"] else time.time() - 3540, data)
         return data
 
 
@@ -417,9 +512,9 @@ async def collection(playlist_id: str) -> list[dict]:
     cached = _collection_cache.get(playlist_id)
     if cached and time.time() - cached[0] < 3600:
         return cached[1]
-    tracks = await asyncio.to_thread(_playlist_tracks, playlist_id, 60)
+    tracks = await _once("collection:" + playlist_id, lambda: asyncio.to_thread(_playlist_tracks, playlist_id, 60))
     _collection_cache[playlist_id] = (time.time(), tracks)
-    _trim(_collection_cache, 200)
+    _trim(_collection_cache, 500)
     return tracks
 
 
@@ -430,12 +525,12 @@ async def _cached(key: str, build, ttl: int = 3600):
     if hit and time.time() - hit[0] < ttl:
         return hit[1]
     try:
-        value = await asyncio.to_thread(build)
+        value = await _once("built:" + key, lambda: asyncio.to_thread(build))
     except Exception as e:
         log.warning("%s failed: %s", key, str(e)[:160])
         return None
     _artist_cache[key] = (time.time(), value)
-    _trim(_artist_cache, 300)
+    _trim(_artist_cache, 2000)
     return value
 
 
@@ -544,11 +639,53 @@ def mime_for(ext: str) -> str:
             "opus": "audio/ogg", "ogg": "audio/ogg", "aac": "audio/aac"}.get(ext, "audio/mpeg")
 
 
-def _cached_file(vid: str) -> Path | None:
+def _on_disk(vid: str) -> Path | None:
     for p in config.CACHE_DIR.glob(f"{vid}.*"):
         if p.suffix in AUDIO_EXTS and p.stat().st_size > 0:
             return p
     return None
+
+
+# which tracks are downloaded: read from disk once at start (index_cache), then kept up to date, so a request never
+# lists a folder of tens of thousands of files (that listing stalled the whole server on every play)
+_files: dict[str, Path] = {}
+_indexed = False
+
+
+def index_cache() -> None:
+    """Fill the index from the cache folder (run in a thread at start; also removes downloads cut off mid-way)."""
+    global _indexed
+    found: dict[str, Path] = {}
+    with os.scandir(config.CACHE_DIR) as entries:
+        for e in entries:
+            if not e.is_file():
+                continue
+            name, ext = os.path.splitext(e.name)
+            if ext in (".part", ".raw"):
+                with contextlib.suppress(OSError):
+                    os.unlink(e.path)
+            elif ext in AUDIO_EXTS and e.stat().st_size > 0:
+                found[name] = Path(e.path)
+    _files.clear()
+    _files.update(found)
+    _indexed = True
+    log.info("cache index: %d tracks", len(found))
+
+
+def _cached_file(vid: str) -> Path | None:
+    if not _indexed:  # tests, and the first moments after start
+        return _on_disk(vid)
+    path = _files.get(vid)
+    if path and not path.exists():  # removed behind our back
+        _files.pop(vid, None)
+        return None
+    return path
+
+
+def _keep(vid: str, path: Path) -> Path:
+    if path.parent == config.CACHE_DIR:
+        _files[vid] = path
+    return path
 
 
 def _yt_download(vid: str) -> Path:
@@ -556,7 +693,7 @@ def _yt_download(vid: str) -> Path:
                     outtmpl=str(config.CACHE_DIR / f"{vid}.%(ext)s"))
     with yt_dlp.YoutubeDL(opts) as ydl:
         ydl.download([f"https://www.youtube.com/watch?v={vid}"])
-    path = _cached_file(vid)
+    path = _on_disk(vid)
     if not path:
         raise RuntimeError("download produced no file")
     return path
@@ -653,9 +790,13 @@ def _prune_cache() -> None:
     files = []
     for p in config.CACHE_DIR.rglob("*"):
         # never a download in progress, nor the reverb rooms
-        if p.is_file() and p.suffix not in (".part", ".raw") and not p.name.startswith("ir_"):
-            st = p.stat()
-            files.append((st.st_mtime, st.st_size, p))
+        if p.suffix not in (".part", ".raw") and not p.name.startswith("ir_"):
+            try:
+                if p.is_file():
+                    st = p.stat()
+                    files.append((st.st_mtime, st.st_size, p))
+            except OSError:  # gone between the listing and the look at it
+                pass
     files.sort()
     total = sum(size for _, size, _ in files)
     for _, size, p in files:
@@ -664,6 +805,8 @@ def _prune_cache() -> None:
         try:
             p.unlink(missing_ok=True)
             total -= size
+            if p.parent == config.CACHE_DIR:
+                _files.pop(p.stem, None)
         except OSError:  # being served right now (Windows locks open files)
             pass
 
@@ -678,9 +821,20 @@ def _prune_soon() -> None:
     if time.time() - _pruned_at < PRUNE_EVERY:
         return
     _pruned_at = time.time()
-    task = asyncio.create_task(asyncio.to_thread(_prune_cache))
+    _spawn(asyncio.to_thread(_prune_cache))
+
+
+def _spawn(coro) -> asyncio.Task:
+    """A task nobody waits for: kept alive until it ends, its failure logged rather than lost."""
+    task = asyncio.create_task(coro)
     _background.add(task)
-    task.add_done_callback(_background.discard)
+
+    def done(t: asyncio.Task) -> None:
+        _background.discard(t)
+        if not t.cancelled() and t.exception():
+            log.warning("background job failed: %s", str(t.exception())[:200])
+    task.add_done_callback(done)
+    return task
 
 
 def _touch(path: Path) -> Path:
@@ -701,6 +855,7 @@ _WHY_PATTERNS = (
     ("age", ("confirm your age", "age-restricted", "age restricted", "inappropriate for some users")),
     ("youtube", ("not a bot", "429", "sign in", "403", "too many requests")),
 )
+WHY_REASONS = ("region", "removed", "age", "youtube", "notfound", "busy")
 
 
 def why_reason(e: Exception) -> str:
@@ -717,24 +872,68 @@ def note_failure(vid: str, e: Exception | None = None) -> None:
         _trim(_why, 2000)
 
 
+def note_busy(vid: str) -> None:
+    _why[vid] = "busy"  # the next try may well work: said as such, not as a reason the track is gone
+
+
 def failure(vid: str) -> str:
     return _why.get(vid, "")
 
 
+_block_hits: list[float] = []
+BLOCK_HITS, BLOCK_WINDOW, BLOCK_PAUSE = 3, 120, 300
+
+
 def _mark_if_blocked(e: Exception) -> None:
+    """YouTube refusing us (a bot check, 429, 403 on the media: the URL bound to another IP): after a few refusals in
+    a short while it is skipped for some minutes instead of paying for it on every track. One refusal is not enough:
+    a single odd video must not switch YouTube off for everyone."""
     global _yt_blocked_until
     msg = str(e).lower()
-    # 403 on the media itself: the URL is bound to another IP (e.g. a VPN routing youtube.com and
-    # googlevideo.com differently) — skip YouTube for a while instead of paying for it on every track
     if "not a bot" in msg or "429" in msg or "sign in" in msg or "403" in msg:
-        _yt_blocked_until = time.time() + (600 if config.COOKIES_FILE.exists() else 1800)
+        now = time.time()
+        _block_hits[:] = [t for t in _block_hits if now - t < BLOCK_WINDOW] + [now]
+        if len(_block_hits) >= BLOCK_HITS:
+            _yt_blocked_until = now + BLOCK_PAUSE
+            _block_hits.clear()
+            log.warning("YouTube refuses downloads: skipped for %d s", BLOCK_PAUSE)
 
 
-def _lock(vid: str) -> asyncio.Lock:
-    if len(_locks) > 1000:
-        for key in [k for k, lock in _locks.items() if not lock.locked()]:
+_locks: dict[str, list] = {}  # key -> [lock, how many hold or wait for it]; gone when nobody does
+
+
+@contextlib.asynccontextmanager
+async def _locked(key: str):
+    entry = _locks.get(key)
+    if entry is None:
+        entry = _locks[key] = [asyncio.Lock(), 0]
+    entry[1] += 1
+    try:
+        async with entry[0]:
+            yield
+    finally:
+        entry[1] -= 1
+        if not entry[1] and _locks.get(key) is entry:
             del _locks[key]
-    return _locks.setdefault(vid, asyncio.Lock())
+
+
+class _Download:
+    """One download of one track, shared by everyone who asks for it while it runs: a popular new track takes one
+    slot, not all six. Nobody left waiting (they all gave up) and not started yet: it leaves the line."""
+
+    def __init__(self, vid: str, priority: int, drop: bool):
+        self.vid, self.ticket, self.drop, self.waiting = vid, Ticket(priority), drop, 0
+        self.task = asyncio.create_task(self._run())
+
+    async def _run(self) -> Path:
+        async with downloads.take(self.ticket, self.drop):
+            self.started = True
+            return await _fetch(self.vid)
+
+    started = False
+
+
+_downloads: dict[str, _Download] = {}
 
 
 async def ensure_file(vid: str, priority: int = PLAY, drop: bool = False) -> Path:
@@ -742,33 +941,52 @@ async def ensure_file(vid: str, priority: int = PLAY, drop: bool = False) -> Pat
     path = _cached_file(vid)
     if path:
         return _touch(path)
-    # the slot first, then the track's lock: a job waiting in line never holds a track someone wants right now
-    async with downloads.take(priority, drop):
-        async with _lock(vid):
-            path = _cached_file(vid)
-            if path:
-                return path
-            if sources.is_external(vid):
-                path = await sources.download(vid, config.CACHE_DIR)
-            else:
-                if time.time() > _yt_blocked_until:
-                    try:
-                        path = await _offload(_yt_download, vid)
-                    except Exception as e:
-                        log.warning("YouTube download failed for %s: %s", vid, str(e)[:160])
-                        _mark_if_blocked(e)
-                        note_failure(vid, e)
-                if not path:
-                    meta = await track_meta(vid)
-                    if not meta:
-                        raise LookupError("unknown track")
-                    try:
-                        path = await _offload(_sc_download, vid, meta)
-                    except Exception as e:
-                        log.warning("SoundCloud failed for %s: %s", vid, str(e)[:160])
-                        path = await sources.find_audio(meta, config.CACHE_DIR, vid)
+    job = _downloads.get(vid)
+    if job is None:
+        job = _downloads[vid] = _Download(vid, priority, drop)
+        job.task.add_done_callback(lambda _t, j=job: _downloads.pop(vid, None) if _downloads.get(vid) is j else None)
+    job.ticket.promote(priority)
+    job.waiting += 1
+    try:
+        path = await asyncio.shield(job.task)
+    except asyncio.CancelledError:
+        if job.waiting == 1 and not job.started:  # the last one waiting gave up: nobody needs it any more
+            job.task.cancel()
+        raise
+    except Busy:
+        if drop or not job.drop:
+            raise
+        if _downloads.get(vid) is job:
+            del _downloads[vid]
+        return await ensure_file(vid, priority, drop)  # it was a droppable prefetch that got dropped: try ourselves
+    finally:
+        job.waiting -= 1
     _prune_soon()
     return path
+
+
+async def _fetch(vid: str) -> Path:
+    path = _cached_file(vid)
+    if path:
+        return path
+    if sources.is_external(vid):
+        return _keep(vid, await sources.download(vid, config.CACHE_DIR))
+    if time.time() > _yt_blocked_until:
+        try:
+            return _keep(vid, await _offload(_yt_download, vid))
+        except Exception as e:
+            log.warning("YouTube download failed for %s: %s", vid, str(e)[:160])
+            _mark_if_blocked(e)
+            note_failure(vid, e)
+    # the same song elsewhere, looked for by what the server itself knows of it: never by what a client claimed
+    meta = await track_meta(vid, trusted=True)
+    if not meta:
+        raise LookupError("unknown track")
+    try:
+        return _keep(vid, await _offload(_sc_download, vid, meta))
+    except Exception as e:
+        log.warning("SoundCloud failed for %s: %s", vid, str(e)[:160])
+        return _keep(vid, await sources.find_audio(meta, config.CACHE_DIR, vid))
 
 
 def _encode(src: Path, dest: Path, bitrate: str, background: bool = False) -> None:
@@ -801,15 +1019,15 @@ async def play_file(vid: str, priority: int = PLAY, drop: bool = False) -> Path:
     if dest.exists():
         return _touch(dest)
     async with encoders.take(priority, drop):
-        async with _lock("lite:" + vid):
+        async with _locked("lite:" + vid):
             if not dest.exists():
-                await asyncio.to_thread(_encode, src, dest, lite or PLAY_BITRATE, priority == BG)
+                await _ff(_encode, src, dest, lite or PLAY_BITRATE, priority == BG)
     return dest
 
 
 # ---------- slowed, sped up and reverb: rendered here, so phones play a clean file ----------
 
-FX_RE = re.compile(r"^(?:(slow|normal|fast)-(off|room|hall)|phono)$")  # "phono": Edison's phonograph
+FX_RE = re.compile(r"^(?:(slow|normal|fast)-(off|room|hall)|phono|am)$")  # "phono": Edison's phonograph, "am": an old radio
 SPEEDS = {"slow": 0.85, "normal": 1.0, "fast": 45 / (100 / 3)}  # 45 rpm on a 33⅓ record
 # tail length (s), how fast it dies, and how loud the room is next to the dry sound
 ROOMS = {"room": (1.3, 2.6, 0.3), "hall": (3.4, 2.1, 0.5)}
@@ -853,10 +1071,20 @@ PHONO = ("aformat=channel_layouts=mono,aresample={rate},highpass=f=280:poles=2,l
          "volume=1.8,alimiter=limit=0.95")
 
 
+# a medium-wave radio of the 1930s-60s: one channel, the band of an AM station (about 150 Hz to 4.5 kHz, a little
+# presence around 2.5 kHz where a small speaker sings), and the station's own compressor. Gentler than the phonograph:
+# music still sounds like music, just from another time
+AM = ("aformat=channel_layouts=mono,aresample={rate},highpass=f=150:poles=2,highpass=f=150:poles=2,"
+      "lowpass=f=4500:poles=2,lowpass=f=4500:poles=2,equalizer=f=2500:t=q:w=1.4:g=3,"
+      "acompressor=threshold=-18dB:ratio=3:attack=8:release=200,volume=1.4,alimiter=limit=0.95")
+
+
 def _fx_filter(fx: str, norm: str = _IR_NORMS[0]) -> tuple[list[str], str]:
-    """(extra inputs, filter graph ending in [o]) for an fx key such as 'slow-hall' or 'phono'."""
+    """(extra inputs, filter graph ending in [o]) for an fx key such as 'slow-hall', 'phono' or 'am'."""
     if fx == "phono":
         return [], f"[0:a]{PHONO.format(rate=FX_RATE)}[o]"
+    if fx == "am":
+        return [], f"[0:a]{AM.format(rate=FX_RATE)}[o]"
     speed, reverb = FX_RE.match(fx).groups()
     k = SPEEDS[speed]
     # slowed the way records are: slower and lower at once, resampled by soxr so it stays clean
@@ -899,9 +1127,9 @@ async def fx_file(vid: str, fx: str, priority: int = PLAY, drop: bool = False) -
         return _touch(dest)
     src = await ensure_file(vid, priority, drop)
     async with encoders.take(priority, drop):
-        async with _lock(f"fx:{vid}:{fx}"):
+        async with _locked(f"fx:{vid}:{fx}"):
             if not dest.exists():
-                await asyncio.to_thread(_render_fx, src, dest, fx, priority == BG)
+                await _ff(_render_fx, src, dest, fx, priority == BG)
     _prune_soon()
     return dest
 
@@ -922,9 +1150,9 @@ async def save_file(vid: str) -> Path:
     async with _save_slots:
         src = await ensure_file(vid, BG)
         async with encoders.take(BG):
-            async with _lock("save:" + vid):
+            async with _locked("save:" + vid):
                 if not dest.exists():
-                    await asyncio.to_thread(_encode, src, dest, SAVE_BITRATE, True)
+                    await _ff(_encode, src, dest, SAVE_BITRATE, True)
     _prune_soon()
     return dest
 

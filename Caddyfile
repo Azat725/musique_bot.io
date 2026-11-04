@@ -1,19 +1,37 @@
 # HTTPS in front of the API. Caddy gets and renews the certificate for API_DOMAIN by itself
 # (Let's Encrypt, ZeroSSL as a spare) and redirects http to https.
-{$API_DOMAIN} {
-	# music is streamed: bytes go through at once without buffering, Range requests reach the app unchanged
+
+# The API, and the music itself: for /api/stream the app only checks the request, prepares the file and answers with
+# X-Accel-Redirect (its path inside the data volume, mounted here read-only at /media). Caddy then sends the file
+# itself: Range requests, sendfile, thousands of listeners at once, and no audio byte goes through Python.
+(api) {
 	reverse_proxy musique:8000 {
 		flush_interval -1
+		@file header X-Accel-Redirect *
+		handle_response @file {
+			root * /media
+			rewrite * {rp.header.X-Accel-Redirect}
+			method * GET
+			header Cache-Control "private, max-age=86400"
+			header Access-Control-Allow-Origin "*"
+			header Access-Control-Expose-Headers "Content-Range, Content-Length, Accept-Ranges"
+			file_server
+		}
 	}
+}
+
+{$API_DOMAIN} {
+	# JSON (search results, lists) travels compressed; audio is not touched
+	encode zstd gzip
+	import api
 }
 
 # The site itself on its own domain (set SITE_DOMAIN once the domain points at this server): the app's files from
 # docs/ and the API at the same address, so the site needs no ?api=. Unset, the harmless site.localhost is used.
 {$SITE_DOMAIN:site.localhost} {
+	encode zstd gzip
 	handle /api/* {
-		reverse_proxy musique:8000 {
-			flush_interval -1
-		}
+		import api
 	}
 	handle {
 		root * /srv/site

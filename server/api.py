@@ -5,10 +5,11 @@ import json
 import logging
 import secrets
 import time
+from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -27,6 +28,32 @@ app.add_middleware(
 
 _background: set[asyncio.Task] = set()
 send_track = None  # set by __main__: async (chat_id, track_id, lang) -> None
+
+
+# ---------- fair use: nobody can keep the server busy for everyone else ----------
+
+# (requests per second, burst): far above what a person does in the app, far below what a script would
+LIMITS = {"search": (3, 20), "suggest": (8, 40), "prefetch": (2, 20), "lyrics": (3, 20), "import": (1 / 60, 3),
+          "send": (0.2, 6)}
+_buckets: dict[tuple[int, str], tuple[float, float]] = {}
+
+
+def _limit(user: dict, kind: str) -> None:
+    """A token bucket per person and kind of request; 429 once it is empty (the app simply tries a bit later)."""
+    rate, burst = LIMITS[kind]
+    key, now = (user["id"], kind), time.monotonic()
+    tokens, at = _buckets.pop(key, (burst, now))
+    tokens = min(burst, tokens + (now - at) * rate)
+    if tokens < 1:
+        _buckets[key] = (tokens, now)
+        raise HTTPException(429, "slow down")
+    _buckets[key] = (tokens - 1, now)  # popped and put back: the oldest untouched buckets are at the front
+    while len(_buckets) > 50000:
+        _buckets.pop(next(iter(_buckets)))
+
+
+PREFETCH_PER_USER = 6  # tracks one person may have the server preparing at a time
+_prefetching: dict[int, int] = {}
 
 
 class TrackIn(BaseModel):
@@ -93,12 +120,13 @@ async def health():
     return {"ok": True}
 
 
-@app.get('/api/radio')
-async def radio_station(country: str = 'us', decade: int = 1960, user=User):
+@app.get("/api/radio")
+async def radio_station(country: str = "us", decade: int = 1960, user=User):
+    """A station: the songs of one country and decade (year included), in a fresh order. Answered from memory."""
     try:
-        return {'tracks': await radio.station(country, decade)}
+        return {"tracks": await radio.station(country, decade)}
     except ValueError:
-        raise HTTPException(400, 'Unknown radio selection')
+        raise HTTPException(400, "Unknown radio selection")
 
 
 @app.get("/api/me")
@@ -209,6 +237,7 @@ async def home(user=User):
 # ---------- the phonograph's shelf: 50 cylinders and early records, 1897–1925 (public domain, archive.org) ----------
 
 _PHONO: list[dict] = []
+_phono_lock = asyncio.Lock()
 
 
 async def _phonograph() -> list[dict]:
@@ -228,9 +257,11 @@ async def _phonograph() -> list[dict]:
 @app.get("/api/phonograph")
 async def phonograph(user=User):
     lang = "ru" if (user.get("language_code") or "").startswith(("ru", "uk", "be", "kk")) else "en"
+    async with _phono_lock:  # the first callers wait for the shelf to be registered, not get ids that do not play yet
+        shelf = await _phonograph()
     return {"tracks": [{"id": r["id"], "title": r["title"], "artist": r["artist"], "duration": r["duration"], "cover": r["cover"],
                         "artist_id": "", "year": r["year"], "country": r["country"][lang], "genre": r["genre"][lang]}
-                       for r in await _phonograph()]}
+                       for r in shelf]}
 
 
 @app.get("/api/recommend")
@@ -241,6 +272,7 @@ async def recommend(user=User):
 @app.get("/api/search")
 async def search(q: str = "", type: str = "all", user=User):
     """type: all (artists, tracks and clips, other sources) | tracks (songs, other sources) | artists."""
+    _limit(user, "search")
     if type == "artists":
         return {"tracks": [], "more": [], "artists": await music.search_artists(q)}
     jobs = [music.search(q, videos=type != "tracks"), music.search_more(q)]
@@ -261,6 +293,7 @@ async def why(vid: str, user=User):
 @app.get("/api/suggest")
 async def suggest(q: str = "", user=User):
     """Search-box completions, as the user types."""
+    _limit(user, "suggest")
     return {"suggestions": await music.suggestions(q[:100])}
 
 
@@ -347,6 +380,7 @@ class ImportBody(BaseModel):
 @app.post("/api/import")
 async def import_playlist(body: ImportBody, user=User):
     """A playlist from another app (a link) or a pasted list of tracks, into a new playlist."""
+    _limit(user, "import")
     try:
         return await importer.run(user["id"], body.source, user.get("language_code") or "en")
     except importer.ImportFailed as e:
@@ -422,6 +456,9 @@ def _spawn(coro) -> None:
 async def send(body: TrackBody, user=User):
     if user.get("kind") == "guest":
         raise HTTPException(403, "telegram only")  # the bot has no chat to send a guest the file to
+    if send_track is None:  # the first seconds after a start: the bot is still being set up
+        raise HTTPException(503, "bot not ready")
+    _limit(user, "send")
     t = _track(body)
     await db.save_track(t)
     _spawn(send_track(user["id"], t["id"], user.get("language_code") or "en"))
@@ -430,7 +467,22 @@ async def send(body: TrackBody, user=User):
 
 @app.post("/api/prefetch")
 async def prefetch(body: PrefetchBody, user=User):
-    _spawn(music.prefetch(_track(body)["id"], body.fx if music.FX_RE.match(body.fx) else "", body.ahead))
+    _limit(user, "prefetch")
+    uid = user["id"]
+    if _prefetching.get(uid, 0) >= PREFETCH_PER_USER:  # enough is being prepared for this person already
+        return {"ok": False}
+    _prefetching[uid] = _prefetching.get(uid, 0) + 1
+
+    async def run() -> None:
+        try:
+            await music.prefetch(_track(body)["id"], body.fx if music.FX_RE.match(body.fx) else "", body.ahead)
+        finally:
+            left = _prefetching.get(uid, 1) - 1
+            if left > 0:
+                _prefetching[uid] = left
+            else:
+                _prefetching.pop(uid, None)
+    _spawn(run())
     return {"ok": True}
 
 
@@ -439,6 +491,7 @@ async def track_lyrics(track_id: str, title: str = "", artist: str = "", duratio
     """Lyrics of a track, or null: the Mini App shows its Lyrics button only when there are some."""
     if not music.ID_RE.match(track_id):
         raise HTTPException(400, "bad id")
+    _limit(user, "lyrics")
     found = await lyrics.find(track_id, title[:300], artist[:300], max(0, min(duration, 36000)))
     return {"lyrics": found["text"] if found else None, "source": found["source"] if found else "",
             "synced": found["synced"] if found else None}
@@ -450,8 +503,32 @@ async def track_lyrics(track_id: str, title: str = "", artist: str = "", duratio
 _STREAM_HEADERS = {"Cache-Control": "private, max-age=86400"}
 
 
+async def _while_connected(request: Request, coro):
+    """Run the work while the listener is still there: uvicorn does not stop a handler whose client went away, and a
+    download nobody waits for any more must leave the line for those who do."""
+    task = asyncio.ensure_future(coro)
+    try:
+        while True:
+            done, _ = await asyncio.wait({task}, timeout=1)
+            if done:
+                return task.result()
+            if await request.is_disconnected():
+                return None
+    finally:
+        if not task.done():
+            task.cancel()
+
+
+def _send_file(path):
+    mime = music.mime_for(path.suffix.lstrip("."))
+    if config.STREAM_ACCEL:  # Caddy sends the file itself (see Caddyfile): ranges, sendfile, no Python in the way
+        rel = path.relative_to(config.DATA_DIR).as_posix()
+        return Response(headers={"X-Accel-Redirect": "/" + quote(rel), "Content-Type": mime, **_STREAM_HEADERS})
+    return FileResponse(path, media_type=mime, headers=_STREAM_HEADERS)
+
+
 @app.get("/api/stream/{vid}")
-async def stream(vid: str, t: str = "", fx: str = "", q: str = ""):
+async def stream(vid: str, request: Request, t: str = "", fx: str = "", q: str = ""):
     """q=save: a compact file the Mini App keeps for listening offline."""
     if not music.ID_RE.match(vid):
         raise HTTPException(404)
@@ -463,15 +540,23 @@ async def stream(vid: str, t: str = "", fx: str = "", q: str = ""):
         raise HTTPException(400, "bad q")
     try:
         if q == "save":
-            path = await music.save_file(vid)
-        elif fx and fx != "normal-off":  # slowed / sped up / reverb: a file rendered by ffmpeg
-            path = await music.fx_file(vid, fx)
+            work = music.save_file(vid)
+        elif fx and fx != "normal-off":  # slowed / sped up / reverb / an old radio: a file rendered by ffmpeg
+            work = music.fx_file(vid, fx)
         else:
-            path = await music.play_file(vid)
-        return FileResponse(path, media_type=music.mime_for(path.suffix.lstrip(".")), headers=_STREAM_HEADERS)
+            work = music.play_file(vid)
+        path = await _while_connected(request, work)
+        if path is None:
+            return Response(status_code=499)  # nobody to send it to
+        return _send_file(path)
+    except music.Busy:  # too many new tracks asked for at once: the app says so and asks again shortly
+        music.note_busy(vid)
+        raise HTTPException(503, "busy", headers={"Retry-After": "5"})
     except Exception as e:
-        log.exception("stream failed for %s", vid)
+        log.warning("stream failed for %s: %s", vid, str(e)[:200])
         music.note_failure(vid, e)
+        if music.failure(vid) in ("removed", "region", "age"):
+            radio.unplayable(vid)  # a station never offers it again
         raise HTTPException(404, "track unavailable")
 
 

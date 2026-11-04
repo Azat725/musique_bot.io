@@ -24,6 +24,9 @@ TUNNEL = os.getenv("TUNNEL", "none")
 # Only for a slow free tunnel from a laptop: the bitrate playback is re-encoded to. Empty or "0" (the VPS) plays the
 # original file, which starts sooner and needs no encoder
 STREAM_BITRATE = os.getenv("STREAM_BITRATE", "0")
+# 1 behind Caddy (docker-compose sets it): the API only says which file to send (X-Accel-Redirect) and Caddy sends
+# it itself, with Range and sendfile, so no audio byte goes through Python. 0 (a laptop, tests): the API sends it
+STREAM_ACCEL = os.getenv("STREAM_ACCEL", "0") == "1"
 # music beyond YouTube Music, searched in parallel (server/sources); remove a name to switch it off
 SOURCES = os.getenv("SOURCES", "zaycev,bandcamp,jamendo,archive,rutube").lower()
 JAMENDO_CLIENT_ID = os.getenv("JAMENDO_CLIENT_ID", "")  # free key from devportal.jamendo.com; empty = Jamendo off

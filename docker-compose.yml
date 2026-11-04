@@ -14,6 +14,14 @@ services:
       PUBLIC_API_URL: https://${API_DOMAIN:-${NGROK_DOMAIN}}
       # the server's own link is fast: the original files are played, with nothing to re-encode (wins over server/.env)
       STREAM_BITRATE: "0"
+      # Caddy sends the music files itself (see Caddyfile)
+      STREAM_ACCEL: "1"
+    # thousands of listeners are thousands of open connections
+    ulimits:
+      nofile: { soft: 65535, hard: 65535 }
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
     volumes:
       - musique-data:/data
       # optional YouTube cookies (see README): uncomment after creating server/cookies.txt
@@ -30,8 +38,14 @@ services:
     environment:
       API_DOMAIN: ${API_DOMAIN:-localhost}  # "localhost" while unset: a harmless local certificate, nothing is requested
       SITE_DOMAIN: ${SITE_DOMAIN:-site.localhost}  # your own domain for the site in a browser (see DEPLOY.md)
+    ulimits:
+      nofile: { soft: 65535, hard: 65535 }
+    logging:
+      driver: json-file
+      options: { max-size: "20m", max-file: "5" }
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - musique-data:/media:ro  # the music cache, sent to listeners by Caddy itself
       - ./docs:/srv/site:ro  # the site's files, served at SITE_DOMAIN (git pull updates them)
       - caddy-data:/data  # certificates: keep them, Let's Encrypt limits how many can be issued
       - caddy-config:/config

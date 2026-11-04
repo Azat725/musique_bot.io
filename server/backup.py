@@ -21,8 +21,10 @@ SEND_LIMIT = 45 * 1024 * 1024  # bots may upload up to 50 MB
 
 
 def _snapshot(dest: Path) -> None:
-    """A consistent copy of the live database through SQLite's own backup API (a plain file copy could catch a write)."""
-    src = sqlite3.connect(f"file:{config.DB_PATH}?mode=ro", uri=True, timeout=30)
+    """A consistent copy of the live database through SQLite's own backup API (a plain file copy could catch a write).
+    The database is in WAL mode: this read sees one moment of it and never holds the server's writes up. In one step:
+    a copy made in pieces starts over whenever the server writes in between, which under load is all the time."""
+    src = sqlite3.connect(config.DB_PATH, timeout=30)
     try:
         dst = sqlite3.connect(dest)
         try:

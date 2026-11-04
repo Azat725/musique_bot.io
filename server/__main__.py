@@ -6,7 +6,7 @@ import uvicorn
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 
-from . import api, backup, bot, config, db, music, tunnel
+from . import api, backup, bot, config, db, music, radio, tunnel
 
 
 async def main() -> None:
@@ -19,7 +19,9 @@ async def main() -> None:
     asyncio.get_running_loop().set_default_executor(ThreadPoolExecutor(32))
     music.start_workers()
     await db.init()
-    server = uvicorn.Server(uvicorn.Config(api.app, host=config.HOST, port=config.PORT, log_level="warning"))
+    await asyncio.to_thread(music.index_cache)
+    server = uvicorn.Server(uvicorn.Config(api.app, host=config.HOST, port=config.PORT, log_level="warning",
+                                           backlog=4096, timeout_keep_alive=20))
     web = asyncio.create_task(server.serve())
     tasks = {web}
 
@@ -40,10 +42,11 @@ async def main() -> None:
     ready.set()
 
     await bot.setup(tg)
-    api.send_track = bot.send_track
+    api.send_track = bot.send_track  # until here /api/send answers "not ready" (503)
     polling = asyncio.create_task(bot.dp.start_polling(tg, handle_signals=False))
     tasks.add(polling)
     tasks.add(asyncio.create_task(backup.run_daily(bot.send_backup)))
+    tasks.add(asyncio.create_task(radio.warm()))  # the stations' songs into the cache, slowly, in the background
     logging.info("API on http://127.0.0.1:%s  public: %s", config.PORT, config.PUBLIC_API_URL or "-")
     try:
         await asyncio.wait({web, polling}, return_when=asyncio.FIRST_COMPLETED)
@@ -58,6 +61,11 @@ async def main() -> None:
 
 if __name__ == "__main__":
     try:
+        try:
+            import uvloop  # Linux (the VPS): a faster event loop; elsewhere the standard one
+            uvloop.install()
+        except ImportError:
+            pass
         asyncio.run(main())
     except KeyboardInterrupt:
         pass

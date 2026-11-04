@@ -89,7 +89,9 @@ async def current_user(request: Request) -> dict:
 
 
 def make_stream_token(user_id: int) -> str:
-    exp = int(time.time()) + TOKEN_TTL
+    # the same token all day (valid one to two days): a track's address does not change with every start of the
+    # app, so the phone plays what it already downloaded from its own cache
+    exp = (int(time.time()) // TOKEN_TTL + 2) * TOKEN_TTL
     payload = f"{user_id}.{exp}"
     return f"{payload}.{_sign(payload, _token_key)}"
 
