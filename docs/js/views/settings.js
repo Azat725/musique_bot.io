@@ -10,6 +10,7 @@ import { clearAll, offline, savingId, stopReason, usage } from '../offline.js';
 import { viewScope } from '../lifecycle.js';
 import { showDeviceHelp } from '../device-help.js';
 import { openReceivers, receiver, receiverArt } from '../radio.js';
+import { alarmHint, openAlarm } from '../alarm.js';
 import { CD_COLORS, CLASSIC_SWATCH, DECK_COLORS, RECORDER_COLORS, RECORD_COLORS, REEL_COLORS, TAPE_COLORS, THEMES } from '../themes.js';
 import { brandMark, confirmSheet, esc, h, haptic, icon, promptName, sheet, tg, toast } from '../ui.js';
 
@@ -125,6 +126,7 @@ function mainPage() {
       + row('help', t('device_help'), t('device_help_hint')))}
     ${radioMode() ? group(t('radio_settings'), toggle('radioEra', t('radio_era'), t('radio_era_hint'))
       + stacked(t('radio_night'), t('radio_night_hint'), segmented('radioNight', [['off', t('radio_off')], ['on', t('radio_on')], ['auto', t('radio_night_auto')]], settings.radioNight || 'off'))
+      + row('alarm', t('alarm_title'), alarmHint(), '', 'data-state="alarm"')
       + (settings.playerMode === 'radio-car' ? toggle('radioRain', t('radio_rain'), t('radio_rain_hint')) + toggle('radioRoad', t('radio_road'), t('radio_road_hint')) : '')) : ''}
     ${group(t('settings_sound'), row('panel', t('panel_title'), soundHint(), '', 'data-state="panel"')
       + (settings.playerMode === 'cd' || phonoMode() ? '' : stacked(t('settings_noise'), t('settings_noise_hint'),
@@ -242,6 +244,7 @@ export async function render(params = {}, nav) {
       else if (action === 'receiver') await openReceivers();
       else if (action === 'presets') await openPresets();
       else if (action === 'help') showDeviceHelp();
+      else if (action === 'alarm') { await openAlarm(); setState('alarm', alarmHint()); }
       else if (action === 'downloads') nav.push('downloads');
       else if (action === 'panel') { await openControlPanel(); sync(); }
       else if (action === 'stories') showStories();

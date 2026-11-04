@@ -310,7 +310,10 @@ cd ~/musique && git pull && docker compose --env-file server/.env up -d --build
 - **Приёмник задаёт эпоху и страну** (Fiat 500 1965 играет Италию 1960-х). Кнопки приёмника: родная страна, потом
   остальные страны того же десятилетия, последняя «Ваша волна». **Не возвращайте независимый выбор модели, страны и
   десятилетия:** он давал «Citroën DS · США».
-- Настройки радио: `radioCar`, `radioHome` (id приёмника), `radioStation`, `radioEra` (звук AM), `radioRain`, `radioRoad`.
+- Настройки радио: `radioCar`, `radioHome` (id приёмника), `radioStation`, `radioEra` (звук AM), `radioRain`, `radioRoad`,
+  `radioNight` (`off|on|auto`, 22:00–07:00; громкость 0,5 через `player.baseVolume`), `radioAlarm` (`alarm.js`; **только на этом
+  устройстве**, в `DEVICE_ONLY`; звонит, пока приложение открыто, закрытое не разбудит). «Ваша волна» (`mine`) берёт избранное через
+  `waveFromLikes` при 5+ лайках и не ищет ничего на сервере.
 - **Новый приёмник**: объект в `CARS` или `HOMES` в `receivers.js` (`id`, `name`, `year`, `country`, `unit`, `band`
   `am|fm`, `screen` = место шкалы/дисплея в координатах рисунка, `art()` = плоские SVG-фигуры). Он должен быть узнаваем
   по характерной примете. Обязательно: кнопки `data-key` `toggle`, `tune`, `preset`. Проверьте рисунок в браузере в

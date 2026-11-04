@@ -9,6 +9,7 @@ import { DEVICES, PLAYER_MODES } from './devices/index.js';
 import { maybeDeviceHint } from './device-help.js';
 import { openQueue } from './queue.js';
 import { SLEEP_OPTIONS, setSleep, sleepLeft, sleepMode, sleepTimer } from './sleep.js';
+import { alarmHint, openAlarm } from './alarm.js';
 
 const RPM_MS = 1800; // one revolution at 33⅓ rpm
 const SECONDS_PER_TURN = 15; // turning the record by hand: one revolution moves the track by 15 s
@@ -253,9 +254,12 @@ async function openSleep() {
     label: o === null ? t('sleep_off') : o === 'track' ? t('sleep_track') : t('sleep_min', { n: o }),
     danger: o === null,
   }));
-  const i = await sheet({ title: esc(t('sleep_title')), items });
+  // a radio: the sleep timer and the alarm clock are one evening's two halves, so the alarm is offered here too
+  if (radioMode()) items.push({ icon: 'moon', label: t('sleep_alarm', { v: alarmHint() }) });
+  const i = await sheet({ title: esc(t(radioMode() ? 'sleep_title_radio' : 'sleep_title')), items });
   if (i === null) return;
   haptic('select');
+  if (i >= opts.length) { openAlarm(); return; }
   setSleep(opts[i]);
   if (opts[i]) toast(opts[i] === 'track' ? t('sleep_set_track') : t('sleep_set', { n: opts[i] }), 'done');
 }

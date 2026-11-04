@@ -2,7 +2,7 @@ import { player } from './player.js';
 
 /** Sleep timer: after N minutes (or at the end of the track) the music fades out and stops.
  *  Checked on every tick of the player and once a second, so it fires with the screen off too,
- *  as long as the audio keeps the page awake. Not kept between launches. */
+ *  as long as the audio keeps the page awake. Not kept between launches. 'slept' is the event of the moment it fires. */
 
 export const SLEEP_OPTIONS = [15, 30, 45, 60, 90, 'track'];
 // ?musique_sleep=1 turns minutes into seconds, for testing
@@ -60,6 +60,7 @@ function finish(volume) {
   if (volume !== undefined) player.audio.volume = volume;
   mode = null;
   sleepTimer.dispatchEvent(new Event('change'));
+  sleepTimer.dispatchEvent(new Event('slept')); // it has fired: the music is off
 }
 
 function stopFade(restore) {

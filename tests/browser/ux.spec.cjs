@@ -290,3 +290,35 @@ test('radio: the night mode dims the set, makes the sound half as loud and goes 
   await expect(page.locator('html')).not.toHaveAttribute('data-radio-night','');
   expect(await page.evaluate(async()=>(await import('/js/player.js')).player.audio.volume)).toBe(1);
 });
+test('radio alarm: set in Settings, rings its station at the time, asks for a tap when the sound is blocked, snoozes; the sleep sheet of a radio offers it',async({page})=>{
+  test.setTimeout(60000);
+  await boot(page,{playerMode:'radio-car'});await settings(page);
+  await expect(page.locator('[data-state="alarm"]')).toHaveText('off');
+  await page.locator('[data-action="alarm"]').click();
+  await expect(page.locator('.sheet .alarm')).toBeVisible();
+  await page.locator('[data-alarm="on"]').check();
+  await page.locator('[data-alarm="time"]').fill('07:30');
+  await page.locator('[data-alarm="station"]').selectOption('fr');
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('musique.settings')).radioAlarm)).toEqual({on:true,time:'07:30',station:'fr'});
+  await page.locator('.sheet__cancel').click();
+  await expect(page.locator('.sheet')).toHaveCount(0);
+  await expect(page.locator('[data-state="alarm"]')).toContainText('07:30');
+  // the alarm is this device's own: it does not travel with the account's look
+  expect(await page.evaluate(async()=>{const {sharedSettings}=await import('/js/store.js');return 'radioAlarm' in (sharedSettings?.()||{});})).toBe(false);
+  // eleven minutes past: too late to ring; at the time: it rings
+  expect(await page.evaluate(async()=>(await import('/js/alarm.js')).checkAlarm(new Date(2026,0,5,7,40)))).toBe(false);
+  expect(await page.evaluate(async()=>(await import('/js/alarm.js')).checkAlarm(new Date(2026,0,5,7,30,5)))).toBe(true);
+  await expect(page.locator('.sheet__title')).toContainText('Alarm · 07:30',{timeout:6000});
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('musique.settings')).radioStation)).toBe('fr');
+  await expect(page.locator('.sheet__item').first()).toContainText('Turn the radio on'); // the test browser plays nothing by itself: it asks for a tap
+  await page.locator('.sheet__item').filter({hasText:'10 more minutes'}).click();
+  await expect(page.locator('.sheet')).toHaveCount(0);
+  // the sleep sheet of a radio: its own title and the alarm among the choices
+  await page.evaluate(async(tracks)=>{const {player}=await import('/js/player.js');const {openPlayer}=await import('/js/vinyl.js');player.queue=[tracks[0]];player.index=0;openPlayer();},tracks);
+  await page.locator('.fp [data-more]').click();
+  await page.locator('.sheet__item').filter({hasText:'Sleep timer'}).click();
+  await expect(page.locator('.sheet__title')).toHaveText('Turn the radio off in…');
+  await expect(page.locator('.sheet__item').last()).toContainText('Alarm clock: 07:30');
+  await page.locator('.sheet__item').last().click();
+  await expect(page.locator('.sheet .alarm')).toBeVisible();
+});

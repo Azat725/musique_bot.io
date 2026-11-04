@@ -532,6 +532,8 @@ body.player-open .mini { opacity: 0; pointer-events: none; }
 /* ---------- sheet & dialog ---------- */
 
 .sheet { position: fixed; inset: 0; z-index: 60; }
+.alarm__field { font: inherit; min-height: 44px; padding: 0 var(--s2); border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--surface); color: var(--text); }
+.alarm__says { margin: 0 0 var(--s3); color: var(--text-2); }
 .sheet__scrim { position: absolute; inset: 0; background: var(--scrim); opacity: 0; transition: opacity .36s var(--ease-io); }
 .sheet__panel { position: absolute; left: 0; right: 0; bottom: 0; max-height: 80vh; overflow-y: auto; background: var(--bg); border-radius: var(--r-lg) var(--r-lg) 0 0;
   padding: var(--s2) var(--gutter) calc(var(--s3) + var(--safe-b)); transform: translateY(100%); transition: transform .38s var(--ease-io); max-width: var(--col); margin: 0 auto; }

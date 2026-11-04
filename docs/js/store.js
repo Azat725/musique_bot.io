@@ -49,6 +49,7 @@ export const settings = {
   radioCar: 'fiat500', radioHome: 'spidola', radioStation: '',
   radioEra: true, // sets of the 30s-60s sound like medium wave (rendered by the server: fx "am")
   radioRain: false, radioRoad: false,
+  radioAlarm: { on: false, time: '07:30', station: '' }, // the radio's alarm clock (alarm.js): rings only while the app is open, and only on this device
   radioNight: 'off', // night mode of the radio: 'off' | 'on' | 'auto' (22:00 to 07:00): the set dims and the sound is 6 dB quieter
   recordColor: 'black',
   deckColor: 'walnut', // the turntable's colourway, see css/tokens.css
@@ -71,7 +72,7 @@ migrate();
 
 // what belongs to this device alone and stays out of the account's look: downloads live on one phone, and the
 // "just so you know" notes are shown once per device
-const DEVICE_ONLY = new Set(['offlineLikes', 'downloadsPaused', 'deviceHints', 'fxNoted', 'eqNoted']);
+const DEVICE_ONLY = new Set(['offlineLikes', 'downloadsPaused', 'deviceHints', 'fxNoted', 'eqNoted', 'radioAlarm']);
 
 /** The settings that follow the account to every device. */
 export function sharedSettings() {

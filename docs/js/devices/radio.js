@@ -1,9 +1,10 @@
 import { esc, h } from '../ui.js';
 import { clack, startCarAmbience, tuneStatic } from '../sfx.js';
-import { settings, updateSettings } from '../store.js';
+import { radioMode, settings, updateSettings } from '../store.js';
 import { frequency, onAir, radioEvents, receiver, receiverArt, stationName, stations, tune, tuneBy } from '../radio.js';
 import { spinAnim } from './common.js';
 import { glassHTML } from './scenery.js';
+import { sleepTimer } from '../sleep.js';
 
 /** The radios as a player: the chosen receiver drawn whole (a car's dashboard under its windshield, or a home set on
  *  its shelf) with its dial or display showing the station, its keys and knobs working: the preset keys tune the
@@ -119,6 +120,7 @@ function radio(id, car) {
 }
 
 radioEvents.addEventListener('tuning', () => tuneStatic(0.8));
+sleepTimer.addEventListener('slept', () => { if (radioMode()) clack(); }); // the sleep timer switches the set off with its click
 
 export const carRadio = radio('radio-car', true);
 export const homeRadio = radio('radio-home', false);

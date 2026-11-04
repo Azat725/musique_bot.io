@@ -7,6 +7,7 @@ import { initFx } from './graph.js';
 import { initOffline, syncOffline } from './offline.js';
 import { initSync } from './sync.js';
 import { syncVinylNoise } from './sfx.js';
+import './alarm.js'; // the radio's alarm clock: checks the time while the app is open
 import { maybeShowStories, maybeShowSupport } from './stories.js';
 import { CLASSIC_BG, THEMES } from './themes.js';
 import { loadTypeface } from './fonts.js';
