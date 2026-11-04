@@ -16,6 +16,8 @@ const SPECS = {
   peugeot205: [195, 8.5, 2.42, 3.7, 1.57, 850, 6500, 5, false], spider: [185, 11, 2.25, 4.25, 1.63, 800, 6000, 5, false],
   integrale: [215, 6, 2.48, 3.9, 1.77, 850, 6800, 5, false], z240: [205, 8, 2.3, 4.12, 1.63, 800, 6500, 5, false],
   mx5: [185, 9, 2.27, 3.95, 1.67, 850, 7000, 5, false],
+  ford34: [105, 28, 2.9, 4.4, 1.7, 600, 3800, 3, true], transam: [200, 8, 2.75, 4.9, 1.85, 700, 5000, 3, true],
+  mustang94: [220, 7, 2.57, 4.6, 1.83, 700, 5500, 5, true], f150: [180, 9, 3.6, 5.8, 2.0, 600, 5000, 4, true],
 };
 // on a map this small nothing may go faster than this, but a faster car still pulls harder
 const TOP = 110;
