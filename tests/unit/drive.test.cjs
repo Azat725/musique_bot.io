@@ -66,7 +66,7 @@ test('other cars keep to roads and lanes, never overlap each other and never tou
       T.stepTraffic(tr, player, 1 / 20);
       if (step % 20) continue;
       for (const c of tr.cars) assert.ok(world.onRoad(c.x, c.y), `a car off the road at ${c.x.toFixed(1)},${c.y.toFixed(1)}`);
-      for (const p of tr.peds) assert.ok(!world.onRoad(p.x, p.y), `a person on the road at ${p.x.toFixed(1)},${p.y.toFixed(1)}`);
+      for (const p of tr.peds) if (!p.cross || p.state !== 'go') assert.ok(!world.onRoad(p.x, p.y), `a person on the road at ${p.x.toFixed(1)},${p.y.toFixed(1)}`); // on the road only on a zebra, only walking over
       for (let i = 0; i < tr.cars.length; i++) for (let j = i + 1; j < tr.cars.length; j++) {
         const hit = T.overlap({ ...tr.cars[i], len: 3.6, wid: 1.5 }, { ...tr.cars[j], len: 3.6, wid: 1.5 });
         if (hit) worst = Math.max(worst, hit.depth);
@@ -103,4 +103,45 @@ test('two rectangles that overlap are pushed apart, apart ones are left alone', 
   assert.equal(T.overlap({ x: 0, y: 0, h: 0, len: 4, wid: 2 }, { x: 10, y: 0, h: 0, len: 4, wid: 2 }), null);
   const hit = T.overlap({ x: 0, y: 0, h: 0, len: 4, wid: 2 }, { x: 3, y: 0, h: 0, len: 4, wid: 2 });
   assert.ok(hit && hit.depth > 0 && Math.abs(hit.x) === 1);
+});
+
+test('the zebra crossings lie across the roads, from kerb to kerb, and none leads out of the town', async () => {
+  const { world } = await setup();
+  assert.equal(world.crossings.length, 4 * 81 - 4 * 9); // every arm that has a road beyond it
+  for (const c of world.crossings) {
+    assert.ok(world.onRoad((c.ax + c.bx) / 2, (c.ay + c.by) / 2), 'the middle of a crossing is on the road');
+    assert.ok(!world.onRoad(c.ax, c.ay) && !world.onRoad(c.bx, c.by), 'its ends are on the pavements');
+  }
+});
+
+test('people wait at the kerb for a car that is coming, the player included, then cross; cars stop for them', async () => {
+  const { W, T, world, style } = await setup();
+  const tr = T.makeTraffic(world, W.rng('crossing'), style);
+  const crossers = tr.peds.filter((p) => p.cross);
+  assert.equal(crossers.length, 30);
+  const p = crossers[0], c = p.cross;
+  tr.peds = [p]; tr.cars = [];
+  p.state = 'wait'; p.timer = 0;
+  // the player's car driving at the crossing along the road, 8 m away: they wait
+  const dir = Math.abs(c.bx - c.ax) > Math.abs(c.by - c.ay) ? [0, 1] : [1, 0]; // along the road: across the crossing's line
+  const player = { x: c.x - dir[0] * 8, y: c.y - dir[1] * 8, h: Math.atan2(dir[1], dir[0]), v: 9 };
+  for (let i = 0; i < 20; i++) T.stepTraffic(tr, player, 0.1);
+  assert.equal(p.state, 'wait', 'stepped out in front of a car that was coming');
+  // the same car further off: they go, and it is the driver who has to slow down
+  const far = { ...player, x: c.x - dir[0] * 16, y: c.y - dir[1] * 16 };
+  for (let i = 0; i < 10; i++) T.stepTraffic(tr, far, 0.1);
+  assert.equal(p.state, 'go');
+  // someone walking over: a car of the traffic comes up to them and stops before them
+  const car = { id: 0, x: c.x - dir[0] * 25, y: c.y - dir[1] * 25, h: Math.atan2(dir[1], dir[0]), v: 9, cruise: 9, wait: 0, braking: false, path: { pts: [[c.x - dir[0] * 25, c.y - dir[1] * 25], [c.x + dir[0] * 25, c.y + dir[1] * 25]], dist: [0, 50, 100], length: 100 }, s: 0, len: 4, wid: 1.75 };
+  tr.cars = [car]; p.t = 0.45; p.dir = 1;
+  const away = { x: -500, y: -500, h: 0, v: 0 };
+  let nearest = 99;
+  for (let i = 0; i < 40; i++) { T.stepTraffic(tr, away, 0.1); if (p.state === 'go') nearest = Math.min(nearest, Math.hypot(car.x - p.x, car.y - p.y)); }
+  assert.ok(nearest > 2, `the car came within ${nearest.toFixed(1)} m of a person on the crossing`);
+  // and the player who does not slow down hits them
+  p.state = 'go'; p.t = 0.5; p.x = c.x; p.y = c.y;
+  assert.equal(T.pedHit({ x: c.x - dir[0] * 1.5, y: c.y - dir[1] * 1.5, h: Math.atan2(dir[1], dir[0]), len: 4, wid: 1.7 }, p), true);
+  assert.equal(T.pedHit({ x: c.x - dir[0] * 9, y: c.y - dir[1] * 9, h: Math.atan2(dir[1], dir[0]), len: 4, wid: 1.7 }, p), false);
+  p.state = 'wait';
+  assert.equal(T.pedHit({ x: c.x, y: c.y, h: 0, len: 4, wid: 1.7 }, p), false, 'those waiting at the kerb cannot be hit');
 });

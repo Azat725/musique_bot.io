@@ -5,7 +5,7 @@ import { receiver, tuneBy } from '../radio.js';
 import { makeWorld, rng, startSpot } from './world.js';
 import { carSpec, styleFor } from './styles.js';
 import { makeCar, outline, stepCar } from './physics.js';
-import { makeTraffic, overlap, stepTraffic } from './traffic.js';
+import { makeTraffic, overlap, pedHit, stepTraffic } from './traffic.js';
 import { createRenderer } from './render.js';
 import { dashParts, mountDash } from './dash.js';
 import { createControls } from './controls.js';
@@ -102,6 +102,11 @@ function start() {
   addEventListener('resize', layout);
   addEventListener('orientationchange', layout);
 
+  // a few words over the road now and then (the first hint is the same line)
+  const hintEl = $('.drive__hint');
+  let hintTimer = 0;
+  const say = (text) => { hintEl.textContent = text; hintEl.classList.remove('is-gone'); clearTimeout(hintTimer); hintTimer = setTimeout(() => hintEl.classList.add('is-gone'), 3500); };
+
   const step = (dt) => {
     time += dt;
     const inp = controls.read(dt);
@@ -116,6 +121,12 @@ function start() {
       if (outline(car, nx, ny).every(([px, py]) => world.onRoad(px, py))) { car.x = nx; car.y = ny; }
       hit = Math.max(hit, Math.abs(car.v));
       car.v *= 0.3;
+    }
+    for (const p of traffic.peds) { // someone on a zebra in the way: they are shaken, the car loses its speed
+      if (!p.cross || !pedHit({ x: car.x, y: car.y, h: car.h, len: spec.len, wid: spec.wid }, p)) continue;
+      p.state = 'hit'; p.timer = 2.5;
+      hit = Math.max(hit, Math.abs(car.v), 3); car.v *= 0.3;
+      say(t('drive_ped'));
     }
     if (hit > 1.5) { audio?.bump(hit); shake = Math.min(7, hit * 0.9); haptic('light'); }
     return inp;
@@ -148,7 +159,7 @@ function start() {
   const close = () => {
     if (closed) return;
     closed = true;
-    cancelAnimationFrame(raf); stopHold();
+    cancelAnimationFrame(raf); stopHold(); clearTimeout(hintTimer);
     controls.destroy(); audio?.stop(); dash.destroy();
     removeEventListener('resize', layout); removeEventListener('orientationchange', layout);
     document.removeEventListener('visibilitychange', onVisible); document.removeEventListener('drive-close', close); removeEventListener('keydown', onKey, true);
@@ -165,6 +176,6 @@ function start() {
   session = { close, car, traffic, world };
   last = performance.now();
   raf = requestAnimationFrame(frame);
-  setTimeout(() => root.querySelector('.drive__hint')?.classList.add('is-gone'), 7000);
+  hintTimer = setTimeout(() => hintEl.classList.add('is-gone'), 7000);
   $('.drive__exit').focus({ preventScroll: true });
 }

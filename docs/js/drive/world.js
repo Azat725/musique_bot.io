@@ -1,5 +1,5 @@
 /** The town of the driving game: a square of 8 × 8 blocks, 960 m on a side (under a kilometre), a grid of roads with
- *  pavements, houses, two cinemas, a park, lamps, traffic lights (always green) and trees. Pure data and geometry: no
+ *  pavements, houses, two cinemas, a park, lamps, traffic lights (always green), zebra crossings and trees. Pure data and geometry: no
  *  browser, no imports, so it can be tested on its own.
  *
  *  Coordinates are in metres: x to the east, y to the north, height up. Road i of each axis lies on the line i × CELL. */
@@ -33,7 +33,7 @@ export function onRoad(x, y) {
  */
 export function makeWorld(seed, style) {
   const rnd = rng(seed);
-  const buildings = [], blocks = [], lamps = [], lights = [], trees = [];
+  const buildings = [], blocks = [], lamps = [], lights = [], trees = [], crossings = [];
   const cinemas = new Set();
   while (cinemas.size < 2) cinemas.add(`${1 + Math.floor(rnd() * (N - 2))},${1 + Math.floor(rnd() * (N - 2))}`);
   const park = `${N / 2 - 1},${N / 2}`;
@@ -75,7 +75,13 @@ export function makeWorld(seed, style) {
   }
   // traffic lights at every crossing: the green lamp is the only one lit
   for (let i = 0; i <= N; i++) for (let j = 0; j <= N; j++) for (const sx of [-1, 1]) for (const sy of [-1, 1]) lights.push({ x: i * CELL + sx * (HALF + 1.4), y: j * CELL + sy * (HALF + 1.4) });
-  return { size: SIZE, cell: CELL, half: HALF, walk: WALK, buildings, blocks, lamps, lights, trees: trees.filter((t) => !onRoad(t.x, t.y)), onRoad };
+  // a zebra crossing on each arm of a crossing that has a road beyond it: across the road, from kerb to kerb (where the stripes are drawn)
+  for (let i = 0; i <= N; i++) for (let j = 0; j <= N; j++) for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    if (i + ax < 0 || i + ax > N || j + ay < 0 || j + ay > N) continue;
+    const x = i * CELL + ax * (HALF + 1.6), y = j * CELL + ay * (HALF + 1.6), ex = Math.abs(ay) * (HALF + 1.2), ey = Math.abs(ax) * (HALF + 1.2);
+    crossings.push({ x, y, ax: x - ex, ay: y - ey, bx: x + ex, by: y + ey });
+  }
+  return { size: SIZE, cell: CELL, half: HALF, walk: WALK, buildings, blocks, lamps, lights, crossings, trees: trees.filter((t) => !onRoad(t.x, t.y)), onRoad };
 }
 
 /** Where a game starts: on a road in the middle of the town, in the right lane (the left one in Britain and Japan). */

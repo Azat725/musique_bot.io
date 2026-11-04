@@ -1,6 +1,8 @@
 /** The other cars and the people of the town. The cars drive round loops of roads in their lane, slow down for anything
- *  ahead and give way to a car coming from the right; people walk to and fro along the pavements and never cross a
- *  road. Pure functions, no imports: the world, a random generator and the style come in as arguments. */
+ *  ahead, give way to a car coming from the right and stop for people on a zebra crossing; people walk to and fro along
+ *  the pavements, and a third of them cross at the zebras: they wait at the kerb until no car is coming (the player's
+ *  car is no exception, it has to slow down) and then walk over. Pure functions, no imports: the world, a random
+ *  generator and the style come in as arguments. */
 
 const TAU = Math.PI * 2;
 
@@ -52,6 +54,11 @@ export function makeTraffic(world, rnd, style) {
   // people on the pavements: a stretch along one side of a block, walked there and back
   const walk = half + world.walk / 2;
   for (let p = 0; p < 90; p++) {
+    if (p % 3 === 0 && world.crossings.length) { // one who crosses: waits at one kerb of a zebra, goes over, waits at the other
+      const c = world.crossings[Math.floor(rnd() * world.crossings.length)], end = rnd() < 0.5 ? 0 : 1;
+      peds.push({ ax: c.ax, ay: c.ay, bx: c.bx, by: c.by, t: end, dir: end ? -1 : 1, speed: 1.25 + rnd() * 0.45, coat: style.coats[Math.floor(rnd() * style.coats.length)], hat: style.hats && rnd() < 0.6, tall: 0.92 + rnd() * 0.16, phase: rnd() * TAU, x: end ? c.bx : c.ax, y: end ? c.by : c.ay, cross: c, state: 'wait', timer: rnd() * 6, rs: 1 + Math.floor(rnd() * 1e9) });
+      continue;
+    }
     const i = Math.floor(rnd() * n), j = Math.floor(rnd() * n), side = Math.floor(rnd() * 4);
     const x0 = i * cell + half + 2, x1 = (i + 1) * cell - half - 2, y0 = j * cell + half + 2, y1 = (j + 1) * cell - half - 2;
     const a = [[x0, j * cell + walk], [(i + 1) * cell - walk, y0], [x0, (j + 1) * cell - walk], [i * cell + walk, y0]][side];
@@ -61,10 +68,48 @@ export function makeTraffic(world, rnd, style) {
   return { cars, peds };
 }
 
+/** Can someone step onto this crossing? Not with a car on it or coming up to it; a car that stands still nearby does no harm.
+ *  The player is no exception: a person steps out when the car is still some way off, and it has to slow down. */
+function crossingClear(tr, player, c) {
+  const toward = (o, d, dx, dy) => (Math.cos(o.h) * dx + Math.sin(o.h) * dy) / d > 0.3;
+  for (const o of tr.cars) {
+    const dx = c.x - o.x, dy = c.y - o.y, d = Math.hypot(dx, dy);
+    if (d < 5) return false;
+    if (o.v > 1.2 && d < 9 + 1.3 * o.v && toward(o, d, dx, dy)) return false;
+  }
+  const dx = c.x - player.x, dy = c.y - player.y, d = Math.hypot(dx, dy), v = Math.abs(player.v);
+  return d >= 5 && !(v > 1.2 && d < 7 + 0.3 * v && toward(player, d, dx, dy));
+}
+
+function stepCrosser(p, tr, player, dt) {
+  p.walking = false;
+  if (p.state !== 'go') { // 'wait' at a kerb, or 'hit' (shaken for a moment)
+    p.timer -= dt;
+    if (p.timer <= 0) { if (p.state === 'hit' || crossingClear(tr, player, p.cross)) p.state = 'go'; else p.timer = 0.4; }
+  } else {
+    const len = Math.hypot(p.bx - p.ax, p.by - p.ay) || 1;
+    if (!tr.cars.some((o) => Math.hypot(o.x - p.x, o.y - p.y) < 2.4)) { p.t += p.dir * p.speed * dt / len; p.walking = true; } // a car in the way: wait where you are
+    if (p.t >= 1 || p.t <= 0) {
+      p.t = p.t >= 1 ? 1 : 0; p.dir = -p.dir; p.state = 'wait';
+      p.rs = (Math.imul(p.rs, 1664525) + 1013904223) >>> 0; p.timer = 2 + (p.rs / 4294967296) * 6;
+    }
+  }
+  p.x = p.ax + (p.bx - p.ax) * p.t; p.y = p.ay + (p.by - p.ay) * p.t;
+  if (p.walking) p.phase += p.speed * dt * 4.2;
+}
+
+/** Has the player's car (x, y, h, len, wid) run into someone on a crossing? */
+export function pedHit(car, p) {
+  if (p.state !== 'go') return false;
+  const dx = p.x - car.x, dy = p.y - car.y, c = Math.cos(car.h), s = Math.sin(car.h);
+  return Math.abs(dx * c + dy * s) < car.len / 2 + 0.3 && Math.abs(dx * s - dy * c) < car.wid / 2 + 0.3;
+}
+
 const rel = (c, o) => { const dx = o.x - c.x, dy = o.y - c.y, cs = Math.cos(c.h), sn = Math.sin(c.h); return { f: dx * cs + dy * sn, r: dx * sn - dy * cs }; };
 
 /** Moves every car and person by `dt` seconds; `player` is the player's car ({ x, y, h, v }) which the others must avoid. */
 export function stepTraffic(tr, player, dt) {
+  const going = tr.peds.filter((p) => p.cross && p.state === 'go');
   for (const c of tr.cars) {
     let want = c.cruise, blocked = false;
     const others = tr.cars.concat([{ x: player.x, y: player.y, h: player.h, v: player.v, player: true }]);
@@ -75,6 +120,10 @@ export function stepTraffic(tr, player, dt) {
       else if (f > 0 && !o.player && c.id > o.id && f * f + r * r < 56) { want = 0; blocked = true; } // too close to a car that goes first
       else if (f > -1 && f < 11 && r > 1.5 && r < 12 && Math.abs(o.v) > 0.5 && Math.abs(Math.cos(o.h - c.h)) < 0.5 && c.wait < 2.5) { want = 0; blocked = true; } // priority to the right
     }
+    for (const p of going) { // someone on a zebra in my lane ahead: stop
+      const { f, r } = rel(c, p);
+      if (f > 0.5 && f < 7 + c.v * 0.9 && Math.abs(r) < 2.6) { want = Math.min(want, Math.max(0, (f - 4.5) * 1.1)); blocked = true; }
+    }
     c.wait = blocked && c.v < 0.3 ? c.wait + dt : 0;
     c.v += Math.max(-7 * dt, Math.min(2.4 * dt, want - c.v));
     c.braking = want < c.v - 0.2;
@@ -82,6 +131,7 @@ export function stepTraffic(tr, player, dt) {
     Object.assign(c, pathAt(c.path, c.s));
   }
   for (const p of tr.peds) {
+    if (p.cross) { stepCrosser(p, tr, player, dt); continue; }
     const len = Math.hypot(p.bx - p.ax, p.by - p.ay) || 1;
     p.t += p.dir * p.speed * dt / len;
     if (p.t > 1) { p.t = 1; p.dir = -1; } else if (p.t < 0) { p.t = 0; p.dir = 1; }
