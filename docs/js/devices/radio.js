@@ -3,6 +3,7 @@ import { clack, startCarAmbience, tuneStatic } from '../sfx.js';
 import { settings, updateSettings } from '../store.js';
 import { frequency, onAir, radioEvents, receiver, receiverArt, stationName, stations, tune, tuneBy } from '../radio.js';
 import { spinAnim } from './common.js';
+import { glassHTML } from './scenery.js';
 
 /** The radios as a player: the chosen receiver drawn whole (a car's dashboard under its windshield, or a home set on
  *  its shelf) with its dial or display showing the station, its keys and knobs working: the preset keys tune the
@@ -35,6 +36,8 @@ function radio(id, car) {
     drawn = r.id;
     const [x, y, w, hgt, type] = r.screen, vh = car ? 240 : 300;
     box.querySelector('.rx__draw').innerHTML = receiverArt(r);
+    const glass = box.querySelector('.rx__glass');
+    if (glass) glass.innerHTML = glassHTML(r); // the street this car looks at, in its country's style
     const screen = box.querySelector('.rx__screen');
     screen.className = `rx__screen rx__screen--${type.startsWith('lcd') ? 'lcd' : type} ${type.includes('-') ? 'rx__screen--' + type.split('-')[1] : ''}`;
     Object.assign(screen.style, { left: `${x / 4}%`, top: `${(y / vh) * 100}%`, width: `${w / 4}%`, height: `${(hgt / vh) * 100}%` });
@@ -68,7 +71,7 @@ function radio(id, car) {
     id, family: 'radio', turnMs: 3000, scrub: 'x', idleScale: 1.06,
     speed: { slow: '', normal: '', fast: '' }, speedUnit: '',
     deck: () => `<div class="dk dk--radio rx rx--${car ? 'car' : 'home'}" aria-hidden="true">
-      ${car ? `<div class="rx__glass"><i class="rx__road"></i><i class="rx__lines"></i><i class="rx__posts"></i><i class="rx__rain"></i><i class="rx__wiper rx__wiper--l"></i><i class="rx__wiper rx__wiper--r"></i></div>` : ''}
+      ${car ? `<div class="rx__glass"></div>` : ''}
       <div class="rx__body"><div class="rx__draw"></div><div class="rx__screen"></div></div><div class="rx__tag"></div></div>`,
     media(track) {
       const el = h('<div class="record radio-medium"><span></span></div>');

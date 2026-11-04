@@ -306,49 +306,61 @@
 .rx__tag b { display: block; font: 600 calc(var(--size) * .032)/1.25 var(--font-serif); color: var(--text); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .rx__tag span { font-size: calc(var(--size) * .024); }
 
-/* the windshield: sky, the road running towards the car, posts going by, rain and the wipers */
-.rx__glass > i { position: absolute; display: block; }
-.rx__road { left: 20%; right: 20%; bottom: 0; height: 46%; background: #5A5F63; clip-path: polygon(45% 0, 55% 0, 100% 100%, 0 100%); }
-.rx__lines { left: 50%; width: 0; bottom: 0; height: 92%; border-left: calc(var(--size) * .01) dashed #F4F1E6; transform: translateX(-50%);
-  clip-path: inset(50% -10px 0 -10px); }
-.rx__posts { left: -10%; width: 120%; bottom: 22%; height: 26%; }
-.rx__posts::before, .rx__posts::after { content: ''; position: absolute; bottom: 0; width: calc(var(--size) * .012); height: 100%; background: #4D5A3F;
-  box-shadow: calc(var(--size) * .26) 30% 0 #4D5A3F, calc(var(--size) * .52) 0 0 #4D5A3F, calc(var(--size) * .78) 30% 0 #4D5A3F; }
-.rx__posts::before { left: 4%; }
-.rx__posts::after { left: 17%; height: 70%; opacity: .7; }
-.rx__rain { left: 0; top: -60%; width: 3px; height: 3px; border-radius: 50%; background: #FFFFFFAA; opacity: 0; transition: opacity .6s;
-  box-shadow: calc(var(--size) * .05) calc(var(--size) * .06) 0 #FFFFFFAA, calc(var(--size) * .18) calc(var(--size) * .02) 0 1px #FFFFFF99,
-    calc(var(--size) * .27) calc(var(--size) * .11) 0 #FFFFFFAA, calc(var(--size) * .38) calc(var(--size) * .05) 0 1px #FFFFFF88,
-    calc(var(--size) * .49) calc(var(--size) * .13) 0 #FFFFFFAA, calc(var(--size) * .61) calc(var(--size) * .03) 0 #FFFFFF99,
-    calc(var(--size) * .72) calc(var(--size) * .09) 0 1px #FFFFFFAA, calc(var(--size) * .84) calc(var(--size) * .14) 0 #FFFFFF88,
-    calc(var(--size) * .93) calc(var(--size) * .04) 0 #FFFFFFAA, calc(var(--size) * .12) calc(var(--size) * .17) 0 #FFFFFF99,
-    calc(var(--size) * .55) calc(var(--size) * .19) 0 1px #FFFFFFAA, calc(var(--size) * .78) calc(var(--size) * .21) 0 #FFFFFF99; }
+/* the windshield: a street in perspective in the style of the receiver's country, lamps flying by, rain and the wipers */
+.rx__glass > * { position: absolute; display: block; }
+.rx__scene, .rx__fall, .rx__drops { left: 0; top: 0; width: 100%; height: 100%; }
+.sc-f { fill: var(--d); }
+:root[data-mode="dark"] .sc-f { fill: var(--n); }
+.sc-night { display: none; }
+:root[data-mode="dark"] .sc-night { display: inline; }
+:root[data-mode="dark"] .sc-day { display: none; }
+.rx.is-rain .sc-cel { display: none !important; } /* no sun or stars behind the clouds */
+.rx-halo { opacity: 0; }
+:root[data-mode="dark"] .rx-halo { opacity: .22; }
+.rx__lines { left: 50%; width: 0; bottom: 0; height: 52%; border-left: calc(var(--size) * .008) dashed #F4F1E6; transform: translateX(-50%) perspective(60px) rotateX(18deg); opacity: .8;
+  clip-path: inset(0 -10px 0 -10px); }
+:root[data-mode="dark"] .rx__lines { border-left-color: #8A8F94; }
+.rx-fly { transform-box: view-box; transform-origin: 165px 50px; animation: rx-fly 1.8s cubic-bezier(.55, 0, .9, .7) infinite; animation-play-state: paused; }
+@keyframes rx-fly { from { transform: translate(0, 0) scale(.06); } to { transform: translate(calc(var(--dx) * 235px), 58px) scale(1.5); } }
+.rx.is-road.is-moving .rx-fly { animation-play-state: running; }
+.rx-ripple { fill: none; stroke: #FFFFFF; stroke-width: .6; opacity: 0; transform: translate(var(--x), var(--y)); }
+.rx__fall, .rx__drops, .rx__tint { opacity: 0; transition: opacity .8s; pointer-events: none; }
+.rx__tint { inset: 0; background: #3A4F5C; }
+.rx.is-rain .rx__fall, .rx.is-rain .rx__drops { opacity: 1; }
+.rx.is-rain .rx__tint { opacity: .2; }
+:root[data-mode="dark"] .rx.is-rain .rx__tint { opacity: .35; }
+.rx.is-rain .sc-sky { --d: #7F97A4 !important; --n: #16202A !important; }
+.rx-fall { transform-box: view-box; }
+.rx-fall--far { animation: rx-streak 1s linear infinite; }
+.rx-fall--near { animation: rx-streak .55s linear infinite; }
+@keyframes rx-streak { to { transform: translateY(99px); } }
+.rx-drop { transform-box: fill-box; }
+.rx-drop > * { animation: rx-drip 6s ease-in infinite; animation-duration: inherit; animation-delay: inherit; }
+.rx-drop .rx-trail { animation-name: rx-fade; }
+@keyframes rx-drip { 0% { opacity: 0; transform: translateY(0); } 8% { opacity: 1; } 70% { opacity: 1; transform: translateY(var(--run)); } 100% { opacity: 0; transform: translateY(var(--run)); } }
 .rx__wiper { bottom: -4%; width: 46%; height: calc(var(--size) * .008); background: #151515; border-radius: 4px; transform-origin: 2% 50%; opacity: 0;
   transition: opacity .4s; }
 .rx__wiper--l { left: 6%; transform: rotate(-4deg); }
 .rx__wiper--r { left: 50%; transform: rotate(-4deg); }
-.rx.is-rain .rx__glass { background: #7F97A4; }
-.rx.is-rain :is(.rx__rain, .rx__wiper) { opacity: 1; }
+.rx.is-rain .rx__wiper { opacity: 1; }
 .rx.is-rain.is-on .rx__wiper { animation: rx-wipe 3s var(--ease-io) infinite; }
-.rx.is-rain.is-on .rx__rain { animation: rx-drops 1.6s linear infinite; }
+.rx.is-rain.is-on .rx__drops { animation: rx-clear 3s linear infinite; }
+.rx.is-rain.is-on .rx-ripple { animation: rx-ring 1.6s ease-out infinite; }
 @keyframes rx-wipe { 0%, 60%, 100% { transform: rotate(-4deg); } 30% { transform: rotate(-150deg); } }
-@keyframes rx-drops { to { transform: translateY(calc(var(--size) * .3)); } }
+@keyframes rx-clear { 0%, 24% { opacity: 1; } 34%, 52% { opacity: .08; } 100% { opacity: 1; } }
+@keyframes rx-ring { 0% { opacity: .7; transform: translate(var(--x), var(--y)) scale(.2); } 100% { opacity: 0; transform: translate(var(--x), var(--y)) scale(1.5); } }
 .rx.is-road.is-moving .rx__lines { animation: rx-lines .6s linear infinite; }
-.rx.is-road.is-moving .rx__posts { animation: rx-posts 1.4s linear infinite; }
 .rx.is-road.is-moving .rx-needle { animation: rx-rev 2.6s var(--ease-io) infinite alternate; }
 .rx.is-road.is-moving .rx__draw { animation: rx-shake .35s ease-in-out infinite alternate; }
-@keyframes rx-lines { from { transform: translate(-50%, -12%); } to { transform: translate(-50%, 0); } }
-@keyframes rx-posts { to { transform: translateX(calc(var(--size) * -.26)); } }
+@keyframes rx-lines { from { transform: translate(-50%, 0) perspective(60px) rotateX(18deg); } to { transform: translate(-50%, 12%) perspective(60px) rotateX(18deg); } }
 @keyframes rx-rev { from { transform: rotate(40deg); } to { transform: rotate(118deg); } }
 @keyframes rx-shake { to { transform: translateY(.6px); } }
 .rx.is-road .rx-ignition { transform: rotate(60deg); transform-box: fill-box; transform-origin: center; }
 /* night (the dark mode): a darker sky, the instruments lit */
-:root[data-mode="dark"] .rx--car .rx__glass { background: #1C2733; }
-:root[data-mode="dark"] .rx--car .rx__road { background: #2B2F33; }
-:root[data-mode="dark"] .rx.is-rain .rx__glass { background: #16202A; }
 @media (prefers-reduced-motion: reduce) { .rx *, .rx *::before, .rx *::after { animation: none !important; } }
 
 /* the receiver's picture elsewhere: Settings, Home, the Garage */
 .receiver-thumb { flex: none; display: block; width: 76px; aspect-ratio: 4 / 3; }
 .receiver-thumb .rx-art, .radio-card__art .rx-art, .garage__art .rx-art { width: 100%; height: 100%; display: block; }
 .rx-art .rx-key { cursor: inherit; }
+@keyframes rx-fade { 0% { opacity: 0; } 8%, 70% { opacity: 1; } 100% { opacity: 0; } }
