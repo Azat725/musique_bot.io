@@ -201,21 +201,47 @@ body.player-open .eq i { animation-play-state: paused; } /* hidden under the ful
 .suggest__item:active { opacity: .6; }
 .suggest { filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .14)); }
 
-/* the empty state of "Playlists": a record peeking out of its sleeve */
-.pl-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 8px 12px 14px; gap: 6px; }
-.pl-empty__art { width: 160px; height: 120px; margin-bottom: 4px; }
-.pl-empty__record circle { fill: #14110E; stroke: rgba(255, 240, 220, .16); stroke-width: 1; }
-.pl-empty__record .g { fill: none; stroke: rgba(255, 240, 220, .1); }
-.pl-empty__record .l { fill: var(--bordeaux); stroke: none; }
-.pl-empty__record .h { fill: var(--bg); stroke: none; }
-.pl-empty__sleeve { fill: var(--surface-2, var(--surface)); stroke: var(--line); stroke-width: 1.5; }
-.pl-empty__slot { fill: none; stroke: var(--line); stroke-width: 1.5; }
-.pl-empty__dot { fill: none; stroke: var(--text-3); stroke-width: 1.5; stroke-dasharray: 3 4; }
-.pl-empty__record { transform-box: fill-box; transform-origin: center; }
+/* the empty "Playlists": the medium of the player in use, half out of its box (js/art.js) */
+.pl-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: var(--s2) var(--s3) var(--s4); gap: 6px; }
+.pl-empty__art { width: 176px; height: 132px; margin-bottom: var(--s1); overflow: visible; }
+.pl-empty__box { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
+.pl-empty__band { fill: var(--accent); opacity: .85; }
+.pl-empty__line { fill: var(--line); }
+.pl-empty__line--short { opacity: .7; }
+.pl-empty__plus circle { fill: var(--accent); }
+.pl-empty__plus path { stroke: var(--on-accent); stroke-width: 2.2; stroke-linecap: round; fill: none; }
+.pl-empty__vinyl { fill: #15120F; }
+.pl-empty__groove { fill: none; stroke: rgba(255, 240, 220, .13); stroke-width: 1.2; }
+.pl-empty__label { fill: var(--accent); }
+.pl-empty__hole { fill: var(--bg); }
+.pl-empty__shell { fill: var(--tp-shell, #1E1E20); }
+.pl-empty__sticker { fill: var(--tp-label, #F1E6CC); }
+.pl-empty__reel { fill: #C5C8CC; stroke: #8E9196; stroke-width: 1.5; }
+.pl-empty__wound { fill: #5A4232; }
+.pl-empty__cd { fill: #D6D9DE; stroke: #B5B9BF; stroke-width: 1; }
+.pl-empty__hue { opacity: .5; }
+.pl-empty__hue--1 { fill: #E8577A; } .pl-empty__hue--2 { fill: #3FB6C9; }
+.pl-empty__clamp { fill: #EEF0F2; stroke: #B5B9BF; }
+.pl-empty__case { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; opacity: .96; }
+.pl-empty__hinge { fill: var(--surface-2); }
+.pl-empty__wax { fill: #A8723E; }
+.pl-empty__wax-grooves { stroke: #7E5328; stroke-width: 1.5; }
+.pl-empty__dial { fill: #F3E6C2; stroke: var(--line); }
+.pl-empty__needle { fill: #B3261E; }
+.pl-empty__cloth { fill: var(--surface-2); }
+.pl-empty__bars { stroke: var(--line); stroke-width: 2.5; }
+.pl-empty__waves { fill: none; stroke: var(--accent-text); stroke-width: 2; stroke-linecap: round; opacity: .7; }
+.pl-empty__move { transform-box: fill-box; transform-origin: center; }
 @media (prefers-reduced-motion: no-preference) {
-  .pl-empty__record { animation: pl-sway 4.5s var(--ease-io) infinite; }
+  .pl-empty__move--slide { animation: pl-slide 4.5s var(--ease-io) infinite; }
+  .pl-empty__move--rise { animation: pl-rise 4.5s var(--ease-io) infinite; }
+  .pl-empty__move--tune { animation: pl-tune 3s var(--ease-io) infinite alternate; }
+  .pl-empty__plus { transform-box: fill-box; transform-origin: center; animation: pl-plus 4.5s var(--ease-io) infinite; }
 }
-@keyframes pl-sway { 0%, 100% { transform: translateX(0) rotate(0); } 50% { transform: translateX(7px) rotate(24deg); } }
+@keyframes pl-slide { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(8px) rotate(8deg); } }
+@keyframes pl-rise { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+@keyframes pl-tune { to { transform: translateX(64px); } }
+@keyframes pl-plus { 0%, 70%, 100% { transform: scale(1); } 80% { transform: scale(1.15); } }
 .pl-empty__title { font: 600 20px/1.25 var(--font-serif); color: var(--text); }
 .pl-empty__text { font-size: 14px; max-width: 280px; color: var(--text-2); }
 .pl-empty .btn { margin-top: 12px; }
@@ -695,29 +721,6 @@ body.player-open .toast { bottom: calc(24px + var(--safe-b)); }
 .boot.is-done .tl { animation: vl-away .4s var(--ease-io) both; }
 @media (prefers-reduced-motion: reduce) { .tl__reel { animation: none; } }
 
-/* The same compact, flat illustration language as the record and cassette loaders. */
-.medium-loader { --s: 76px; position: relative; flex: none; width: var(--s); height: var(--s); }
-.boot .medium-loader { display: none; --s: 150px; }
-:root[data-player="reel"] .boot :is(.vl, .tl), :root[data-player="cd"] .boot :is(.vl, .tl) { display: none; }
-:root[data-player="reel"] .boot .medium-loader--reel, :root[data-player="cd"] .boot .medium-loader--cd { display: block; }
-.medium-loader--reel { height: calc(var(--s) * .65); display: flex; align-items: flex-start; justify-content: space-around; padding-top: 5%; border-radius: 6px; background: var(--surface-2); box-shadow: 0 6px 16px var(--shadow), inset 0 0 0 1px var(--line); }
-.medium-loader--reel i { width: 42%; aspect-ratio: 1; border-radius: 50%; border: calc(var(--s) * .06) dotted var(--text-3); box-shadow: inset 0 0 0 2px var(--surface); animation: vl-spin 2.4s linear infinite; }
-.medium-loader--reel b { position: absolute; bottom: 10%; left: 16%; right: 16%; height: 13%; border-radius: 2px; background: var(--accent); }
-.medium-loader--cd { border-radius: 50%; background: var(--surface-2); border: 2px solid var(--line); box-shadow: 0 6px 16px var(--shadow); display: grid; place-items: center; }
-.medium-loader--cd i { width: 75%; height: 75%; border-radius: 50%; border: calc(var(--s) * .17) solid var(--surface); box-shadow: inset 0 0 0 2px var(--accent), 0 0 0 1px var(--text-3); animation: vl-spin 2.4s linear infinite; }
-.medium-loader--radio { height: calc(var(--s) * .58); border-radius: 7px; background: var(--surface-2); box-shadow: 0 6px 16px var(--shadow), inset 0 0 0 2px var(--line); }
-.medium-loader--radio span { position: absolute; left: 12%; right: 12%; top: 20%; height: 24%; background: var(--surface); border: 1px solid var(--line); }
-.medium-loader--radio span::after { content: ''; position: absolute; top: 0; bottom: 0; left: 20%; width: 2px; background: var(--accent); animation: radio-tune 2s ease-in-out infinite alternate; }
-.medium-loader--radio i { position: absolute; width: 13%; aspect-ratio: 1; bottom: 15%; border-radius: 50%; background: var(--text-2); }
-.medium-loader--radio i:nth-of-type(1) { left: 18%; } .medium-loader--radio i:nth-of-type(2) { right: 18%; }
-@keyframes radio-tune { to { left: 80%; } }
-:root[data-player^="radio-"] .boot :is(.vl, .tl) { display: none; }
-:root[data-player^="radio-"] .boot .medium-loader--radio { display: block; }
-.radio-intro { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; background: var(--bg); animation: vl-away .3s var(--ease) .85s both; pointer-events: none; }
-.radio-intro .medium-loader { --s: 150px; }
-.radio-intro[data-radio-kind="radio-car"] .medium-loader { height: calc(var(--s) * .4); border-radius: 4px; }
-.boot.is-done .medium-loader { animation: vl-away .4s var(--ease-io) both; }
-@media (prefers-reduced-motion: reduce) { .medium-loader i, .medium-loader span::after { animation: none; } .radio-intro { animation: none; } }
 
 /* Headings only, so decorative faces don't impair the readability of controls or track names. */
 :root[data-theme-font="navy"] { --font-serif: 'Cormorant Garamond', Georgia, serif; }
@@ -753,16 +756,6 @@ body.player-open .toast { bottom: calc(24px + var(--safe-b)); }
 .swatch--recorder { border-radius: 7px; aspect-ratio: 1.3; }
 .swatch--recorder::after { inset: 20% 18% 34%; border-radius: 3px; background: var(--c2); box-shadow: none; }
 
-/* the empty "Playlists" in the cassette view: a cassette peeking out of its case */
-.pl-empty__tape rect.s { fill: var(--tp-shell); }
-.pl-empty__tape rect.l { fill: var(--tp-label); }
-.pl-empty__tape rect.b { fill: var(--tp-band); }
-.pl-empty__tape circle { fill: var(--tp-window); }
-.pl-empty__tape { transform-box: fill-box; transform-origin: center; }
-@media (prefers-reduced-motion: no-preference) {
-  .pl-empty__tape { animation: pl-tape 4.5s var(--ease-io) infinite; }
-}
-@keyframes pl-tape { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(10px); } }
 .about__credit { margin: var(--s3) 0 0; font-size: 12px; line-height: 1.45; color: var(--text-3); }
 
 /* a toast with an action (undo) */
@@ -857,3 +850,74 @@ body.player-open .toast { bottom: calc(24px + var(--safe-b)); }
 .garage__art { display: block; width: 100%; aspect-ratio: 4 / 3; margin-bottom: var(--s1); }
 .garage__name { font-weight: 600; font-size: 14px; line-height: 1.25; }
 .garage__meta { font-size: 12px; line-height: 1.35; color: var(--text-2); }
+
+/* ---------- the loading pictures of the reels, the CD player, the phonograph and the radios (index.html #ml-art) ---------- */
+
+.ml { width: 96px; flex: none; }
+.ml svg { display: block; width: 100%; height: auto; overflow: visible; filter: drop-shadow(0 4px 10px var(--shadow)); }
+.boot .ml { width: 190px; }
+.boot.boot--ml :is(.vl, .tl) { display: none; }
+.boot.is-done .ml { animation: vl-away .4s var(--ease-io) both; }
+.ml-spin { transform-box: fill-box; transform-origin: center; animation: vl-spin 2.2s linear infinite; }
+.ml-spin--slow { animation-duration: 3.4s; }
+.ml-spin--fast { animation-duration: .9s; }
+.ml-spin--knob { animation: ml-knob 2.4s var(--ease-io) infinite alternate; }
+@keyframes ml-knob { from { transform: rotate(-40deg); } to { transform: rotate(60deg); } }
+/* the reels: a brushed body, two reels winding the tape past the head */
+.ml-body { fill: var(--surface-2); stroke: var(--line); stroke-width: 1.5; }
+.ml-reel { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
+.ml-wound { fill: #5A4232; }
+.ml-hole { fill: var(--surface-2); }
+.ml-hub, .ml-accent { fill: var(--accent); }
+.ml-tape { fill: none; stroke: #5A4232; stroke-width: 2; }
+.ml-vu circle { fill: var(--accent); animation: ml-pulse 1.1s ease-in-out infinite; }
+@keyframes ml-pulse { 50% { opacity: .35; } }
+/* the CD player: a round lid over a disc whose flat rainbow sectors turn, a still highlight on top */
+.ml-ring { fill: none; stroke: var(--line); stroke-width: 1.5; }
+.ml-disc { fill: #D6D9DE; }
+.ml-hue { opacity: .55; }
+.ml-hue--1 { fill: #E8577A; } .ml-hue--2 { fill: #F2C14E; } .ml-hue--3 { fill: #3FB6C9; }
+.ml-clamp { fill: var(--surface-2); stroke: var(--line); }
+.ml-hole { stroke: none; }
+.ml--cd .ml-hole { fill: var(--bg); }
+.ml-shine { fill: #FFFFFF; opacity: .35; }
+.ml-lcd { fill: #A9B79A; animation: ml-pulse 1.4s steps(2) infinite; }
+/* the phonograph: a wooden box, a brown wax cylinder with grooves running past, a brass horn */
+.ml-horn, .ml-brass { fill: #C9A04A; }
+.ml-bell { fill: #A9822F; }
+.ml-wood { fill: #7A4B2A; }
+.ml-wood2 { fill: #5E3A20; }
+.ml-cyl { fill: #A8723E; }
+.ml-grooves { fill: none; stroke: #7E5328; stroke-width: 16; stroke-dasharray: 1.6 4.4; animation: ml-run .5s linear infinite; }
+@keyframes ml-run { to { stroke-dashoffset: -6; } }
+.ml-crank { stroke: #3A2414; stroke-width: 3; stroke-linecap: round; fill: #C9A04A; transform-box: view-box; transform-origin: 8px 86px; animation: ml-crank 1.6s linear infinite; }
+@keyframes ml-crank { to { transform: rotate(360deg); } }
+/* the home set: walnut, a glowing dial with its needle tuning, cloth and a knob turning, the magic eye */
+.ml-cabinet { fill: #7A4B2A; }
+.ml-dial { fill: #F3E6C2; }
+.ml-ticks { stroke: #7A4B2A; stroke-width: 2; stroke-dasharray: 1 6; opacity: .7; }
+.ml-needle rect { fill: #B3261E; }
+.ml-needle { animation: ml-tune 2.4s var(--ease-io) infinite alternate; }
+@keyframes ml-tune { to { transform: translateX(76px); } }
+.ml-cloth { fill: #D9C394; }
+.ml-bars { stroke: #BFA676; stroke-width: 2.5; }
+.ml-knob { fill: #3A2414; }
+.ml-knob-mark { fill: #E8D2A6; }
+.ml-eye { fill: #3FD06A; animation: ml-pulse 1.8s ease-in-out infinite; }
+/* the car: the road running under the windshield, the speedometer swinging, the display scrolling */
+.ml-glass { fill: #9CC0D4; }
+.ml-road { fill: #5A5F63; }
+.ml-lane { stroke: #F4F1E6; stroke-width: 2; stroke-dasharray: 4 5; animation: ml-run .45s linear infinite reverse; }
+.ml-dash { fill: #232323; }
+.ml-gauge { fill: #111; stroke: #BDBDB8; stroke-width: 2.5; }
+.ml-needle2 { stroke: #FF6A1A; stroke-width: 2.5; stroke-linecap: round; }
+.ml-swing { transform-box: view-box; transform-origin: 30px 66px; animation: ml-swing 1.6s var(--ease-io) infinite alternate; }
+@keyframes ml-swing { to { transform: rotate(130deg); } }
+.ml-hub2 { fill: #BDBDB8; }
+.ml-unit { fill: #121212; }
+.ml-display { fill: #031614; }
+.ml-scroll { stroke: #4FE3D0; stroke-width: 3; stroke-dasharray: 9 5; animation: ml-run2 1s linear infinite; }
+@keyframes ml-run2 { to { stroke-dashoffset: -14; } }
+.ml-keys { stroke: #3A3B3E; stroke-width: 4; stroke-linecap: round; }
+:root[data-mode="dark"] .ml-glass { fill: #1C2733; }
+@media (prefers-reduced-motion: reduce) { .ml *, .ml svg * { animation: none !important; } }

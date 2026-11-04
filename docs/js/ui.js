@@ -40,10 +40,9 @@ const ICONS = {
   clock: '<circle cx="12" cy="12" r="8"/><g class="ic__hands">' + P('M12 8v4.5l3 1.5') + '</g>',
   vinyl: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3"/><circle class="fill" cx="12" cy="12" r=".9"/>',
   close: P('M6 6l12 12M18 6 6 18'),
-  // favourites: records on a shelf (two sleeves and a disc) with a small heart above
-  shelf: P('M3 19.5h18M4.5 19.5v1.5M19.5 19.5v1.5') + '<rect x="4.5" y="9.5" width="4" height="10" rx=".4"/><rect x="9.6" y="8" width="4" height="11.5" rx=".4"/>'
-    + '<g class="ic__roll"><circle cx="17.6" cy="15.6" r="3.9"/><circle cx="17.6" cy="15.6" r="1.1"/>' + P('M17.6 12.4v1.4') + '</g>'
-    + '<path class="fill ic__heart" d="M17.6 9.2s-2.7-1.6-2.7-3.5a1.45 1.45 0 0 1 2.7-.75 1.45 1.45 0 0 1 2.7.75c0 1.9-2.7 3.5-2.7 3.5z"/>',
+  // favourites: a record with a heart for its label (the record rolls a little, the heart beats on a press)
+  shelf: '<g class="ic__roll"><circle cx="12" cy="12" r="8.5"/>' + P('M6.4 8.6a6.6 6.6 0 0 1 3.4-2.7M14.2 18.1a6.6 6.6 0 0 0 3.4-2.7') + '</g>'
+    + '<path class="fill ic__heart" d="M12 15.67s-3.40-2.04-3.40-4.42a1.80 1.80 0 0 1 3.40-0.88 1.80 1.80 0 0 1 3.40 0.88c0 2.38-3.40 4.42-3.40 4.42z"/>',
   check: P('m5 12.5 4.5 4.5L19 7.5'),
   sort: P('M7 5v14m0 0-3-3m3 3 3-3M14 7h6M14 12h4.5M14 17h3'),
   eq: P('M6 4v16M12 4v16M18 4v16') + [[4, 13], [10, 7], [16, 11]].map(([x, y]) => `<rect class="fill ic__cap" x="${x}" y="${y}" width="4" height="3" rx=".8"/>`).join(''),
@@ -89,10 +88,9 @@ const TAPE_ICONS = {
   search: '<circle cx="10.5" cy="10.5" r="6.5"/>' + `<g class="ic__rec"><rect x="7.2" y="8.4" width="6.6" height="4.2" rx=".6"/><circle class="fill" cx="9.1" cy="10.4" r=".7"/><circle class="fill" cx="11.9" cy="10.4" r=".7"/></g>` + P('m15.4 15.4 4.6 4.6'),
   library: P('M3.5 6.5h9v13h-9z') + TAPE(8.5, 9, 12, 'ic__disc'),
   vinyl: TAPE(2.5, 6, 19) + P('M7.5 17.8 8.6 15.4h6.8l1.1 2.4'),
-  // favourites: cassettes stacked on a shelf, the top one rolls; the heart above as before
-  shelf: P('M3 19.5h18M4.5 19.5v1.5M19.5 19.5v1.5') + '<rect x="4" y="15.5" width="12" height="4" rx=".5"/><rect x="5" y="11.5" width="12" height="4" rx=".5"/>'
-    + '<g class="ic__roll"><rect x="4.5" y="7.5" width="12" height="4" rx=".5"/></g>'
-    + '<path class="fill ic__heart" d="M19.6 9.6s-2.5-1.5-2.5-3.2a1.35 1.35 0 0 1 2.5-.7 1.35 1.35 0 0 1 2.5.7c0 1.7-2.5 3.2-2.5 3.2z"/>',
+  // favourites: a cassette with a heart on its label
+  shelf: '<g class="ic__roll"><rect x="2.5" y="5.5" width="19" height="13" rx="1.8"/>' + P('M7.4 18.5 8.5 16h7l1.1 2.5') + '</g>'
+    + '<path class="fill ic__heart" d="M12 14.26s-3.10-1.86-3.10-4.03a1.64 1.64 0 0 1 3.10-0.81 1.64 1.64 0 0 1 3.10 0.81c0 2.17-3.10 4.03-3.10 4.03z"/>',
 };
 
 // Device-specific marks share the same stroke, proportions and moving-part classes as the existing icons.
@@ -100,11 +98,17 @@ const REEL_ICONS = {
   home: '<rect x="3" y="3.5" width="18" height="17" rx="1.8"/><g class="ic__horn"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/></g>' + P('M7 16h10M8 18h2M14 18h2'),
   vinyl: '<circle cx="7" cy="10" r="4.5"/><circle cx="17" cy="10" r="4.5"/><circle cx="7" cy="10" r="1"/><circle cx="17" cy="10" r="1"/>' + P('M7 14.5 9.5 19h5l2.5-4.5'),
   library: '<rect x="3.5" y="5" width="10" height="14" rx="1"/><g class="ic__disc"><circle cx="16" cy="12" r="5"/><circle cx="16" cy="12" r="1"/></g>',
+  // favourites: a reel of tape with a heart at its hub
+  shelf: '<g class="ic__roll"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="5.9" r="1.3"/><circle cx="6.7" cy="15" r="1.3"/><circle cx="17.3" cy="15" r="1.3"/></g>'
+    + '<path class="fill ic__heart" d="M12 14.45s-2.90-1.74-2.90-3.77a1.54 1.54 0 0 1 2.90-0.75 1.54 1.54 0 0 1 2.90 0.75c0 2.03-2.90 3.77-2.90 3.77z"/>',
 };
 const CD_ICONS = {
   home: '<rect x="3" y="3" width="18" height="18" rx="5"/><g class="ic__horn"><circle cx="12" cy="10" r="5"/><circle cx="12" cy="10" r="1"/></g>' + P('M8 18h8'),
   vinyl: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2"/>' + P('M12 6a6 6 0 0 1 6 6M12 8a4 4 0 0 1 4 4'),
   library: '<rect x="3" y="5" width="12" height="14" rx="1"/><g class="ic__disc"><circle cx="15.5" cy="12" r="5.5"/><circle cx="15.5" cy="12" r="1.2"/></g>',
+  // favourites: a disc catching the light, a heart in the middle
+  shelf: '<g class="ic__roll"><circle cx="12" cy="12" r="8.5"/>' + P('M12 5.6a6.4 6.4 0 0 1 6.4 6.4') + '</g>'
+    + '<path class="fill ic__heart" d="M12 15.67s-3.40-2.04-3.40-4.42a1.80 1.80 0 0 1 3.40-0.88 1.80 1.80 0 0 1 3.40 0.88c0 2.38-3.40 4.42-3.40 4.42z"/>',
 };
 
 export const EASE_IO = 'cubic-bezier(.65, 0, .35, 1)';
@@ -185,14 +189,13 @@ export function thumb(url, px = 144) {
 // the cassette view: a cassette whose reels turn
 export const TAPE_LOADER = '<div class="tl" aria-hidden="true"><div class="tl__shell"><span class="tl__label"></span><span class="tl__win"><i class="tl__reel"></i><i class="tl__reel"></i></span></div></div>';
 const VINYL = '<div class="vl" aria-hidden="true"><div class="vl__slide"><div class="vl__disc"><span class="vl__groove"></span><span class="vl__label"></span></div></div><div class="vl__sleeve"><span class="vl__brand">Musique</span></div></div>';
-export const REEL_LOADER = '<div class="medium-loader medium-loader--reel" aria-hidden="true"><i></i><i></i><b></b></div>';
-export const CD_LOADER = '<div class="medium-loader medium-loader--cd" aria-hidden="true"><i></i></div>';
-export const RADIO_LOADER = '<div class="medium-loader medium-loader--radio" aria-hidden="true"><span></span><i></i><i></i></div>';
 
 /** Loading placeholder: the same record-and-sleeve scene as the launch screen, smaller. It fades in
  *  only after a quarter of a second, so fast screens never flash it. */
 export function loader() {
-  const art = settings.playerMode.startsWith('radio-') ? RADIO_LOADER : settings.playerMode === 'reel' ? REEL_LOADER : settings.playerMode === 'cd' ? CD_LOADER : tapeMode() ? TAPE_LOADER.replace('class="tl"', 'class="tl tl--sm"') : VINYL.replace('class="vl"', 'class="vl vl--sm"');
+  // the reels, the CD player, the phonograph and the radios have their own picture (index.html #ml-art)
+  const own = document.getElementById('ml-art')?.content.querySelector('.ml--' + settings.playerMode);
+  const art = own ? own.outerHTML : tapeMode() ? TAPE_LOADER.replace('class="tl"', 'class="tl tl--sm"') : VINYL.replace('class="vl"', 'class="vl vl--sm"');
   return `<div class="view-loader">${art}</div>`;
 }
 

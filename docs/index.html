@@ -10,13 +10,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- fonts must never block rendering: if Google is unreachable the system fonts are used -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-  <link rel="stylesheet" href="css/tokens.css?v=67">
-  <link rel="stylesheet" href="css/app.css?v=67">
-  <link rel="stylesheet" href="css/player.css?v=67">
-  <link rel="stylesheet" href="css/devices.css?v=67">
-  <link rel="stylesheet" href="css/stories.css?v=67">
+  <link rel="stylesheet" href="css/tokens.css?v=68">
+  <link rel="stylesheet" href="css/app.css?v=68">
+  <link rel="stylesheet" href="css/player.css?v=68">
+  <link rel="stylesheet" href="css/devices.css?v=68">
+  <link rel="stylesheet" href="css/stories.css?v=68">
   <!-- local copy of https://telegram.org/js/telegram-web-app.js?64 (taken 2026-10-29, its two per-event console.log calls removed): telegram.org hangs on some networks/VPNs, and the app module waits for this script -->
-  <script src="vendor/telegram-web-app.js?v=67"></script>
+  <script src="vendor/telegram-web-app.js?v=68"></script>
   <script>
     try { window.Telegram.WebApp.ready(); } catch (e) {}
     // theme before the first paint, so a dark-theme user never sees a white flash
@@ -59,60 +59,117 @@
   <script type="importmap">
 {
   "imports": {
-    "./js/api.js": "./js/api.js?v=67",
-    "./js/app.js": "./js/app.js?v=67",
-    "./js/customization.js": "./js/customization.js?v=67",
-    "./js/device-help.js": "./js/device-help.js?v=67",
-    "./js/devices/cassette.js": "./js/devices/cassette.js?v=67",
-    "./js/devices/cd.js": "./js/devices/cd.js?v=67",
-    "./js/devices/common.js": "./js/devices/common.js?v=67",
-    "./js/devices/index.js": "./js/devices/index.js?v=67",
-    "./js/devices/phonograph.js": "./js/devices/phonograph.js?v=67",
-    "./js/devices/radio.js": "./js/devices/radio.js?v=67",
-    "./js/devices/receivers.js": "./js/devices/receivers.js?v=67",
-    "./js/devices/reel.js": "./js/devices/reel.js?v=67",
-    "./js/eq.js": "./js/eq.js?v=67",
-    "./js/fonts.js": "./js/fonts.js?v=67",
-    "./js/graph.js": "./js/graph.js?v=67",
-    "./js/i18n.js": "./js/i18n.js?v=67",
-    "./js/lifecycle.js": "./js/lifecycle.js?v=67",
-    "./js/login.js": "./js/login.js?v=67",
-    "./js/offline.js": "./js/offline.js?v=67",
-    "./js/player.js": "./js/player.js?v=67",
-    "./js/queue.js": "./js/queue.js?v=67",
-    "./js/radio.js": "./js/radio.js?v=67",
-    "./js/sfx.js": "./js/sfx.js?v=67",
-    "./js/sleep.js": "./js/sleep.js?v=67",
-    "./js/store.js": "./js/store.js?v=67",
-    "./js/stories.js": "./js/stories.js?v=67",
-    "./js/sync.js": "./js/sync.js?v=67",
-    "./js/themes.js": "./js/themes.js?v=67",
-    "./js/ui.js": "./js/ui.js?v=67",
-    "./js/ux-i18n.js": "./js/ux-i18n.js?v=67",
-    "./js/views/artist.js": "./js/views/artist.js?v=67",
-    "./js/views/artists.js": "./js/views/artists.js?v=67",
-    "./js/views/downloads.js": "./js/views/downloads.js?v=67",
-    "./js/views/home.js": "./js/views/home.js?v=67",
-    "./js/views/library.js": "./js/views/library.js?v=67",
-    "./js/views/playlist.js": "./js/views/playlist.js?v=67",
-    "./js/views/search.js": "./js/views/search.js?v=67",
-    "./js/views/settings.js": "./js/views/settings.js?v=67",
-    "./js/vinyl.js": "./js/vinyl.js?v=67"
+    "./js/api.js": "./js/api.js?v=68",
+    "./js/app.js": "./js/app.js?v=68",
+    "./js/art.js": "./js/art.js?v=68",
+    "./js/customization.js": "./js/customization.js?v=68",
+    "./js/device-help.js": "./js/device-help.js?v=68",
+    "./js/devices/cassette.js": "./js/devices/cassette.js?v=68",
+    "./js/devices/cd.js": "./js/devices/cd.js?v=68",
+    "./js/devices/common.js": "./js/devices/common.js?v=68",
+    "./js/devices/index.js": "./js/devices/index.js?v=68",
+    "./js/devices/phonograph.js": "./js/devices/phonograph.js?v=68",
+    "./js/devices/radio.js": "./js/devices/radio.js?v=68",
+    "./js/devices/receivers.js": "./js/devices/receivers.js?v=68",
+    "./js/devices/reel.js": "./js/devices/reel.js?v=68",
+    "./js/eq.js": "./js/eq.js?v=68",
+    "./js/fonts.js": "./js/fonts.js?v=68",
+    "./js/graph.js": "./js/graph.js?v=68",
+    "./js/i18n.js": "./js/i18n.js?v=68",
+    "./js/lifecycle.js": "./js/lifecycle.js?v=68",
+    "./js/login.js": "./js/login.js?v=68",
+    "./js/offline.js": "./js/offline.js?v=68",
+    "./js/player.js": "./js/player.js?v=68",
+    "./js/queue.js": "./js/queue.js?v=68",
+    "./js/radio.js": "./js/radio.js?v=68",
+    "./js/sfx.js": "./js/sfx.js?v=68",
+    "./js/sleep.js": "./js/sleep.js?v=68",
+    "./js/store.js": "./js/store.js?v=68",
+    "./js/stories.js": "./js/stories.js?v=68",
+    "./js/sync.js": "./js/sync.js?v=68",
+    "./js/themes.js": "./js/themes.js?v=68",
+    "./js/ui.js": "./js/ui.js?v=68",
+    "./js/ux-i18n.js": "./js/ux-i18n.js?v=68",
+    "./js/views/artist.js": "./js/views/artist.js?v=68",
+    "./js/views/artists.js": "./js/views/artists.js?v=68",
+    "./js/views/downloads.js": "./js/views/downloads.js?v=68",
+    "./js/views/home.js": "./js/views/home.js?v=68",
+    "./js/views/library.js": "./js/views/library.js?v=68",
+    "./js/views/playlist.js": "./js/views/playlist.js?v=68",
+    "./js/views/search.js": "./js/views/search.js?v=68",
+    "./js/views/settings.js": "./js/views/settings.js?v=68",
+    "./js/vinyl.js": "./js/vinyl.js?v=68"
   }
 }
   </script>
-  <link rel="modulepreload" href="js/app.js?v=67">
-  <link rel="modulepreload" href="js/api.js?v=67">
-  <link rel="modulepreload" href="js/player.js?v=67">
-  <link rel="modulepreload" href="js/ui.js?v=67">
-  <link rel="modulepreload" href="js/vinyl.js?v=67">
-  <link rel="modulepreload" href="js/store.js?v=67">
-  <link rel="modulepreload" href="js/i18n.js?v=67">
-  <link rel="modulepreload" href="js/views/home.js?v=67">
+  <link rel="modulepreload" href="js/app.js?v=68">
+  <link rel="modulepreload" href="js/api.js?v=68">
+  <link rel="modulepreload" href="js/player.js?v=68">
+  <link rel="modulepreload" href="js/ui.js?v=68">
+  <link rel="modulepreload" href="js/vinyl.js?v=68">
+  <link rel="modulepreload" href="js/store.js?v=68">
+  <link rel="modulepreload" href="js/i18n.js?v=68">
+  <link rel="modulepreload" href="js/views/home.js?v=68">
 </head>
 <body>
   <!-- launch screen: a record slides out of its sleeve and spins (a cassette's reels turn in the cassette view); app.js puts it back and fades it out -->
-  <div class="boot" role="status" aria-label="Musique"><div class="vl" aria-hidden="true"><div class="vl__slide"><div class="vl__disc"><span class="vl__groove"></span><span class="vl__label"></span></div></div><div class="vl__sleeve"><span class="vl__brand">Musique</span></div></div><div class="tl" aria-hidden="true"><div class="tl__shell"><span class="tl__label"></span><span class="tl__win"><i class="tl__reel"></i><i class="tl__reel"></i></span></div></div><div class="medium-loader medium-loader--reel" aria-hidden="true"><i></i><i></i><b></b></div><div class="medium-loader medium-loader--cd" aria-hidden="true"><i></i></div><div class="medium-loader medium-loader--radio" aria-hidden="true"><span></span><i></i><i></i></div></div>
+  <!-- the loading pictures of the players other than the record and the cassette: the launch screen takes the one of the
+       chosen player (the script after .boot), the screens' loaders too (ui.js loader()). Flat shapes, CSS animations -->
+  <template id="ml-art">
+    <div class="ml ml--reel" aria-hidden="true"><svg viewBox="0 0 140 96">
+      <rect class="ml-body" x="3" y="3" width="134" height="90" rx="9"/>
+      <path class="ml-tape" d="M18 40V70l22 12h60l22-12V40"/>
+      <g class="ml-spin"><circle class="ml-reel" cx="40" cy="38" r="25"/><circle class="ml-wound" cx="40" cy="38" r="17"/>
+        <circle class="ml-hole" cx="40" cy="27" r="4.5"/><circle class="ml-hole" cx="30.5" cy="43.5" r="4.5"/><circle class="ml-hole" cx="49.5" cy="43.5" r="4.5"/><circle class="ml-hub" cx="40" cy="38" r="3.5"/></g>
+      <g class="ml-spin ml-spin--slow"><circle class="ml-reel" cx="100" cy="38" r="25"/><circle class="ml-wound" cx="100" cy="38" r="11"/>
+        <circle class="ml-hole" cx="100" cy="27" r="4.5"/><circle class="ml-hole" cx="90.5" cy="43.5" r="4.5"/><circle class="ml-hole" cx="109.5" cy="43.5" r="4.5"/><circle class="ml-hub" cx="100" cy="38" r="3.5"/></g>
+      <rect class="ml-accent" x="58" y="76" width="24" height="10" rx="2"/>
+      <g class="ml-vu"><circle cx="70" cy="18" r="5"/></g>
+    </svg></div>
+    <div class="ml ml--cd" aria-hidden="true"><svg viewBox="0 0 120 120">
+      <circle class="ml-body" cx="60" cy="60" r="56"/><circle class="ml-ring" cx="60" cy="60" r="49"/>
+      <g class="ml-spin ml-spin--fast"><circle class="ml-disc" cx="60" cy="60" r="42"/>
+        <path class="ml-hue ml-hue--1" d="M60 60 L60 18 A42 42 0 0 1 96.4 39 Z"/><path class="ml-hue ml-hue--2" d="M60 60 L96.4 81 A42 42 0 0 1 60 102 Z"/>
+        <path class="ml-hue ml-hue--3" d="M60 60 L23.6 81 A42 42 0 0 1 23.6 39 Z"/>
+        <circle class="ml-clamp" cx="60" cy="60" r="13"/><circle class="ml-hole" cx="60" cy="60" r="5"/></g>
+      <path class="ml-shine" d="M60 60 L33 28 A42 42 0 0 1 48 20 Z"/>
+      <rect class="ml-lcd" x="44" y="104" width="32" height="8" rx="2"/>
+    </svg></div>
+    <div class="ml ml--phonograph" aria-hidden="true"><svg viewBox="0 0 150 110">
+      <path class="ml-horn" d="M88 52 L104 46 Q116 32 124 8 L148 22 Q126 34 108 58 L90 62 Z"/><ellipse class="ml-bell" cx="136" cy="15" rx="15" ry="5.5" transform="rotate(30 136 15)"/>
+      <rect class="ml-wood" x="14" y="70" width="104" height="34" rx="3"/><rect class="ml-wood2" x="14" y="70" width="104" height="6" rx="2"/>
+      <rect class="ml-cyl" x="26" y="48" width="66" height="20" rx="10"/>
+      <path class="ml-grooves" d="M34 58H84"/>
+      <rect class="ml-brass" x="20" y="54" width="8" height="8" rx="2"/><rect class="ml-brass" x="90" y="54" width="8" height="8" rx="2"/>
+      <g class="ml-crank"><line x1="8" y1="86" x2="8" y2="74"/><circle cx="8" cy="72" r="3"/></g>
+    </svg></div>
+    <div class="ml ml--radio-home" aria-hidden="true"><svg viewBox="0 0 140 100">
+      <rect class="ml-cabinet" x="6" y="10" width="128" height="84" rx="12"/>
+      <rect class="ml-dial" x="20" y="22" width="100" height="20" rx="3"/>
+      <path class="ml-ticks" d="M28 36h84"/><g class="ml-needle"><rect x="30" y="24" width="2.5" height="16" rx="1"/></g>
+      <rect class="ml-cloth" x="20" y="50" width="62" height="34" rx="3"/><path class="ml-bars" d="M26 56h50M26 62h50M26 68h50M26 74h50M26 80h50"/>
+      <g class="ml-spin ml-spin--knob"><circle class="ml-knob" cx="103" cy="62" r="11"/><rect class="ml-knob-mark" x="102" y="52" width="2" height="7" rx="1"/></g>
+      <circle class="ml-eye" cx="103" cy="84" r="4"/>
+    </svg></div>
+    <div class="ml ml--radio-car" aria-hidden="true"><svg viewBox="0 0 160 100">
+      <rect class="ml-glass" x="8" y="2" width="144" height="36" rx="12"/>
+      <path class="ml-road" d="M70 38 L76 10 H84 L90 38 Z"/><path class="ml-lane" d="M80 12V38"/>
+      <rect class="ml-dash" x="0" y="38" width="160" height="62" rx="6"/>
+      <circle class="ml-gauge" cx="30" cy="66" r="17"/><g class="ml-swing"><path class="ml-needle2" d="M30 66 L18 60"/></g><circle class="ml-hub2" cx="30" cy="66" r="2.5"/>
+      <rect class="ml-unit" x="62" y="54" width="82" height="32" rx="4"/><rect class="ml-display" x="68" y="59" width="70" height="12" rx="2"/>
+      <path class="ml-scroll" d="M72 65H134"/>
+      <path class="ml-keys" d="M71 79h9M84 79h9M97 79h9M110 79h9M123 79h9"/>
+    </svg></div>
+  </template>
+  <div class="boot" role="status" aria-label="Musique"><div class="vl" aria-hidden="true"><div class="vl__slide"><div class="vl__disc"><span class="vl__groove"></span><span class="vl__label"></span></div></div><div class="vl__sleeve"><span class="vl__brand">Musique</span></div></div><div class="tl" aria-hidden="true"><div class="tl__shell"><span class="tl__label"></span><span class="tl__win"><i class="tl__reel"></i><i class="tl__reel"></i></span></div></div></div>
+  <script>
+    // the launch screen of the reels, the CD player, the phonograph and the radios: their own picture from #ml-art
+    (function () {
+      var p = document.documentElement.dataset.player, t = document.getElementById('ml-art');
+      var art = t && t.content.querySelector('.ml--' + p);
+      if (art) { var boot = document.querySelector('.boot'); boot.classList.add('boot--ml'); boot.prepend(art.cloneNode(true)); }
+    })();
+  </script>
   <main id="main"></main>
   <div id="mini" class="mini" role="button" aria-label="player"></div>
   <nav id="nav" class="nav"></nav>
@@ -153,6 +210,6 @@
       }, 25000);
     })();
   </script>
-  <script type="module" src="js/app.js?v=67" onerror="window.__musiqueNote('не удалось загрузить js/app.js')"></script>
+  <script type="module" src="js/app.js?v=68" onerror="window.__musiqueNote('не удалось загрузить js/app.js')"></script>
 </body>
 </html>
