@@ -110,6 +110,16 @@ test('radio: Home and Settings show the chosen receiver at once',async({page})=>
   await page.locator('[data-tab="home"]').click();
   await expect(page.locator('.radio-card .section__title')).toContainText('ГАЗ-21');
 });
+test('radio: the Garage lists every car and can be narrowed to one country',async({page})=>{
+  await boot(page,{playerMode:'radio-car'});
+  await page.locator('[data-change]').first().click();
+  await expect(page.locator('.garage__item')).toHaveCount(25);
+  await page.locator('.garage__filter [data-country="fr"]').click();
+  await expect(page.locator('.garage__item:visible')).toHaveCount(3);
+  await expect(page.locator('.garage__item:visible .garage__meta')).toHaveText([/France/,/France/,/France/]);
+  await page.locator('.garage__item:visible').first().click();
+  await expect(page.locator('.radio-card .section__title')).toHaveText('Citroën 2CV');
+});
 test('only the machine: no button on the stage, left through the player menu; no sideways overflow',async({page})=>{
   await boot(page,{playerMode:'cd',bareDeck:true});await page.setViewportSize({width:812,height:375});
   await page.evaluate(async(tracks)=>{const {player}=await import('/js/player.js');player.queue=[tracks[0]];player.index=0;const {openPlayer}=await import('/js/vinyl.js');openPlayer();},tracks);

@@ -841,6 +841,11 @@ body.player-open .toast { bottom: calc(24px + var(--safe-b)); }
 /* ---------- the Garage / the Living room: receivers by decade ---------- */
 
 .sheet--garage .sheet__panel { max-height: 88vh; }
+.garage__filter { display: flex; gap: var(--s2); margin: 0 0 var(--s4); overflow-x: auto; scrollbar-width: none; }
+.garage__filter::-webkit-scrollbar { display: none; }
+.garage__filter .chip { flex: none; }
+.garage__filter .chip.is-on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.garage__item[hidden], .garage__decade[hidden] { display: none; }
 .garage__decade + .garage__decade { margin-top: var(--s5); }
 .garage__year { margin: 0 0 var(--s2) var(--s1); font: 600 18px/1.2 var(--font-serif); color: var(--heading); }
 .garage__row { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--gap); }

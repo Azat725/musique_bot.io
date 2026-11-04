@@ -82,11 +82,20 @@ export async function openReceivers(kind = radioKind()) {
   const list = RECEIVERS.filter((r) => r.kind === kind).sort((a, b) => a.year - b.year);
   const current = receiver(kind).id;
   const decades = [...new Set(list.map((r) => decadeOf(r)))];
-  const content = h(`<div class="garage">${decades.map((d) => `<section class="garage__decade"><h3 class="garage__year">${esc(t('radio_decade_label', { d }))}</h3>
-    <div class="garage__row">${list.filter((r) => decadeOf(r) === d).map((r) => `<button class="garage__item ${r.id === current ? 'is-on' : ''}" data-id="${r.id}" aria-pressed="${r.id === current}">
+  const countries = [...new Set(list.map((r) => r.country))];
+  const content = h(`<div class="garage"><div class="garage__filter" role="group">${['', ...countries].map((c) => `<button class="chip ${c ? '' : 'is-on'}" data-country="${c}">${esc(c ? t('country_' + c) : t('radio_all_countries'))}</button>`).join('')}</div>${decades.map((d) => `<section class="garage__decade"><h3 class="garage__year">${esc(t('radio_decade_label', { d }))}</h3>
+    <div class="garage__row">${list.filter((r) => decadeOf(r) === d).map((r) => `<button class="garage__item ${r.id === current ? 'is-on' : ''}" data-id="${r.id}" data-from="${r.country}" aria-pressed="${r.id === current}">
       <span class="garage__art">${receiverArt(r)}</span><span class="garage__name">${esc(r.name)}</span>
       <span class="garage__meta">${r.year} · ${esc(countryName(r.country, r))} · ${esc(r.unit)}</span></button>`).join('')}</div></section>`).join('')}</div>`);
   content.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-country]');
+    if (chip) { // show one country's sets, or all
+      haptic('select');
+      content.querySelectorAll('[data-country]').forEach((b) => b.classList.toggle('is-on', b === chip));
+      content.querySelectorAll('[data-from]').forEach((b) => { b.hidden = !!chip.dataset.country && b.dataset.from !== chip.dataset.country; });
+      content.querySelectorAll('.garage__decade').forEach((d) => { d.hidden = !d.querySelector('[data-from]:not([hidden])'); });
+      return;
+    }
     const item = e.target.closest('[data-id]');
     if (!item) return;
     haptic('select');

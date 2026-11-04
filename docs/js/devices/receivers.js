@@ -1,5 +1,5 @@
-/** The radio's receivers: twelve cars seen from the driver's seat (the dashboard with its radio) and thirteen home
- *  sets, each drawn with what makes it recognisable (the DS's single spoke, the Fiat 500's body-coloured dash, the
+/** The radio's receivers: cars seen from the driver's seat (the dashboard with its radio) and sets for the home
+ *  (three or four of each for every country), each drawn with what makes it recognisable (the DS's single spoke, the Fiat 500's body-coloured dash, the
  *  Mini's middle speedometer, the cube that opens, the ball on a chain...). Flat shapes only, stylised, not replicas.
  *
  *  A receiver is { id, kind: 'car' | 'home', name, year, country, unit, band: 'am' | 'fm', screen, art() }:
@@ -164,6 +164,108 @@ const CARS = [
       ${key('prev', R(146, 168, 30, 8, '#262627', 2))}${key('next', R(248, 168, 30, 8, '#262627', 2))}${knob('tune', 212, 172, 9, '#2E2E2F', '#3E3E3F', '#FF8A1E')}${knob('toggle', 126, 120, 8, '#2E2E2F', '#3E3E3F', '#FF8A1E')}
       ${wheel({ rim: '#121212', hub: '#252526', spokes: 3, width: 15, r: 104 })}${carSwitches(336, 188, '#111', '#9EA2A6')}`,
   },
+  {
+    id: 'mustang', name: 'Ford Mustang', year: 1965, country: 'us', unit: 'Ford AM', band: 'am', screen: [142, 124, 144, 28, 'dial'],
+    art: () => `${R(0, 30, 400, 210, '#1B1B1D')}${R(0, 30, 400, 26, '#8E1F24')}${R(0, 56, 400, 7, '#C9C9C4')}${R(30, 66, 184, 46, '#101010', 22)}
+      ${gauge(74, 90, 18, { rim: '#BDBDB8', face: '#0E0E0E', tick: '#EEE', needle: '#F2F2E8' })}${gauge(122, 90, 18, { rim: '#BDBDB8', face: '#0E0E0E', tick: '#EEE', needle: '#F2F2E8' })}${gauge(170, 90, 18, { rim: '#BDBDB8', face: '#0E0E0E', tick: '#EEE', needle: '#F2F2E8' })}
+      ${R(134, 118, 160, 58, '#C9C9C4', 6)}${R(142, 124, 144, 28, '#1C1C1A', 3)}${keys(150, 158, 5, 20, 10, 5, '#2B2B2B', '#EEE', 2)}
+      ${knob('toggle', 124, 140, 11, '#E4E4DE', '#BDBDB8', '#222')}${knob('tune', 304, 140, 11, '#E4E4DE', '#BDBDB8', '#222')}${R(310, 70, 64, 10, '#C9C9C4', 5)}
+      ${wheel({ rim: '#E8E4DA', hub: '#C9C9C4', spokes: 3, ring: '#C9C9C4', width: 9 })}${carSwitches(336, 190, '#101010', '#C9C9C4')}`,
+  },
+  {
+    id: 'corvette', name: 'Chevrolet Corvette C4', year: 1984, country: 'us', unit: 'Delco-Bose', band: 'fm', screen: [142, 118, 132, 24, 'vfd'],
+    art: () => `${R(0, 30, 400, 210, '#26272B')}${P('M0 30 H400 V58 L330 86 H70 L0 58 Z', '#1B1C1F')}${R(34, 42, 210, 50, '#050D0C', 8)}
+      ${Array.from({ length: 18 }, (_, i) => R(46 + i * 11, 50, 7, 22, i < 12 ? '#35E0C8' : '#0F3530', 1)).join('')}${Array.from({ length: 22 }, (_, i) => R(46 + i * 9, 78, 5, 8, i < 15 ? '#F2A33A' : '#3A2A10', 1)).join('')}
+      ${R(134, 108, 156, 68, '#101012', 4)}${R(142, 114, 132, 28, '#041412', 3)}${key('prev', R(146, 148, 22, 10, '#2A2B2E', 2))}${key('next', R(172, 148, 22, 10, '#2A2B2E', 2))}${keys(200, 148, 6, 14, 10, 3, '#2A2B2E', '#35E0C8', 1.5)}${keys(146, 162, 6, 20, 8, 4, '#2A2B2E', null, 1.5)}
+      ${knob('toggle', 124, 128, 9, '#2E2F33', '#404146', '#35E0C8')}${knob('tune', 300, 128, 9, '#2E2F33', '#404146', '#35E0C8')}
+      ${wheel({ rim: '#131314', hub: '#26272B', spokes: 3, width: 14, r: 102 })}${carSwitches(336, 188, '#131314', '#6A6B70')}`,
+  },
+  {
+    id: 'etype', name: 'Jaguar E-Type', year: 1961, country: 'uk', unit: 'Radiomobile', band: 'am', screen: [158, 134, 104, 20, 'dial'],
+    art: () => `${R(0, 30, 400, 210, '#171717')}${R(0, 30, 400, 22, '#232323')}${gauge(70, 84, 31, { rim: '#D8D8D2', face: '#0D0D0D', tick: '#EEE', needle: '#F2F2E8' })}${gauge(142, 86, 31, { rim: '#D8D8D2', face: '#0D0D0D', tick: '#EEE', needle: '#F2F2E8' })}
+      ${R(194, 62, 170, 56, '#B8B9B4', 6)}${Array.from({ length: 6 }, (_, i) => R(207 + i * 26, 74, 8, 18, '#2A2A2A', 3) + C(211 + i * 26, 74, 5, '#E8E8E2')).join('')}${R(204, 100, 150, 8, '#8E8F8A', 2)}
+      ${R(146, 126, 128, 48, '#2A2A28', 4)}${R(154, 132, 112, 22, '#E9E2C8', 2)}${keys(158, 160, 4, 24, 8, 6, '#C9C9C4', null, 1.5)}
+      ${knob('toggle', 134, 150, 10, '#C9C9C4', '#9E9E98', '#222')}${knob('tune', 288, 150, 10, '#C9C9C4', '#9E9E98', '#222')}
+      ${wheel({ rim: '#7A4B2A', hub: '#C9C9C4', spokes: 3, width: 12, r: 106 })}${carSwitches(334, 190, '#171717', '#B8B9B4')}`,
+  },
+  {
+    id: 'defender', name: 'Land Rover Defender', year: 1990, country: 'uk', unit: 'Clarion', band: 'fm', screen: [186, 106, 112, 20, 'vfd'],
+    art: () => `${R(0, 30, 400, 210, '#3B3D38')}${R(0, 30, 400, 34, '#2A2B28')}${gauge(110, 90, 34, { rim: '#1E1F1D', face: '#0C0C0C', tick: '#EEE', needle: '#F0A020' })}${gauge(176, 78, 14, { rim: '#1E1F1D', face: '#0C0C0C', tick: '#EEE', needle: '#F0A020' })}
+      ${C(262, 76, 15, '#1E1F1D')}${L('M250 72 H274 M250 77 H274 M250 82 H274', '#555752', 2)}${C(310, 76, 15, '#1E1F1D')}${L('M298 72 H322 M298 77 H322 M298 82 H322', '#555752', 2)}
+      ${R(176, 98, 134, 58, '#151515', 3)}${R(184, 104, 118, 24, '#041008', 2)}${keys(184, 136, 5, 20, 12, 6, '#2B2B2B', '#9AE05A', 2)}
+      ${knob('toggle', 162, 122, 9, '#2B2B2B', '#3A3A3A', '#DDD')}${knob('tune', 324, 122, 9, '#2B2B2B', '#3A3A3A', '#DDD')}${R(300, 176, 86, 11, '#1E1F1D', 5)}
+      ${wheel({ rim: '#141414', hub: '#232323', spokes: 2, width: 13, r: 106 })}${carSwitches(336, 190, '#141414', '#6A6C66')}`,
+  },
+  {
+    id: 'zaz965', name: 'ЗАЗ-965 «Запорожец»', year: 1960, country: 'ussr', unit: 'Волна', band: 'am', screen: [184, 108, 120, 20, 'dial'],
+    art: () => `${R(0, 30, 400, 210, '#6F8A62')}${R(0, 30, 400, 38, '#1B1B1B')}${R(0, 68, 400, 5, '#D8CFB0')}${R(96, 76, 70, 48, '#D8CFB0', 8)}${gauge(131, 98, 20, { rim: '#BFB79A', face: '#E8E2CB', tick: '#3B3328', needle: '#9E1E24' })}
+      ${R(176, 100, 136, 52, '#D8CFB0', 5)}${R(184, 106, 120, 24, '#2E2A22', 3)}${keys(188, 138, 4, 24, 9, 6, '#2E2A22', null, 2)}
+      ${knob('toggle', 164, 128, 10, '#2E2A22', '#443E32', '#E8D2A6')}${knob('tune', 324, 128, 10, '#2E2A22', '#443E32', '#E8D2A6')}${L('M330 178 H386', '#D8CFB0', 6)}
+      ${wheel({ rim: '#D8CFB0', hub: '#D8CFB0', spokes: 2, width: 8, r: 100 })}${carSwitches(336, 190, '#2E2A22', '#D8CFB0')}`,
+  },
+  {
+    id: 'vaz2109', name: 'ВАЗ-2109 «Спутник»', year: 1987, country: 'ussr', unit: 'Электроника', band: 'fm', screen: [144, 114, 132, 26, 'vfd'],
+    art: () => `${R(0, 30, 400, 210, '#2C2D2F')}${P('M0 30 H400 V62 L300 84 H50 L0 70 Z', '#1F2022')}${R(34, 40, 204, 52, '#101112', 10)}
+      ${gauge(88, 66, 22, { rim: '#3A3B3D', face: '#0A0A0B', tick: '#F2A33A', needle: '#FF5A1A' })}${gauge(166, 66, 22, { rim: '#3A3B3D', face: '#0A0A0B', tick: '#F2A33A', needle: '#FF5A1A' })}
+      ${Array.from({ length: 6 }, (_, i) => R(244 + i * 14, 52, 9, 7, i % 2 ? '#35C86A' : '#E0343B', 1.5)).join('')}
+      ${R(136, 106, 154, 68, '#1A1A1B', 4)}${R(144, 112, 138, 30, '#0A1A12', 3)}${keys(146, 150, 6, 20, 10, 4, '#3A3A3D', '#F2A33A', 1.5)}
+      ${knob('toggle', 124, 128, 9, '#3A3A3D', '#4C4D50', '#DDD')}${knob('tune', 302, 128, 9, '#3A3A3D', '#4C4D50', '#DDD')}
+      ${wheel({ rim: '#131313', hub: '#262626', spokes: 2, width: 14 })}${carSwitches(336, 188, '#111', '#6A6B6E')}`,
+  },
+  {
+    id: 'beetle', name: 'Volkswagen Beetle', year: 1960, country: 'de', unit: 'Becker', band: 'am', screen: [168, 126, 104, 20, 'dial'],
+    art: () => `${R(0, 30, 400, 210, '#8FB8A4')}${R(0, 30, 400, 40, '#1A1A18')}${R(0, 70, 400, 5, '#C9C9C4')}${R(96, 78, 72, 44, '#1F1F1D', 8)}${gauge(132, 100, 25, { rim: '#C9C9C4', face: '#EDE6CF', tick: '#222', needle: '#9E1E24' })}
+      ${R(240, 84, 130, 62, '#7AA690', 6)}${C(360, 96, 4, '#C9C9C4')}${R(160, 120, 120, 50, '#2A2825', 4)}${R(168, 126, 104, 20, '#E9E0C6', 2)}${keys(170, 154, 4, 22, 9, 6, '#EDE3C9', null, 2)}
+      ${knob('toggle', 148, 144, 9, '#EDE6CF', '#C9C9C4', '#222')}${knob('tune', 292, 144, 9, '#EDE6CF', '#C9C9C4', '#222')}
+      ${wheel({ rim: '#EDE6CF', hub: '#EDE6CF', spokes: 2, width: 8, r: 104 })}${carSwitches(336, 190, '#1A1A18', '#C9C9C4')}`,
+  },
+  {
+    id: '2cv', name: 'Citroën 2CV', year: 1955, country: 'fr', unit: 'Pathé-Marconi', band: 'am', screen: [168, 126, 100, 18, 'dial'],
+    art: () => `${R(0, 30, 400, 210, '#8C97A0')}${P('M0 30 H400 V62 Q200 86 0 62 Z', '#5F6A73')}${Array.from({ length: 14 }, (_, i) => R(i * 30 + 6, 96, 4, 144, '#7A858E')).join('')}
+      ${R(150, 58, 100, 48, '#1A1A1A', 24)}${gauge(200, 82, 21, { rim: '#C9C9C4', face: '#EDE6CF', tick: '#222', needle: '#C0392B' })}
+      ${R(156, 116, 112, 48, '#2A2A28', 6)}${R(164, 122, 96, 18, '#E9E2C8', 2)}${keys(166, 148, 4, 20, 8, 6, '#C9C9C4', null, 2)}
+      ${knob('toggle', 144, 138, 9, '#C9C9C4', '#9E9E98', '#222')}${knob('tune', 282, 138, 9, '#C9C9C4', '#9E9E98', '#222')}
+      ${wheel({ rim: '#1A1A1A', hub: '#1A1A1A', spokes: 2, width: 9, r: 100 })}${carSwitches(336, 190, '#1A1A1A', '#C9C9C4')}`,
+  },
+  {
+    id: 'peugeot205', name: 'Peugeot 205 GTI', year: 1985, country: 'fr', unit: 'Philips', band: 'fm', screen: [148, 110, 132, 26, 'lcd-red'],
+    art: () => `${R(0, 30, 400, 210, '#232324')}${R(0, 98, 400, 5, '#C8242B')}${R(34, 42, 176, 48, '#0D0D0E', 14)}${gauge(88, 66, 22, { rim: '#2C2C2E', face: '#0A0A0A', tick: '#EEE', needle: '#E33' })}${gauge(156, 66, 22, { rim: '#2C2C2E', face: '#0A0A0A', tick: '#EEE', needle: '#E33' })}
+      ${R(140, 106, 150, 70, '#161617', 5)}${R(148, 110, 134, 26, '#140303', 3)}${key('prev', R(148, 142, 26, 11, '#2A2A2C', 3))}${key('next', R(256, 142, 26, 11, '#2A2A2C', 3))}${keys(150, 160, 5, 22, 10, 5, '#2A2A2C', '#E0343B', 2)}
+      ${knob('toggle', 126, 128, 9, '#2A2A2C', '#3A3A3C', '#E0343B')}${knob('tune', 304, 128, 9, '#2A2A2C', '#3A3A3C', '#E0343B')}${R(318, 62, 60, 8, '#C8242B', 4)}
+      ${wheel({ rim: '#1A1A1B', hub: '#2C2C2E', spokes: 3, width: 14, r: 104 })}${carSwitches(336, 188, '#1A1A1B', '#6A6B6E')}`,
+  },
+  {
+    id: 'spider', name: 'Alfa Romeo Spider', year: 1966, country: 'it', unit: 'Voxson', band: 'am', screen: [146, 130, 130, 24, 'dial'],
+    art: () => `${R(0, 30, 400, 210, '#1A1A19')}${R(0, 30, 400, 20, '#262625')}${R(32, 42, 178, 54, '#0D0D0D', 27)}${gauge(84, 70, 23, { rim: '#2A2A2A', face: '#0A0A0A', tick: '#EDEDE4', needle: '#F2F2E8' })}${gauge(156, 70, 23, { rim: '#2A2A2A', face: '#0A0A0A', tick: '#EDEDE4', needle: '#F2F2E8' })}
+      ${Array.from({ length: 5 }, (_, i) => R(236 + i * 24, 70, 7, 16, '#2A2A2A', 3) + C(239.5 + i * 24, 70, 5, '#C9C9C4')).join('')}
+      ${R(138, 124, 146, 52, '#C9C9C4', 4)}${R(146, 130, 130, 24, '#1D1C1A', 2)}${keys(150, 160, 5, 20, 8, 6, '#2A2A2A', null, 1.5)}
+      ${knob('toggle', 124, 150, 11, '#2A2A2A', '#3D3D3D', '#DDD')}${knob('tune', 300, 150, 11, '#2A2A2A', '#3D3D3D', '#DDD')}
+      ${wheel({ rim: '#8B5A32', hub: '#C9C9C4', spokes: 3, width: 12, r: 108 })}${carSwitches(336, 190, '#1A1A19', '#C9C9C4')}`,
+  },
+  {
+    id: 'integrale', name: 'Lancia Delta Integrale', year: 1989, country: 'it', unit: 'Clarion', band: 'fm', screen: [148, 110, 132, 26, 'lcd-orange'],
+    art: () => `${R(0, 30, 400, 210, '#23252A')}${R(0, 30, 400, 28, '#1A1B1F')}${R(32, 42, 184, 48, '#0D0E10', 8)}${gauge(84, 66, 21, { rim: '#2C2D31', face: '#0A0A0B', tick: '#EEE', needle: '#E8342B' })}${gauge(150, 66, 21, { rim: '#2C2D31', face: '#0A0A0B', tick: '#EEE', needle: '#E8342B' })}${gauge(196, 62, 11, { rim: '#2C2D31', face: '#0A0A0B', tick: '#EEE', needle: '#E8342B', ticks: 5 })}
+      ${gauge(250, 70, 13, { rim: '#2C2D31', face: '#0A0A0B', tick: '#EEE', needle: '#F2A33A', ticks: 6 })}${gauge(284, 70, 13, { rim: '#2C2D31', face: '#0A0A0B', tick: '#EEE', needle: '#F2A33A', ticks: 6 })}${gauge(318, 70, 13, { rim: '#2C2D31', face: '#0A0A0B', tick: '#EEE', needle: '#F2A33A', ticks: 6 })}
+      ${R(140, 104, 148, 72, '#101113', 4)}${R(148, 110, 132, 26, '#140B02', 3)}${key('prev', R(148, 142, 26, 10, '#26272B', 2))}${key('next', R(254, 142, 26, 10, '#26272B', 2))}${keys(150, 158, 5, 22, 10, 5, '#26272B', '#FF8A1E', 2)}
+      ${knob('toggle', 126, 126, 9, '#2E2F33', '#404146', '#FF8A1E')}${knob('tune', 304, 126, 9, '#2E2F33', '#404146', '#FF8A1E')}
+      ${wheel({ rim: '#121213', hub: '#26272B', spokes: 3, width: 14, r: 104 })}${carSwitches(336, 190, '#121213', '#6A6B70')}`,
+  },
+  {
+    id: 'z240', name: 'Datsun 240Z', year: 1970, country: 'jp', unit: 'Hitachi', band: 'fm', screen: [146, 114, 134, 24, 'dial'],
+    art: () => `${R(0, 30, 400, 210, '#1A1A1B')}${R(0, 30, 400, 24, '#242425')}${R(28, 40, 92, 62, '#0A0A0A', 31)}${R(122, 40, 92, 62, '#0A0A0A', 31)}${gauge(74, 71, 25, { rim: '#BDBDB8', face: '#0E0E0E', tick: '#EDEDE4', needle: '#F2F2E8' })}${gauge(168, 71, 25, { rim: '#BDBDB8', face: '#0E0E0E', tick: '#EDEDE4', needle: '#F2F2E8' })}
+      ${R(228, 62, 124, 34, '#141414', 6)}${gauge(250, 79, 12, { rim: '#BDBDB8', face: '#0E0E0E', tick: '#EEE', needle: '#E2562C', ticks: 5 })}${gauge(290, 79, 12, { rim: '#BDBDB8', face: '#0E0E0E', tick: '#EEE', needle: '#E2562C', ticks: 5 })}${gauge(330, 79, 12, { rim: '#BDBDB8', face: '#0E0E0E', tick: '#EEE', needle: '#E2562C', ticks: 5 })}
+      ${R(138, 108, 150, 64, '#1D1D1F', 4)}${R(146, 114, 134, 24, '#E9E4D0', 2)}${keys(148, 146, 5, 22, 10, 6, '#2E2E30', null, 2)}
+      ${knob('toggle', 124, 130, 9, '#BDBDB8', '#9E9E98', '#222')}${knob('tune', 302, 130, 9, '#BDBDB8', '#9E9E98', '#222')}
+      ${wheel({ rim: '#1A1A1A', hub: '#C9C9C4', spokes: 3, width: 13, r: 106 })}${carSwitches(336, 190, '#141414', '#BDBDB8')}`,
+  },
+  {
+    id: 'mx5', name: 'Mazda MX-5', year: 1990, country: 'jp', unit: 'Mazda', band: 'fm', screen: [144, 110, 136, 24, 'vfd'],
+    art: () => `${R(0, 30, 400, 210, '#242427')}${P('M0 30 H400 V60 Q200 86 0 60 Z', '#1A1A1D')}${R(36, 42, 176, 48, '#0E0E10', 22)}${gauge(92, 66, 23, { rim: '#2C2C30', face: '#0A0A0B', tick: '#EEE', needle: '#E8342B' })}${gauge(160, 66, 23, { rim: '#2C2C30', face: '#0A0A0B', tick: '#EEE', needle: '#E8342B' })}
+      ${C(262, 68, 15, '#16161A')}${L('M250 64 H274 M250 69 H274 M250 74 H274', '#4A4A50', 2)}${C(310, 68, 15, '#16161A')}${L('M298 64 H322 M298 69 H322 M298 74 H322', '#4A4A50', 2)}
+      ${R(136, 104, 152, 70, '#121214', 5)}${R(144, 110, 136, 24, '#02100B', 3)}${keys(146, 142, 6, 20, 10, 4, '#2E2E32', '#35E0C8', 1.5)}${keys(146, 156, 6, 20, 8, 4, '#2E2E32', null, 1.5)}
+      ${knob('toggle', 124, 126, 9, '#2E2E32', '#404046', '#35E0C8')}${knob('tune', 300, 126, 9, '#2E2E32', '#404046', '#35E0C8')}
+      ${wheel({ rim: '#141416', hub: '#232327', spokes: 3, width: 13, r: 102 })}${carSwitches(336, 188, '#141416', '#6A6A70')}`,
+  },
 ];
 
 // ---------- home sets (400 × 300): the receiver on a shelf ----------
@@ -233,7 +335,7 @@ const HOMES = [
       ${keys(186, 228, 6, 22, 14, 5, '#2A2C2E', '#9EA2A6', 2)}`,
   },
   {
-    id: 'boombox', name: 'JVC RC-M90', year: 1980, country: 'us', unit: 'JVC', band: 'fm', screen: [150, 108, 100, 22, 'dial'],
+    id: 'boombox', name: 'JVC RC-M90', year: 1980, country: 'jp', unit: 'JVC', band: 'fm', screen: [150, 108, 100, 22, 'dial'],
     art: () => `${shelf()}${L('M110 80 V44 H290 V80', '#2A2A2A', 8)}${R(24, 78, 352, 184, '#BFC2C6', 10)}${C(86, 188, 54, '#1E1F21')}${C(86, 188, 40, '#2E3033')}${C(86, 188, 16, '#4A4D51')}
       ${C(314, 188, 54, '#1E1F21')}${C(314, 188, 40, '#2E3033')}${C(314, 188, 16, '#4A4D51')}${C(86, 108, 16, '#1E1F21')}${C(314, 108, 16, '#1E1F21')}
       ${R(146, 104, 108, 30, '#0E0F10', 3)}${R(150, 144, 100, 64, '#26282A', 4)}${R(162, 156, 76, 38, '#121314', 3)}${C(182, 175, 9, '#3A3C3F')}${C(218, 175, 9, '#3A3C3F')}
@@ -251,6 +353,63 @@ const HOMES = [
     art: () => `${shelf()}${R(70, 92, 260, 170, '#7A4022', 8)}${R(80, 102, 240, 150, '#8C4D2A', 4)}${R(92, 112, 120, 128, '#DAD0BC', 4)}${dots(152, 176, 54, 9, '#BBAF98', 2.4)}
       ${R(222, 108, 104, 136, '#E8E2D4', 4)}${R(230, 114, 88, 30, '#F3EEE2', 2)}${knob('tune', 274, 192, 26, '#D8D3C6', '#C3BDAD', '#3A2A1E')}
       ${knob('toggle', 246, 234, 7, '#2A2A2A', '#3D3D3D', '#DDD')}${keys(266, 230, 3, 12, 8, 4, '#2A2A2A', null, 2)}`,
+  },
+  {
+    id: 'zenith', name: 'Zenith Trans-Oceanic', year: 1951, country: 'us', unit: 'Zenith', band: 'am', screen: [96, 98, 208, 48, 'dial'],
+    art: () => `${shelf()}${L('M130 74 Q200 30 270 74', '#1A1A1A', 9)}${R(64, 70, 272, 192, '#2A2A2C', 14)}${R(72, 78, 256, 176, '#C9C9C4', 10)}${R(80, 86, 240, 160, '#2A2A2C', 8)}
+      ${R(92, 94, 216, 60, '#EDE8D8', 3)}${Array.from({ length: 5 }, (_, i) => R(98, 100 + i * 10, 204, 2, '#2A2A2C')).join('')}${R(92, 164, 216, 40, '#B8B9B4', 3)}${barsH(98, 168, 204, 32, 5, '#7D7E7A', 0.5)}
+      ${knob('tune', 262, 230, 16, '#C9C9C4', '#9E9E98', '#222')}${knob('toggle', 132, 230, 13, '#C9C9C4', '#9E9E98', '#222')}${keys(170, 222, 3, 24, 12, 6, '#C9C9C4', null, 2)}`,
+  },
+  {
+    id: 'r200', name: 'Roberts R200', year: 1960, country: 'uk', unit: 'Roberts', band: 'am', screen: [104, 122, 120, 40, 'dial'],
+    art: () => `${shelf()}${L('M120 104 Q200 40 280 104', '#C7A653', 10)}${R(80, 100, 240, 162, '#E6D8B8', 16)}${R(90, 110, 220, 142, '#D8C8A0', 10)}${R(102, 120, 124, 46, '#C7A653', 5)}${R(108, 126, 112, 34, '#F3EAD0', 3)}
+      ${dots(268, 150, 30, 9, '#7A6A4A', 2.2)}${knob('tune', 142, 214, 15, '#2A2A2A', '#3D3D3D', '#E6D8B8')}${knob('toggle', 196, 214, 12, '#2A2A2A', '#3D3D3D', '#E6D8B8')}${keys(236, 224, 3, 22, 9, 6, '#C7A653', null, 3)}`,
+  },
+  {
+    id: 'riga103', name: 'Рига-103', year: 1960, country: 'ussr', unit: 'Рига', band: 'am', screen: [60, 104, 180, 44, 'dial'],
+    art: () => `${shelf()}${R(46, 90, 308, 172, '#6B3B20', 10)}${R(54, 98, 292, 156, '#7E4A2A', 6)}${R(60, 104, 180, 44, '#E6D8A8', 3)}${R(252, 104, 92, 124, '#2A1C12', 4)}${slotsV(258, 110, 80, 112, 14, '#8E6A44', 0.5)}
+      ${knob('tune', 120, 196, 16, '#2A1C12', '#3E2B1E', '#E8D2A6')}${knob('toggle', 196, 196, 13, '#2A1C12', '#3E2B1E', '#E8D2A6')}${keys(60, 228, 5, 24, 12, 6, '#E9E2CE', null, 2)}`,
+  },
+  {
+    id: 'rigonda', name: 'Ригонда-102', year: 1971, country: 'ussr', unit: 'Ригонда', band: 'fm', screen: [56, 140, 150, 36, 'dial'],
+    art: () => `${shelf()}${R(30, 120, 340, 142, '#7A4B2A', 6)}${R(36, 84, 328, 38, '#3A2A1E', 5)}${C(114, 102, 26, '#1B1B1B')}${C(114, 102, 6, '#C9C9C4')}${L('M178 92 L132 104', '#C9C9C4', 3)}${R(224, 94, 120, 18, '#5A4636', 3)}
+      ${R(44, 130, 320, 122, '#8A5733', 4)}${R(56, 140, 150, 36, '#EEE9DA', 3)}${barsH(222, 140, 130, 100, 10, '#3A2414')}${knob('tune', 96, 214, 15, '#2A1C12', '#3E2B1E', '#E8D2A6')}${knob('toggle', 150, 214, 12, '#2A1C12', '#3E2B1E', '#E8D2A6')}${keys(62, 190, 4, 24, 10, 6, '#E9E2CE', null, 2)}`,
+  },
+  {
+    id: 'sk4', name: 'Braun SK 4', year: 1956, country: 'de', unit: 'Braun', band: 'am', screen: [190, 136, 150, 36, 'dial'],
+    art: () => `${shelf()}${R(30, 120, 340, 142, '#F0EEE8', 4)}${R(30, 120, 14, 142, '#B5855A', 3)}${R(356, 120, 14, 142, '#B5855A', 3)}${R(30, 96, 340, 28, '#D8E4E7', 3)}${R(44, 100, 312, 3, '#F4F8F9')}
+      ${R(54, 136, 120, 100, '#E2DFD6', 2)}${barsH(60, 142, 108, 88, 16, '#C9C5BA')}${R(190, 136, 150, 36, '#2A2A28', 2)}${R(198, 144, 134, 3, '#F0EEE8')}
+      ${knob('tune', 300, 206, 16, '#E8E2D2', '#C9C3B0', '#C0392B')}${knob('toggle', 226, 206, 12, '#E8E2D2', '#C9C3B0', '#2A2A28')}${keys(196, 236, 4, 26, 8, 6, '#F0EEE8', null, 2)}`,
+  },
+  {
+    id: 'satellit', name: 'Grundig Satellit', year: 1959, country: 'de', unit: 'Grundig', band: 'am', screen: [56, 106, 288, 56, 'dial'],
+    art: () => `${shelf()}${L('M326 92 L372 22', '#C9C9C4', 4)}${R(40, 92, 320, 170, '#2A2A2A', 12)}${R(48, 100, 304, 154, '#3A3A3A', 8)}${R(56, 106, 288, 56, '#EDE8D4', 3)}${Array.from({ length: 4 }, (_, i) => R(62, 114 + i * 11, 276, 2, '#7A6A4A')).join('')}
+      ${R(56, 172, 120, 74, '#2A2A2A', 3)}${barsH(62, 178, 108, 62, 10, '#6A6A6A', 0.5)}${keys(184, 176, 5, 20, 38, 4, '#E9E2CE', null, 2)}${knob('tune', 326, 190, 15, '#C9C9C4', '#9E9E98', '#222')}${knob('toggle', 326, 238, 10, '#C9C9C4', '#9E9E98', '#222')}`,
+  },
+  {
+    id: 'deco', name: 'Radiola Art Déco', year: 1934, country: 'fr', unit: 'Radiola', band: 'am', screen: [166, 136, 68, 28, 'dial'],
+    art: () => `${shelf()}${P('M96 262 V130 L126 98 H274 L304 130 V262 Z', '#5A3420')}${P('M110 250 V136 L134 110 H266 L290 136 V250 Z', '#764628')}${Array.from({ length: 7 }, (_, i) => L(`M200 164 L${(120 + i * 27).toFixed(0)} 116`, '#C9A877', 3)).join('')}
+      ${C(200, 150, 46, '#E8D9B0')}${C(200, 150, 38, '#F3E8CF')}${barsH(134, 204, 132, 36, 4, '#C9A877', 0.5)}${knob('tune', 122, 230, 11, '#3A2112', '#5A3420', '#E8C48A')}${knob('toggle', 278, 230, 9, '#3A2112', '#5A3420', '#E8C48A')}${keys(160, 242, 3, 22, 7, 6, '#3A2112', null, 2)}`,
+  },
+  {
+    id: 'ducretet', name: 'Ducretet-Thomson', year: 1951, country: 'fr', unit: 'Ducretet-Thomson', band: 'am', screen: [96, 120, 208, 26, 'dial'],
+    art: () => `${shelf()}${R(60, 94, 280, 168, '#EDE0C0', 36)}${P('M84 160 A116 56 0 0 1 316 160 Z', '#2A2A28')}${P('M92 154 A108 48 0 0 1 308 154 Z', '#F3E8CF')}
+      ${R(84, 172, 126, 70, '#5B3E26', 6)}${slotsV(90, 178, 114, 58, 14, '#C9A877', 0.5)}${knob('tune', 266, 206, 18, '#2A1A10', '#3D281A', '#E8D2A6')}${knob('toggle', 306, 238, 10, '#2A1A10', '#3D281A', '#E8D2A6')}${keys(222, 240, 3, 20, 8, 6, '#5B3E26', null, 2)}`,
+  },
+  {
+    id: 'pathe', name: 'Pathé-Marconi Transistor', year: 1966, country: 'fr', unit: 'Pathé-Marconi', band: 'am', screen: [140, 106, 120, 16, 'dial'],
+    art: () => `${shelf()}${L('M150 96 Q200 52 250 96', '#2A2A2A', 7)}${R(120, 90, 160, 172, '#E07A28', 22)}${R(140, 106, 120, 16, '#F3E8CF', 3)}${C(200, 172, 46, '#D8D8D2')}${dots(200, 172, 38, 9, '#7D7E7A', 2.2)}
+      ${knob('tune', 264, 232, 12, '#F3E8CF', '#D8CDB0', '#B8561A')}${knob('toggle', 138, 232, 9, '#F3E8CF', '#D8CDB0', '#B8561A')}${keys(166, 240, 3, 24, 8, 6, '#F3E8CF', null, 3)}`,
+  },
+  {
+    id: 'radiomarelli', name: 'Radiomarelli Bakelite', year: 1950, country: 'it', unit: 'Radiomarelli', band: 'am', screen: [224, 114, 92, 40, 'dial'],
+    art: () => `${shelf()}${R(70, 80, 260, 182, '#8A3A2C', 46)}${R(82, 92, 236, 158, '#7B2A23', 38)}${C(152, 176, 62, '#E8D9B0')}${dots(152, 176, 52, 9, '#A8946A', 2.4)}${R(220, 104, 100, 64, '#F3E8CF', 6)}
+      ${knob('tune', 270, 204, 17, '#2A1A10', '#3D281A', '#E8D2A6')}${knob('toggle', 300, 240, 9, '#2A1A10', '#3D281A', '#E8D2A6')}${keys(228, 232, 3, 18, 9, 6, '#E8D9B0', null, 3)}`,
+  },
+  {
+    id: 'skysensor', name: 'Sony ICF-5900', year: 1975, country: 'jp', unit: 'Sony', band: 'fm', screen: [60, 120, 200, 50, 'dial'],
+    art: () => `${shelf()}${L('M342 102 L374 22', '#C9C9C4', 3)}${R(40, 100, 320, 162, '#2B2B2D', 8)}${R(46, 106, 308, 150, '#BFC1C4', 5)}${R(60, 120, 200, 50, '#1B1C1E', 3)}${Array.from({ length: 4 }, (_, i) => R(66, 128 + i * 9, 188, 2, '#EDEDE4')).join('')}${R(66, 126, 3, 40, '#E04040')}
+      ${R(60, 182, 128, 62, '#8E9094', 3)}${barsH(66, 188, 116, 50, 9, '#5E6064', 0.5)}${keys(198, 186, 5, 22, 18, 4, '#2B2B2D', '#E04040', 2)}${knob('tune', 304, 150, 22, '#2B2B2D', '#3C3C3F', '#EEE')}${knob('toggle', 304, 224, 13, '#2B2B2D', '#3C3C3F', '#EEE')}`,
   },
 ];
 
