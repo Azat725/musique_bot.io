@@ -2,11 +2,14 @@ import { api } from '../api.js';
 import { viewScope } from '../lifecycle.js';
 import { plural, t } from '../i18n.js';
 import { player } from '../player.js';
-import { invalidatePlaylists, likedList, settings } from '../store.js';
+import { invalidatePlaylists, likedList, settings, updateSettings } from '../store.js';
+import { artistsOf, byArtist, SORT_KEYS, sortTracks } from '../tracklist.js';
 import { isSaved, MAX_SAVED, offline, progress as savedProgress, usage as savedUsage } from '../offline.js';
 import { confirmSheet, esc, h, haptic, icon, loader, promptName, sheet, toast, trackList } from '../ui.js';
 
 const FILTER_FROM = 8; // a list this long (or longer) gets a search field
+const playlistSorts = new Map(); // a playlist's chosen order, kept until the app is closed (the favourites' one is a setting)
+const sortLabel = (k) => t(k === 'new' || k === 'old' ? 'sort_' + k : 'lsort_' + k);
 const norm = (s) => String(s || '').toLowerCase().replace(/ё/g, 'е');
 
 async function loadTracks(p) {
@@ -49,6 +52,10 @@ export async function render(params, nav) {
       <input type="search" enterkeyhint="search" autocomplete="off" placeholder="${esc(t('list_filter'))}">
       <button class="icon-btn searchbar__clear" aria-label="clear" hidden>${icon('close')}</button>
     </div>
+    ${params.kind === 'likes' || params.kind === 'user' ? `<div class="list-tools" hidden>
+      <button class="link link--sort" data-sort>${icon('sort')}<span></span></button>
+      <button class="link link--sort" data-artist hidden>${icon('micFav')}<span></span></button>
+    </div>` : ''}
     ${params.kind === 'likes' ? `<label class="download-filter"><input type="checkbox" data-saved-only>${esc(t('downloads_only'))}</label>` : ''}
     <div class="list__body">${loader()}</div>
   </div>`);
@@ -62,15 +69,35 @@ export async function render(params, nav) {
   let tracks = [];
   let query = '';
   let savedOnly = false;
-
-  /** What the filter lets through; with an empty field, the list itself. */
-  const shown = () => {
-    const q = norm(query.trim());
-    return tracks.filter((tr) => (!savedOnly || isSaved(tr.id)) && (!q || norm(`${tr.title} ${tr.artist}`).includes(q)));
+  let artist = ''; // the artist the list is narrowed to ('' = all)
+  const tools = root.querySelector('.list-tools');
+  const sortBtn = root.querySelector('[data-sort]');
+  const artistBtn = root.querySelector('[data-artist]');
+  // favourites come newest first, a playlist oldest first
+  const sortKey = () => {
+    const k = params.kind === 'likes' ? settings.likesSort : playlistSorts.get(params.id);
+    return SORT_KEYS.includes(k) ? k : 'default';
   };
 
+  /** What the filters let through, in the chosen order; with nothing chosen, the list itself. */
+  const shown = () => {
+    const q = norm(query.trim());
+    const kept = tracks.filter((tr) => (!savedOnly || isSaved(tr.id)) && (!q || norm(`${tr.title} ${tr.artist}`).includes(q)));
+    return sortTracks(byArtist(kept, artist), sortKey(), { newestFirst: params.kind === 'likes' });
+  };
+
+  /** The sort and artist buttons: shown for a list of two or more, with what is chosen written on them. */
+  function refreshTools() {
+    if (!tools) return;
+    if (artist && !tracks.some((tr) => String(tr.artist || '').trim() === artist)) artist = ''; // its last track was taken off
+    tools.hidden = tracks.length < 2;
+    sortBtn.querySelector('span').textContent = sortLabel(sortKey());
+    artistBtn.hidden = artistsOf(tracks).length < 2 && !artist;
+    artistBtn.querySelector('span').textContent = artist || t('lsort_all_artists');
+  }
+
   const refreshCount = (visible = shown()) => {
-    let text = query.trim() ? t('list_found', { n: visible.length, m: tracks.length }) : plural(tracks.length);
+    let text = query.trim() || artist ? t('list_found', { n: visible.length, m: tracks.length }) : plural(tracks.length);
     if (params.kind === 'likes' && settings.offlineLikes && tracks.length) { // how much plays without a network
       const { done, total, capped } = savedProgress();
       const mb = Math.max(1, Math.round(savedUsage().bytes / 1048576));
@@ -78,6 +105,7 @@ export async function render(params, nav) {
     }
     sub.textContent = text;
     root.querySelector('.list-actions').classList.toggle('is-disabled', !tracks.length);
+    refreshTools();
   };
 
   function draw() {
@@ -107,6 +135,22 @@ export async function render(params, nav) {
   filterInput.addEventListener('input', () => {
     query = filterInput.value;
     filterClear.hidden = !query;
+    draw();
+  });
+  sortBtn?.addEventListener('click', async () => {
+    const i = await sheet({ title: esc(t('lsort_title')), items: SORT_KEYS.map((k) => ({ icon: k === sortKey() ? 'check' : 'sort', label: sortLabel(k) })) });
+    if (i === null || SORT_KEYS[i] === sortKey()) return;
+    haptic('select');
+    if (params.kind === 'likes') updateSettings({ likesSort: SORT_KEYS[i] }); else playlistSorts.set(params.id, SORT_KEYS[i]);
+    draw();
+  });
+  artistBtn?.addEventListener('click', async () => {
+    const list = artistsOf(tracks);
+    const i = await sheet({ title: esc(t('lsort_artist_title')), items: [{ icon: artist ? 'mic' : 'check', label: t('lsort_all_artists') },
+      ...list.map((a) => ({ icon: a.name === artist ? 'check' : 'mic', label: `${a.name} · ${a.count}` }))] });
+    if (i === null) return;
+    haptic('select');
+    artist = i === 0 ? '' : list[i - 1].name;
     draw();
   });
   root.querySelector('[data-saved-only]')?.addEventListener('change', (e) => { savedOnly = e.target.checked; draw(); });

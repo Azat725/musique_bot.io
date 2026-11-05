@@ -87,6 +87,10 @@ body.has-mini #main { padding-bottom: calc(var(--nav-h) + var(--mini-h) + var(--
 .link .ic { width: 18px; height: 18px; }
 .section__tools { display: flex; align-items: center; gap: var(--s3); }
 .link--sort { gap: 4px; color: var(--text-2); font-size: 13px; }
+.list-tools { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); margin: var(--s2) 0 0; }
+.list-tools[hidden] { display: none; }
+.list-tools .link { min-height: 44px; }
+.list-tools .link span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60vw; }
 
 /* horizontal cards */
 .cards { display: flex; gap: var(--gap); overflow-x: auto; margin: 0 calc(-1 * var(--gutter)); padding: 0 var(--gutter) 4px; scroll-snap-type: x mandatory; scrollbar-width: none; }

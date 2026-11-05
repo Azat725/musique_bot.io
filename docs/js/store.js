@@ -36,6 +36,7 @@ export const settings = {
   eq: { on: false, preset: 'flat', gains: [0, 0, 0, 0, 0] },
   vinylNoise: 0, // background record noise while music plays: 0 off, 1-3 louder
   plSort: 'new',
+  likesSort: 'default', // tracklist.js SORT_KEYS: the order of the favourites list
   searchMode: 'all',
   name: '', // optional name for the home greeting
   colorTheme: 'classic', // themes.js; 'classic' follows `theme` (auto / light / dark)
