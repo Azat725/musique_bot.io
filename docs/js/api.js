@@ -163,6 +163,12 @@ export const api = {
   createPlaylist: (name) => post('/api/playlists', { name }),
   /** A playlist from another app or a pasted list: each track is looked up, which takes a while. */
   importPlaylist: (source) => request('POST', '/api/import', { source }, null, 180000),
+  /** Open (or fetch) the link of a playlist: { token, url }; the url is '' until the bot is known to the server. */
+  sharePlaylist: (id) => post(`/api/playlists/${id}/share`),
+  unsharePlaylist: (id) => del(`/api/playlists/${id}/share`),
+  /** What a link leads to: { name, count, covers, titles }. */
+  shared: (token) => get('/api/shared/' + token),
+  importShared: (token) => post(`/api/shared/${token}/import`),
   renamePlaylist: (id, name) => request('PATCH', '/api/playlists/' + id, { name }),
   deletePlaylist: (id) => del('/api/playlists/' + id),
   addToPlaylist: (id, track) => post(`/api/playlists/${id}/tracks`, { track }),

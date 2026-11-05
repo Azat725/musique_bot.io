@@ -537,6 +537,12 @@ body.player-open .mini { opacity: 0; pointer-events: none; }
 
 .sheet { position: fixed; inset: 0; z-index: 60; }
 .alarm__field { font: inherit; min-height: 44px; padding: 0 var(--s2); border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--surface); color: var(--text); }
+.shared { margin: 0 0 var(--s3); }
+.shared__name { font-weight: 600; font-size: 17px; overflow-wrap: anywhere; }
+.shared__sub { color: var(--text-2); margin: var(--s1) 0 0; }
+.shared__titles { list-style: none; margin: var(--s2) 0 0; padding: 0; color: var(--text-2); font-size: 13px; }
+.shared__titles li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shared__note { margin: 0 0 var(--s3); color: var(--text-2); }
 .alarm__says { margin: 0 0 var(--s3); color: var(--text-2); }
 .sheet__scrim { position: absolute; inset: 0; background: var(--scrim); opacity: 0; transition: opacity .36s var(--ease-io); }
 .sheet__panel { position: absolute; left: 0; right: 0; bottom: 0; max-height: 80vh; overflow-y: auto; background: var(--bg); border-radius: var(--r-lg) var(--r-lg) 0 0;

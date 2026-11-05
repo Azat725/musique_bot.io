@@ -7,6 +7,7 @@ import { initFx } from './graph.js';
 import { initOffline, syncOffline } from './offline.js';
 import { initSync } from './sync.js';
 import { syncVinylNoise } from './sfx.js';
+import { offerShared, pendingToken } from './share.js';
 import './alarm.js'; // the radio's alarm clock: checks the time while the app is open
 import { maybeShowStories, maybeShowSupport } from './stories.js';
 import { CLASSIC_BG, THEMES } from './themes.js';
@@ -475,6 +476,8 @@ async function boot() {
   setTimeout(dismissBoot, 6000); // a slow first screen keeps its own small loader, not the launch screen
   await show();
   dismissBoot();
+  const shared = pendingToken(); // opened from a shared playlist's link
+  if (shared) offerShared(shared);
   maybeShowStories().then(() => setTimeout(maybeShowSupport, 4000)); // the intro, once, for someone who has never used Musique; after two weeks, the support page, once
 }
 

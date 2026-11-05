@@ -3,6 +3,7 @@ import { viewScope } from '../lifecycle.js';
 import { plural, t } from '../i18n.js';
 import { player } from '../player.js';
 import { invalidatePlaylists, likedList, settings, updateSettings } from '../store.js';
+import { sharePlaylist } from '../share.js';
 import { artistsOf, byArtist, SORT_KEYS, sortTracks } from '../tracklist.js';
 import { isSaved, MAX_SAVED, offline, progress as savedProgress, usage as savedUsage } from '../offline.js';
 import { confirmSheet, esc, h, haptic, icon, loader, promptName, sheet, toast, trackList } from '../ui.js';
@@ -53,8 +54,8 @@ export async function render(params, nav) {
       <button class="icon-btn searchbar__clear" aria-label="clear" hidden>${icon('close')}</button>
     </div>
     ${params.kind === 'likes' || params.kind === 'user' ? `<div class="list-tools" hidden>
-      <button class="link link--sort" data-sort>${icon('sort')}<span></span></button>
-      <button class="link link--sort" data-artist hidden>${icon('micFav')}<span></span></button>
+      <button class="link link--sort" data-list-sort>${icon('sort')}<span></span></button>
+      <button class="link link--sort" data-list-artist hidden>${icon('micFav')}<span></span></button>
     </div>` : ''}
     ${params.kind === 'likes' ? `<label class="download-filter"><input type="checkbox" data-saved-only>${esc(t('downloads_only'))}</label>` : ''}
     <div class="list__body">${loader()}</div>
@@ -71,8 +72,8 @@ export async function render(params, nav) {
   let savedOnly = false;
   let artist = ''; // the artist the list is narrowed to ('' = all)
   const tools = root.querySelector('.list-tools');
-  const sortBtn = root.querySelector('[data-sort]');
-  const artistBtn = root.querySelector('[data-artist]');
+  const sortBtn = root.querySelector('[data-list-sort]');
+  const artistBtn = root.querySelector('[data-list-artist]');
   // favourites come newest first, a playlist oldest first
   const sortKey = () => {
     const k = params.kind === 'likes' ? settings.likesSort : playlistSorts.get(params.id);
@@ -138,7 +139,7 @@ export async function render(params, nav) {
     draw();
   });
   sortBtn?.addEventListener('click', async () => {
-    const i = await sheet({ title: esc(t('lsort_title')), items: SORT_KEYS.map((k) => ({ icon: k === sortKey() ? 'check' : 'sort', label: sortLabel(k) })) });
+    const i = await sheet({ title: esc(t('lsort_head')), items: SORT_KEYS.map((k) => ({ icon: k === sortKey() ? 'check' : 'sort', label: sortLabel(k) })) });
     if (i === null || SORT_KEYS[i] === sortKey()) return;
     haptic('select');
     if (params.kind === 'likes') updateSettings({ likesSort: SORT_KEYS[i] }); else playlistSorts.set(params.id, SORT_KEYS[i]);
@@ -169,8 +170,10 @@ export async function render(params, nav) {
       }
       const i = await sheet({ title: esc(params.title), items: [
         { icon: 'edit', label: t('rename') },
+        { icon: 'send', label: t('share') },
         { icon: 'trash', label: t('delete'), danger: true },
       ] });
+      if (i === 1) { sharePlaylist(params.id, params.title); return; }
       if (i === 0) {
         const name = await promptName({ title: t('rename'), value: params.title, action: t('save') });
         if (!name) return;
@@ -178,7 +181,7 @@ export async function render(params, nav) {
         invalidatePlaylists();
         params.title = name;
         root.querySelector('.view__title').textContent = name;
-      } else if (i === 1 && await confirmSheet({ title: params.title, text: t('playlist_delete_confirm', { name: params.title }), action: t('delete') })) {
+      } else if (i === 2 && await confirmSheet({ title: params.title, text: t('playlist_delete_confirm', { name: params.title }), action: t('delete') })) {
         await api.deletePlaylist(params.id);
         invalidatePlaylists();
         haptic('success');

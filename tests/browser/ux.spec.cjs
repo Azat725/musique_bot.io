@@ -1,6 +1,6 @@
 const {test,expect}=require('@playwright/test');
 const tracks=Array.from({length:12},(_,i)=>({id:`track${String(i).padStart(6,'0')}`,title:`Song ${i}`,artist:'Artist',duration:180,cover:''}));
-async function boot(page,patch={}) {
+async function boot(page,patch={},api={}) {
   await page.addInitScript((patch)=>{
     localStorage.setItem('musique.settings',JSON.stringify({storiesSeen:true,themeModeSet:true,lang:'en',theme:'light',sounds:false,deviceHints:{record:true,'radio-car':true,'radio-home':true},...patch}));
     HTMLMediaElement.prototype.play=function(){window.__audioAttempts=(window.__audioAttempts||0)+1;return Promise.resolve();};
@@ -11,7 +11,7 @@ async function boot(page,patch={}) {
       const data={
         '/api/guest':{session:'test'},'/api/me':{user:{id:-1,kind:'guest'},token:'test'},'/api/home':{recent:tracks,genres:[]},'/api/recommend':{tracks},'/api/likes':{tracks},'/api/history/ids':{ids:[]},'/api/playlists':{playlists:[]},'/api/artists':{artists:[]},'/api/state':{settings:null,queue:null},'/api/suggest':{suggestions:['Miles Davis','Miles Davis Kind of Blue']},'/api/search':{tracks,more:[],artists:[]},'/api/lyrics/track000000':{lyrics:null},'/api/radio':{tracks},
       }[url.pathname]||{};
-      return route.fulfill({json:data});
+      return route.fulfill({json:url.pathname in api?api[url.pathname]:data});
     }
     if(url.hostname!=='127.0.0.1')return route.abort();
     return route.continue();
@@ -321,4 +321,50 @@ test('radio alarm: set in Settings, rings its station at the time, asks for a ta
   await expect(page.locator('.sheet__item').last()).toContainText('Alarm clock: 07:30');
   await page.locator('.sheet__item').last().click();
   await expect(page.locator('.sheet .alarm')).toBeVisible();
+});
+test('favourites: sorted by title and by length, narrowed to one artist; a playlist shares a link, a link offers a copy',async({page})=>{
+  const mixed=[{id:'trackaaaaaa',title:'Beta',artist:'Zed',duration:100,cover:''},{id:'trackbbbbbb',title:'Alpha',artist:'Yan',duration:300,cover:''},{id:'trackcccccc',title:'Gamma',artist:'Zed',duration:200,cover:''}];
+  const mine={playlists:[{id:5,name:'Road trip',count:3,covers:[]}]};
+  await boot(page,{},{'/api/likes':{tracks:mixed},'/api/playlists':mine,'/api/playlists/5':{id:5,name:'Road trip',tracks:mixed},'/api/playlists/5/share':{token:'abcdefgh12345678',url:'https://t.me/musique_bot?start=pl_abcdefgh12345678'}});
+  await page.locator('[data-tab="library"]').click();await page.locator('[data-go="likes"]').click();
+  await expect(page.locator('.track__title')).toHaveText(['Beta','Alpha','Gamma']);
+  await page.locator('[data-list-sort]').click();await page.locator('.sheet.is-open .sheet__item').filter({hasText:'By title'}).click();
+  await expect(page.locator('.track__title')).toHaveText(['Alpha','Beta','Gamma']);
+  await page.locator('[data-list-sort]').click();await page.locator('.sheet.is-open .sheet__item').filter({hasText:'Longest first'}).click();
+  await expect(page.locator('.track__title')).toHaveText(['Alpha','Gamma','Beta']);
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('musique.settings')).likesSort)).toBe('long');
+  await page.locator('[data-list-artist]').click();await expect(page.locator('.sheet.is-open .sheet__item').first()).toContainText('All artists');
+  await page.locator('.sheet.is-open .sheet__item').filter({hasText:'Zed · 2'}).click();
+  await expect(page.locator('.track__title')).toHaveText(['Gamma','Beta']);
+  await expect(page.locator('.view__sub')).toContainText('2');
+  await page.locator('[data-list-artist]').click();await page.locator('.sheet.is-open .sheet__item').first().click();
+  await expect(page.locator('.track')).toHaveCount(3);
+  // a playlist: the same sort, plus Share in its menu
+  await page.goBack().catch(()=>{});await page.locator('[data-tab="library"]').click();
+  await page.locator('.pl-row').first().click();
+  await expect(page.locator('[data-list-sort]')).toBeVisible();
+  await page.locator('.list-actions [data-more]').click();await page.locator('.sheet.is-open .sheet__item').filter({hasText:'Share'}).click();
+  await expect(page.locator('.sheet.is-open .sheet__title')).toHaveText('Road trip');
+  await expect(page.locator('.sheet.is-open .sheet__item')).toHaveText(['Send the link','Copy the link','Close the link']);
+  await page.keyboard.press('Escape');
+});
+test('a shared link offers the playlist, adds a copy once, and says when the link is gone',async({page})=>{
+  const calls=[];
+  await boot(page,{},{});
+  await page.route('**/api/shared/**',async(route)=>{
+    const url=new URL(route.request().url());calls.push(route.request().method()+' '+url.pathname);
+    if(url.pathname.includes('goneToken'))return route.fulfill({status:404,json:{}});
+    if(url.pathname.endsWith('/import'))return route.fulfill({json:{id:9,name:'Road trip',added:3}});
+    return route.fulfill({json:{name:'Road trip',count:3,covers:[],titles:['Zed — Beta','Yan — Alpha','Zed — Gamma']}});
+  });
+  await page.goto('/?api=http://127.0.0.1:18761&pl=abcdefgh12345678');
+  await expect(page.locator('.sheet.is-open .sheet__title')).toHaveText('Playlist from a link');
+  await expect(page.locator('.shared__name')).toHaveText('Road trip');
+  await expect(page.locator('.shared__titles li')).toHaveCount(3);
+  expect(await page.evaluate(()=>location.search.includes('pl='))).toBe(false); // spent: a reload does not ask again
+  await page.locator('.sheet.is-open .sheet__item').filter({hasText:'Add to my library'}).click();
+  await expect(page.locator('#toast')).toContainText('Added');
+  expect(calls).toEqual(['GET /api/shared/abcdefgh12345678','POST /api/shared/abcdefgh12345678/import']);
+  await page.goto('/?api=http://127.0.0.1:18761&pl=goneToken1234');
+  await expect(page.locator('#toast')).toContainText('no longer works');
 });
