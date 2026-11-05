@@ -325,9 +325,9 @@ html[data-radio-night] .rx__glass::after { opacity: .45; }
 .rx__lines { left: 50%; width: 0; bottom: 0; height: 52%; border-left: calc(var(--size) * .008) dashed #F4F1E6; transform: translateX(-50%) perspective(60px) rotateX(18deg); opacity: .8;
   clip-path: inset(0 -10px 0 -10px); }
 :root[data-mode="dark"] .rx__lines { border-left-color: #8A8F94; }
-.rx-fly { transform-box: view-box; transform-origin: 165px 50px; animation: rx-fly 1.8s cubic-bezier(.55, 0, .9, .7) infinite; animation-play-state: paused; }
-@keyframes rx-fly { from { transform: translate(0, 0) scale(.06); } to { transform: translate(calc(var(--dx) * 235px), 58px) scale(1.5); } }
-.rx.is-road.is-moving .rx-fly { animation-play-state: running; }
+.rx-street { transform-box: view-box; transform-origin: 165px 50px; animation: rx-street 3.2s linear infinite; animation-play-state: paused; will-change: transform; }
+@keyframes rx-street { 0% { transform: scale(1.0000); } 10% { transform: scale(1.0822); } 20% { transform: scale(1.1792); } 30% { transform: scale(1.2953); } 40% { transform: scale(1.4367); } 50% { transform: scale(1.6128); } 60% { transform: scale(1.8380); } 70% { transform: scale(2.1364); } 80% { transform: scale(2.5505); } 90% { transform: scale(3.1637); } 100% { transform: scale(4.1649); } }
+.rx.is-road.is-moving .rx-street { animation-play-state: running; }
 .rx-ripple { fill: none; stroke: #FFFFFF; stroke-width: .6; opacity: 0; transform: translate(var(--x), var(--y)); }
 .rx__fall, .rx__drops, .rx__tint { opacity: 0; transition: opacity .8s; pointer-events: none; }
 .rx__tint { inset: 0; background: #3A4F5C; }

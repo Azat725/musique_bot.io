@@ -81,6 +81,16 @@ function tree(s, t, rnd) {
     + `<circle ${fl(rnd() < 0.5 ? '#5C8A4E' : '#6E9A55')} cx="${x.toFixed(1)}" cy="${(y - 20 * t).toFixed(1)}" r="${(11 * t).toFixed(1)}"/>`;
 }
 
+const Q = 0.7, PER = 4, CYCLES = 3; // depth step from one building to the next, buildings in one repeat, repeats
+
+/** A street lamp on the pavement at depth t, its arm reaching over the road. */
+function lamp(s, t) {
+  const x = VX + s * 172 * t, y = VY + (H - VY) * t, arm = -s * 6 * t, hx = x + arm;
+  return `<rect ${fl('#3B3F42')} x="${(x - 0.8 * t).toFixed(2)}" y="${(y - 30 * t).toFixed(2)}" width="${(1.6 * t).toFixed(2)}" height="${(30 * t).toFixed(2)}"/>`
+    + `<rect ${fl('#3B3F42')} x="${Math.min(x, hx).toFixed(2)}" y="${(y - 31 * t).toFixed(2)}" width="${(6 * t).toFixed(2)}" height="${(1.6 * t).toFixed(2)}"/>`
+    + `<circle ${fl('#FFF6C8', '#FFE27A')} cx="${hx.toFixed(2)}" cy="${(y - 29 * t).toFixed(2)}" r="${(2.2 * t).toFixed(2)}"/><circle class="rx-halo" fill="#FFE27A" cx="${hx.toFixed(2)}" cy="${(y - 29 * t).toFixed(2)}" r="${(8 * t).toFixed(2)}"/>`;
+}
+
 /** The street itself and its sides, from far to near. */
 function street(r) {
   const st = STYLE[r.country] || STYLE.us, rnd = seeded(r.id), old = r.year < 1960;
@@ -96,28 +106,19 @@ function street(r) {
   out += `<rect ${fl('#B8B4A8', '#2A2F33')} y="${VY}" width="${W}" height="${H - VY}"/>`
     + poly([[VX, VY], [VX - 140, H + 4], [VX + 140, H + 4]], fl('#5A5F63', '#262B30'))
     + poly([[VX, VY], [VX - 142, H + 4], [VX - 138, H + 4]], fl('#D9D5C8', '#454B50')) + poly([[VX, VY], [VX + 142, H + 4], [VX + 138, H + 4]], fl('#D9D5C8', '#454B50'));
-  // houses and trees on both sides, from far to near
-  for (const s of [-1, 1]) {
-    const row = [];
-    let tn = 1.1, i = 0;
-    while (tn > 0.1) {
-      const gap = rnd() < 0.15 && i > 0, tf = tn * (gap ? 0.82 : 0.7);
-      const name = i === (s < 0 ? 2 : 3) ? 'cinema' : st.kinds[Math.floor(rnd() * st.kinds.length)];
-      row.unshift(gap ? tree(s, (tn + tf) / 2, rnd) : building(s, tf, tn * 0.985, name, st, rnd, old));
-      tn = tf; i++;
-    }
-    out += row.join('');
+  // the houses, trees and lamps on both sides. Every few buildings the row repeats itself exactly, each repeat 0.7^4 times the size of
+  // the one before, so growing the whole group from 1 to 1/0.7^4 about the vanishing point (see .rx-street) is the car driving
+  // along it, houses and all, and the picture is the same again where the loop starts
+  let row = '';
+  for (let c = CYCLES - 1; c >= 0; c--) for (let i = PER - 1; i >= 0; i--) for (const s of [-1, 1]) {
+    const tn = 1.1 * Math.pow(Q, c * PER + i), tf = tn * Q, pick = seeded(`${r.id}${s}${i}`);
+    const gap = pick() < 0.15 && i > 0, name = s < 0 && i === 2 ? 'cinema' : st.kinds[Math.floor(pick() * st.kinds.length)];
+    row += gap ? tree(s, (tn + tf) / 2, seeded(`${r.id}${s}${i}t`)) : building(s, tf, tn * 0.985, name, st, seeded(`${r.id}${s}${i}b`), old);
+    if (i % 2 === 0) row += lamp(s, tn);
   }
+  out += `<g class="rx-street">${row}</g>`;
   // puddles' ripples (only in the rain)
   for (let i = 0; i < 7; i++) out += `<ellipse class="rx-ripple" style="--x:${(VX - 52 + rnd() * 104).toFixed(0)}px;--y:${(62 + rnd() * 32).toFixed(0)}px;animation-delay:-${(rnd() * 2).toFixed(2)}s" cx="0" cy="0" rx="5" ry="1.6"/>`;
-  // lamps and trees flying past (when the road is on); at rest they stand still
-  for (const s of [-1, 1]) for (let i = 0; i < 5; i++) {
-    out += `<g class="rx-fly" style="--dx:${s};animation-delay:-${(i * 0.36).toFixed(2)}s">`
-      + (i % 2 ? `<rect ${fl('#3B3F42')} x="${VX - 0.8}" y="${VY - 30}" width="1.6" height="30"/><rect ${fl('#3B3F42')} x="${s < 0 ? VX : VX - 6}" y="${VY - 31}" width="6" height="1.6"/>`
-        + `<circle ${fl('#FFF6C8', '#FFE27A')} cx="${s < 0 ? VX + 5 : VX - 5}" cy="${VY - 29}" r="2.2"/><circle class="rx-halo" fill="#FFE27A" cx="${s < 0 ? VX + 5 : VX - 5}" cy="${VY - 29}" r="8"/>`
-        : `<rect ${fl('#5B4636')} x="${VX - 0.8}" y="${VY - 12}" width="1.6" height="12"/><circle ${fl('#5C8A4E')} cx="${VX}" cy="${VY - 18}" r="8"/>`)
-      + '</g>';
-  }
   return out;
 }
 

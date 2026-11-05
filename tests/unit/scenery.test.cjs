@@ -13,6 +13,7 @@ test('every car gets a street of its own country, with rain, without garbage num
     const html = glassHTML(r);
     assert.ok(html.includes('rx__scene') && html.includes('rx__fall') && html.includes('rx__drops') && html.includes('rx__wiper'), r.id);
     assert.ok(!/NaN|undefined|Infinity/.test(html), `${r.id} drew garbage`);
+    assert.ok(html.includes('rx-street') && !html.includes('rx-fly'), `${r.id}: houses, trees and lamps move together in one group`);
     assert.ok(!/gradient/i.test(html), `${r.id} used a gradient`);
     assert.equal(html, glassHTML(r), `${r.id}: the same car must always look the same`);
     seen.add(html);
