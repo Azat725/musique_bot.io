@@ -28,7 +28,7 @@ const hashInt = (a, b, c, d) => (Math.imul(a + 1, 73856093) ^ Math.imul(b + 1, 1
 
 export function createRenderer(canvas, world, style) {
   const ctx = canvas.getContext('2d', { alpha: false });
-  let W = 1, H = 1, focal = 1, hor = 0, vis = 200, visWanted = 200, quality = 1;
+  let W = 1, H = 1, focal = 1, hor = 0, vis = 200, visWanted = 200, quality = 1, vx = 0.5; // vx: where along the screen the eye looks straight ahead (0..1)
   let theme = TIMES.night, raining = false;
   const night = (c, t = 0.7) => mix(c, theme.shade, t * theme.dim);
   const drops = Array.from({ length: 140 }, (_, i) => ({ x: (hashInt(i, 11, 2, 3) % 1000) / 1000, y: (hashInt(i, 5, 12, 6) % 1000) / 1000, s: 0.8 + (hashInt(i, 7, 8, 13) % 100) / 160, l: 9 + (hashInt(i, 14, 8, 9) % 14) }));
@@ -47,7 +47,7 @@ export function createRenderer(canvas, world, style) {
   // ----- projection -----
   const fwd = (x, y) => (x - camX) * cosH + (y - camY) * sinH;
   const side = (x, y) => (x - camX) * sinH - (y - camY) * cosH;
-  const sx = (r, f) => W / 2 + jitterX + focal * r / f;
+  const sx = (r, f) => W * vx + jitterX + focal * r / f;
   const sy = (z, f) => hor + focal * (EYE - z) / f;
   const fog = (c, d) => mix(c, theme.fog, Math.pow(Math.min(1, d / vis), 1.35) * 0.92);
 
@@ -60,7 +60,7 @@ export function createRenderer(canvas, world, style) {
       if (ina) out.push(a);
       if (ina !== inb) { const t = (NEAR - a[2]) / (b[2] - a[2]); out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, NEAR]); }
     }
-    return out.length < 3 ? null : out.map((p) => [W / 2 + jitterX + focal * p[0] / p[2], hor + focal * p[1] / p[2]]);
+    return out.length < 3 ? null : out.map((p) => [W * vx + jitterX + focal * p[0] / p[2], hor + focal * p[1] / p[2]]);
   }
   function fillPoly(pts, color) {
     const s = project(pts);
@@ -83,14 +83,14 @@ export function createRenderer(canvas, world, style) {
         let a = s.a - camH; a = Math.atan2(Math.sin(a), Math.cos(a));
         if (Math.abs(a) > FOV / 2 + 0.1) continue;
         ctx.globalAlpha = (0.5 + 0.4 * Math.sin(t * 1.3 + s.a * 9)) * starry;
-        ctx.fillRect(W / 2 + jitterX + a * focal, s.e * hor * 0.8, s.s, s.s);
+        ctx.fillRect(W * vx + jitterX + a * focal, s.e * hor * 0.8, s.s, s.s);
       }
       ctx.globalAlpha = 1;
     }
     if (raining) return; // the clouds hide the moon and the sun
     let m = 2.2 - camH; m = Math.atan2(Math.sin(m), Math.cos(m));
     if (Math.abs(m) >= FOV / 2 + 0.2) return;
-    const mx = W / 2 + jitterX + m * focal;
+    const mx = W * vx + jitterX + m * focal;
     if (theme.sun) { // the sun: a flat disc with a paler ring round it
       const my = hor * theme.sun, rad = Math.max(10, W * 0.02);
       ctx.fillStyle = theme.dim ? '#FFD59A' : '#FFF4C8'; ctx.globalAlpha = 0.3; ctx.beginPath(); ctx.arc(mx, my, rad * 1.9, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
@@ -153,16 +153,18 @@ export function createRenderer(canvas, world, style) {
   }
 
   // ----- walls with their windows -----
+  const SIDE_SHADE = [0, 0.16, 0.05, 0.26]; // the four sides of a building catch the light differently, so it reads as a solid
   function wall(b, ax, ay, bx, by, index, d) {
     const fa = fwd(ax, ay), fb = fwd(bx, by), ra = side(ax, ay), rb = side(bx, by);
     if (fa < NEAR && fb < NEAR) return;
     // the part of the wall in front of the near plane, as a share u of its length
     let u0 = 0, u1 = 1;
     if (fa < NEAR) u0 = (NEAR - fa) / (fb - fa); else if (fb < NEAR) u1 = (fa - NEAR) / (fa - fb);
-    const L = Math.hypot(bx - ax, by - ay), tone = night(style.walls[b.tone] || style.walls[0], 0.74 + (index % 2 ? 0.05 : 0));
+    const L = Math.hypot(bx - ax, by - ay), tone = mix(night(style.walls[b.tone] || style.walls[0], 0.74), '#0B0C10', SIDE_SHADE[index] * (1 - theme.dim * 0.35));
     const r = (u) => ra + (rb - ra) * u, f = (u) => fa + (fb - fa) * u;
     const quad = (ua, ub, z0, z1) => { ctx.moveTo(sx(r(ua), f(ua)), sy(z0, f(ua))); ctx.lineTo(sx(r(ub), f(ub)), sy(z0, f(ub))); ctx.lineTo(sx(r(ub), f(ub)), sy(z1, f(ub))); ctx.lineTo(sx(r(ua), f(ua)), sy(z1, f(ua))); ctx.closePath(); };
     ctx.fillStyle = fog(tone, d); ctx.beginPath(); quad(u0, u1, 0, b.h); ctx.fill();
+    ctx.fillStyle = fog(mix(tone, '#0B0C10', 0.32), d); ctx.beginPath(); quad(u0, u1, b.h - 0.7, b.h); quad(u0, u1, 0, 0.55); ctx.fill(); // the cornice and the plinth
     const wide = Math.abs(sx(r(u1), f(u1)) - sx(r(u0), f(u0)));
     if (wide < 10 || d > 150) return;
     const cols = Math.max(1, Math.floor(L / style.col)), floors = Math.max(1, Math.floor(b.h / style.floor));
@@ -224,6 +226,7 @@ export function createRenderer(canvas, world, style) {
         fillPoly([at(car, a0, b0, z0), at(car, a1, b1, z0), at(car, a1, b1, z1), at(car, a0, b0, z1)], fog(colour, d));
       }
     };
+    fillPoly([at(car, L + 0.35, Wd + 0.3, 0.02), at(car, L + 0.35, -Wd - 0.3, 0.02), at(car, -L - 0.35, -Wd - 0.3, 0.02), at(car, -L - 0.35, Wd + 0.3, 0.02)], 'rgba(0,0,0,0.26)'); // its shadow
     box(0.28, shape.body, -L, L, false);
     fillPoly([at(car, L, Wd, shape.body), at(car, L, -Wd, shape.body), at(car, -L, -Wd, shape.body), at(car, -L, Wd, shape.body)], fog(mix(body, '#FFFFFF', 0.1), d)); // the bonnet, seen from above
     box(shape.body, shape.roof, shape.cab[0], shape.cab[1], true);
@@ -263,17 +266,54 @@ export function createRenderer(canvas, world, style) {
   }
 
   // ----- people, lamps, lights, trees: billboards -----
+  const SKIN = ['#F1CBA6', '#E3B38C', '#C98F66', '#9C6B49', '#6E4832'], HAIR = ['#1B1410', '#3A281C', '#6B4A2B', '#B28B4C', '#8C8C8C', '#C9B27C'];
+  const TROUSERS = ['#2A3142', '#3A3A40', '#4A3B2C', '#23303A', '#55402F'];
+  /** A rounded rectangle (our own: older WebViews have no roundRect). */
+  function pill(x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); ctx.fill();
+  }
+  /** A person seen from the front, built like a person: shoes, legs, a coat with shoulders, arms and hands, a neck, a head with hair
+   *  (long, short or a hat); they swing arms and legs as they walk and stand still while they wait. */
   function person(p, d) {
     const f = fwd(p.x, p.y);
     if (f < 1.2 || f > 95) return;
     const k = focal / f, x = sx(side(p.x, p.y), f), y = sy(0, f), hgt = 1.72 * p.tall * k;
     if (x < -60 || x > W + 60) return;
-    const swing = Math.sin(p.phase) * 0.2 * k, coat = fog(night(p.coat, 0.5), d);
-    ctx.fillStyle = fog('#0B0D12', d);
-    ctx.fillRect(x - 0.17 * k + swing, y - hgt * 0.5, 0.13 * k, hgt * 0.5); ctx.fillRect(x + 0.04 * k - swing, y - hgt * 0.5, 0.13 * k, hgt * 0.5);
-    ctx.fillStyle = coat; ctx.fillRect(x - 0.23 * k, y - hgt * 0.86, 0.46 * k, hgt * 0.4);
-    ctx.fillStyle = fog('#6A5547', d); ctx.beginPath(); ctx.arc(x, y - hgt * 0.92, 0.11 * k, 0, 7); ctx.fill();
-    if (p.hat) { ctx.fillStyle = fog('#15161A', d); ctx.fillRect(x - 0.17 * k, y - hgt * 0.97, 0.34 * k, 0.05 * k); ctx.fillRect(x - 0.1 * k, y - hgt * 1.04, 0.2 * k, 0.09 * k); }
+    const seed = p.rs || 0, skin = fog(night(SKIN[seed % 5], 0.45), d), hair = fog(night(HAIR[(seed >> 3) % 6], 0.4), d);
+    const trousers = fog(night(TROUSERS[(seed >> 6) % 5], 0.5), d), shoes = fog('#0B0D12', d), coat = fog(night(p.coat, 0.5), d), dark = fog(night(mix(p.coat, '#000000', 0.3), 0.5), d);
+    const dress = (seed >> 9) % 4 === 0, longHair = dress || (seed >> 11) % 5 === 0, bag = (seed >> 14) % 4 === 0;
+    const stride = p.state === 'wait' ? 0 : Math.sin(p.phase), u = hgt / 1.72; // u: pixels per metre of this person
+    // the shadow on the ground
+    ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.beginPath(); ctx.ellipse(x, y, 0.36 * u, 0.07 * u, 0, 0, 7); ctx.fill();
+    // legs (a little apart, swinging) and shoes
+    const hip = y - 0.9 * u, legW = 0.13 * u;
+    for (const sg of [-1, 1]) {
+      const lx = x + sg * 0.085 * u + sg * -stride * 0.07 * u, foot = lx + sg * 0.01 * u;
+      ctx.fillStyle = dress ? skin : trousers; pill(lx - legW / 2, hip, legW, 0.9 * u - 0.05 * u, legW / 2.2);
+      ctx.fillStyle = shoes; pill(foot - 0.095 * u, y - 0.075 * u, 0.19 * u, 0.075 * u, 0.04 * u);
+    }
+    // arms behind the coat, hanging and swinging opposite to the legs
+    const shoulderY = y - 1.42 * u;
+    ctx.lineCap = 'round';
+    for (const sg of [-1, 1]) {
+      const hx = x + sg * (0.27 + 0.03 * stride * sg * -1) * u, hy = y - (0.78 + 0.04 * stride * sg) * u;
+      ctx.strokeStyle = coat; ctx.lineWidth = 0.1 * u; ctx.beginPath(); ctx.moveTo(x + sg * 0.2 * u, shoulderY + 0.05 * u); ctx.lineTo(hx, hy - 0.04 * u); ctx.stroke();
+      ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(hx, hy, 0.05 * u, 0, 7); ctx.fill();
+    }
+    // the body: a coat (or a dress that widens to the knees)
+    ctx.fillStyle = coat;
+    if (dress) { ctx.beginPath(); ctx.moveTo(x - 0.19 * u, shoulderY); ctx.lineTo(x + 0.19 * u, shoulderY); ctx.lineTo(x + 0.27 * u, y - 0.5 * u); ctx.lineTo(x - 0.27 * u, y - 0.5 * u); ctx.closePath(); ctx.fill(); }
+    else pill(x - 0.215 * u, shoulderY, 0.43 * u, 0.62 * u, 0.1 * u);
+    ctx.fillStyle = dark; ctx.fillRect(x - 0.012 * u, shoulderY + 0.06 * u, 0.024 * u, dress ? 0.5 * u : 0.52 * u); // the seam down the front
+    if (bag) { ctx.fillStyle = dark; pill(x + 0.2 * u, y - 0.95 * u, 0.2 * u, 0.2 * u, 0.04 * u); ctx.strokeStyle = dark; ctx.lineWidth = 0.03 * u; ctx.beginPath(); ctx.moveTo(x - 0.15 * u, shoulderY + 0.02 * u); ctx.lineTo(x + 0.3 * u, y - 0.95 * u); ctx.stroke(); }
+    // the neck and the head
+    const headY = y - 1.6 * u;
+    ctx.fillStyle = skin; ctx.fillRect(x - 0.04 * u, shoulderY - 0.1 * u, 0.08 * u, 0.14 * u);
+    if (longHair) { ctx.fillStyle = hair; for (const sg of [-1, 1]) pill(x + sg * 0.1 * u - 0.035 * u, headY - 0.06 * u, 0.07 * u, 0.3 * u, 0.035 * u); } // long hair falls at the sides of the face
+    ctx.fillStyle = skin; ctx.beginPath(); ctx.ellipse(x, headY, 0.088 * u, 0.108 * u, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = hair; ctx.beginPath(); ctx.ellipse(x, headY - 0.045 * u, 0.098 * u, 0.082 * u, 0, Math.PI, 0); ctx.fill(); // the hair over the forehead
+    if (p.hat) { ctx.fillStyle = fog('#15161A', d); ctx.fillRect(x - 0.15 * u, headY - 0.085 * u, 0.3 * u, 0.04 * u); pill(x - 0.092 * u, headY - 0.19 * u, 0.184 * u, 0.12 * u, 0.04 * u); }
   }
   /** The long smear of a light on the wet road: two flat strips under it (x, y of its foot, k = pixels per metre). */
   function streak(x, y, k, colour, alpha) {
@@ -314,9 +354,11 @@ export function createRenderer(canvas, world, style) {
     const f = fwd(t.x, t.y);
     if (f < 1 || f > 120) return;
     const k = focal / f, x = sx(side(t.x, t.y), f), y = sy(0, f);
+    ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.ellipse(x, y, 1.6 * k * t.s, 0.3 * k * t.s, 0, 0, 7); ctx.fill();
     ctx.fillStyle = fog('#0B0D10', d); ctx.fillRect(x - 0.14 * k * t.s, y - 2.4 * k * t.s, 0.28 * k * t.s, 2.4 * k * t.s);
     ctx.fillStyle = fog(theme.tree[0], d); ctx.beginPath(); ctx.arc(x, y - 4 * k * t.s, 2.3 * k * t.s, 0, 7); ctx.fill();
     ctx.fillStyle = fog(theme.tree[1], d); ctx.beginPath(); ctx.arc(x + 0.9 * k * t.s, y - 3.3 * k * t.s, 1.7 * k * t.s, 0, 7); ctx.fill();
+    ctx.fillStyle = fog(mix(theme.tree[1], '#FFFFFF', 0.14 * (1 - theme.dim)), d); ctx.beginPath(); ctx.arc(x - 0.7 * k * t.s, y - 4.5 * k * t.s, 1.1 * k * t.s, 0, 7); ctx.fill(); // the lit side
   }
 
   /** Draws one frame. `f` = { car, traffic, lights, time, shake, beacon }. */
@@ -353,5 +395,5 @@ export function createRenderer(canvas, world, style) {
   }
 
   resize();
-  return { draw, resize, setQuality(q) { quality = q; resize(); }, /** The time of day ('night' | 'dusk' | 'day') and whether it rains. */ setEnv({ time = 'night', rain = false } = {}) { theme = TIMES[time] || TIMES.night; raining = !!rain; } };
+  return { draw, resize, setQuality(q) { quality = q; resize(); }, /** Where along the width the road's vanishing point is (the driver sits left of the middle). */ setView(x) { vx = x; }, /** The time of day ('night' | 'dusk' | 'day') and whether it rains. */ setEnv({ time = 'night', rain = false } = {}) { theme = TIMES[time] || TIMES.night; raining = !!rain; } };
 }

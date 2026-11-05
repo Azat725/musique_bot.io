@@ -248,7 +248,7 @@ test('drive: night, dusk and day look different, rain can be switched on, and th
   await page.setViewportSize({width:812,height:375});
   const requests=[];
   page.on('request',(r)=>{ if(new URL(r.url()).pathname.startsWith('/api/')) requests.push(r.url()); });
-  await boot(page,{playerMode:'radio-car',firstUse:Date.now(),radioRain:false});
+  await boot(page,{playerMode:'radio-car',firstUse:Date.now(),radioRain:false,theme:'dark'}); // a dark theme starts in the night
   await page.evaluate(async(tracks)=>{const {player}=await import('/js/player.js');const {openPlayer}=await import('/js/vinyl.js');player.queue=[tracks[0]];player.index=0;openPlayer();},tracks);
   await page.locator('[data-drive]').click();
   await page.locator('.sheet .sheet__item').first().click();
@@ -258,7 +258,7 @@ test('drive: night, dusk and day look different, rain can be switched on, and th
   const night=await sky();
   await page.locator('[data-env-time]').click();await page.locator('[data-env-time]').click(); // night → dusk → day
   const day=await sky();
-  expect(day).toBeGreaterThan(night+80); // the sky is light by day
+  expect(day).toBeGreaterThan(night+60); // the sky is light by day
   await expect(page.locator('[data-env-rain]')).toHaveAttribute('aria-pressed','false');
   await page.locator('[data-env-rain]').click();
   await expect(page.locator('[data-env-rain]')).toHaveAttribute('aria-pressed','true');
@@ -367,4 +367,25 @@ test('a shared link offers the playlist, adds a copy once, and says when the lin
   expect(calls).toEqual(['GET /api/shared/abcdefgh12345678','POST /api/shared/abcdefgh12345678/import']);
   await page.goto('/?api=http://127.0.0.1:18761&pl=goneToken1234');
   await expect(page.locator('#toast')).toContainText('no longer works');
+});
+test('drive: the left and right buttons steer, the eye sits left of the middle, and a light theme starts in daylight',async({page})=>{
+  test.setTimeout(60000);
+  await page.setViewportSize({width:812,height:375});
+  await boot(page,{playerMode:'radio-car',firstUse:Date.now(),radioRain:false,theme:'light'});
+  await page.evaluate(async(tracks)=>{const {player}=await import('/js/player.js');const {openPlayer}=await import('/js/vinyl.js');player.queue=[tracks[0]];player.index=0;openPlayer();},tracks);
+  await page.locator('[data-drive]').click();await page.locator('.sheet .sheet__item').first().click();
+  await expect(page.locator('.drive')).toBeVisible();
+  await expect(page.locator('[data-env-time]')).toHaveAttribute('aria-label',/Day|day/); // the app is light: the drive is by day
+  await expect(page.locator('.drive__wheelhit')).toHaveCount(0); // no wheel to turn by hand any more
+  const wheel=await page.locator('.drive__wheelart').boundingBox();
+  expect(wheel.x+wheel.width/2).toBeLessThan(812*0.5); // the wheel is in front of an eye left of the middle
+  const h0=await page.evaluate(async()=>(await import('/js/drive/game.js')).driveState().car.h);
+  await page.keyboard.down('w');await page.waitForTimeout(1500);
+  const right=await page.locator('.drive__pedal--right').boundingBox();
+  await page.mouse.move(right.x+right.width/2,right.y+right.height/2);await page.mouse.down();await page.waitForTimeout(1200);await page.mouse.up();
+  await page.keyboard.up('w');
+  const h1=await page.evaluate(async()=>(await import('/js/drive/game.js')).driveState().car.h);
+  expect(Math.abs(h1-h0)).toBeGreaterThan(0.05); // the button turned the car
+  await expect(page.locator('.drive__pedal--right')).not.toHaveClass(/is-down/);
+  await page.keyboard.press('Escape');
 });

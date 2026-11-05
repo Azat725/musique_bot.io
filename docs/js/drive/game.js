@@ -32,6 +32,7 @@ const ENV_ICONS = {
 const RAIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 15a4 4 0 0 1 .5-8 5 5 0 0 1 9.5 1.5A3.3 3.3 0 0 1 17 15H7zM9 18l-1 2.5M13 18l-1 2.5M17 18l-1 2.5"/></svg>';
 const TIMES = ['night', 'dusk', 'day'];
 const ENV_KEY = 'musique.drive-env'; // the time of day and the rain you left it with, on this device
+const ARROW = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg>';
 const PHONE = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/></svg>';
 
 /** Asks first (the game leaves the player), then starts. */
@@ -59,7 +60,11 @@ function start(mode = 'free') {
     <canvas class="drive__view" aria-hidden="true"></canvas>
     <div class="drive__cowl"></div>
     <div class="drive__dash"></div>
-    <div class="drive__wheel"><div class="drive__wheelart"></div><div class="drive__wheelhit" aria-label="${esc(t('drive_wheel'))}"></div></div>
+    <div class="drive__wheel"><div class="drive__wheelart"></div></div>
+    <div class="drive__steer">
+      <button class="drive__pedal drive__pedal--left" aria-label="${esc(t('drive_left'))}">${ARROW}</button>
+      <button class="drive__pedal drive__pedal--right" aria-label="${esc(t('drive_right'))}">${ARROW}</button>
+    </div>
     <div class="drive__tools">
       <button class="drive__tool" data-lights aria-pressed="false" aria-label="${esc(t('drive_lights'))}">${LIGHTS}</button>
       <button class="drive__tool" data-horn aria-label="${esc(t('drive_horn'))}">${HORN}</button>
@@ -87,14 +92,15 @@ function start(mode = 'free') {
   const canvas = $('.drive__view'), wheelArt = $('.drive__wheelart');
   const dash = mountDash($('.drive__dash'), wheelArt, r);
   const renderer = createRenderer(canvas, world, style);
-  // the time of day and the rain: a button each; they start as they were left (the rain as the car radio has it by default)
-  let env = { time: 'night', rain: !!settings.radioRain }, rainAudio = null;
-  try { const v = JSON.parse(store.getItem(ENV_KEY) || 'null'); if (v && TIMES.includes(v.time)) env = { time: v.time, rain: !!v.rain }; } catch { /* the default */ }
+  // the time of day follows the app's theme (light: day, dark: night) and the buttons change it for this drive; the rain starts as it was left
+  // (the rain as the car radio has it by default)
+  let env = { time: document.documentElement.dataset.mode === 'light' ? 'day' : 'night', rain: !!settings.radioRain }, rainAudio = null;
+  try { const v = JSON.parse(store.getItem(ENV_KEY) || 'null'); if (v) env.rain = !!v.rain; } catch { /* the default */ }
   initSfx();
   let quality = 1, audio = startDriveAudio(), lights = false, horn = false, shake = 0, raf = 0, last = 0, acc = 0, time = 0, slow = 0, frames = 0, closed = false, paused = false;
 
   const controls = createControls(
-    { wheel: $('.drive__wheelhit'), gas: $('.drive__pedal--gas'), brake: $('.drive__pedal--brake'), horn: $('[data-horn]'), lights: $('[data-lights]') },
+    { left: $('.drive__pedal--left'), right: $('.drive__pedal--right'), gas: $('.drive__pedal--gas'), brake: $('.drive__pedal--brake'), horn: $('[data-horn]'), lights: $('[data-lights]') },
     {
       lights: () => { lights = !lights; haptic('select'); $('[data-lights]').setAttribute('aria-pressed', String(lights)); $('[data-lights]').classList.toggle('is-on', lights); },
       horn: (on) => { horn = on; audio?.horn(on); },
@@ -131,7 +137,11 @@ function start(mode = 'free') {
   // the size of everything follows the screen: the dashboard is 40 % of its height, as wide as its drawing is
   const layout = () => {
     const dh = Math.min(innerHeight * 0.4, (innerWidth * 210) / 400), dw = (dh * 400) / 210;
-    root.style.setProperty('--dw', `${dw}px`); root.style.setProperty('--dh', `${dh}px`);
+    // the driver sits at the left: the wheel is in front of the eye, which looks along the road from left of the middle, and the
+    // rest of the dashboard and the road stretch away to the right
+    const dl = Math.max(0, Math.min(innerWidth - dw, innerWidth * 0.4 - dw * 0.21));
+    root.style.setProperty('--dw', `${dw}px`); root.style.setProperty('--dh', `${dh}px`); root.style.setProperty('--dl', `${dl}px`);
+    renderer.setView((dl + dw * 0.21) / innerWidth);
     paused = innerWidth < innerHeight && innerWidth < 820; // a phone held upright: asks to turn it
     root.classList.toggle('is-portrait', paused);
     renderer.resize();

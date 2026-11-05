@@ -37,7 +37,7 @@ export const UX = {
     // the driving game
     drive_open: 'За рулём: мини-игра', drive_title: 'За рулём', drive_warn_title: 'Вы переходите в мини-игру',
     drive_warn_text: 'Это небольшая игра внутри Musique: вы поедете на выбранной машине по городу её страны и времени, ночью, на закате или днём, в дождь или без него. Музыка продолжит играть. Игра работает только на вашем устройстве и ничего не отправляет на сервер. На телефоне поверните экран горизонтально.',
-    drive_play: 'Играть', drive_not_now: 'Не сейчас', drive_exit: 'Выйти из игры', drive_wheel: 'Руль', drive_lights: 'Фары', drive_horn: 'Сигнал',
+    drive_play: 'Играть', drive_not_now: 'Не сейчас', drive_exit: 'Выйти из игры', drive_left: 'Влево', drive_right: 'Вправо', drive_lights: 'Фары', drive_horn: 'Сигнал',
     drive_gas: 'Газ', drive_brake: 'Тормоз', drive_rotate: 'Поверните телефон горизонтально',
     drive_ped: 'Пешеход на переходе! Притормаживайте у зебры',
     drive_time: 'Время суток', drive_t_night: 'Ночь', drive_t_dusk: 'Закат', drive_t_day: 'День', drive_rain: 'Дождь', drive_rain_on: 'Пошёл дождь', drive_rain_off: 'Дождь кончился',
@@ -143,7 +143,7 @@ export const UX = {
     // the driving game
     drive_open: 'At the wheel: a mini game', drive_title: 'At the wheel', drive_warn_title: 'You are going to a mini game',
     drive_warn_text: 'A small game inside Musique: you drive the chosen car round the town of its country and time, at night, at dusk or by day, in the rain or not. The music keeps playing. The game runs only on your device and sends nothing to the server. On a phone, turn the screen sideways.',
-    drive_play: 'Play', drive_not_now: 'Not now', drive_exit: 'Leave the game', drive_wheel: 'Steering wheel', drive_lights: 'Headlights', drive_horn: 'Horn',
+    drive_play: 'Play', drive_not_now: 'Not now', drive_exit: 'Leave the game', drive_left: 'Left', drive_right: 'Right', drive_lights: 'Headlights', drive_horn: 'Horn',
     drive_gas: 'Gas', drive_brake: 'Brake', drive_rotate: 'Turn your phone sideways',
     drive_ped: 'Someone on the crossing! Slow down at zebras',
     drive_time: 'Time of day', drive_t_night: 'Night', drive_t_dusk: 'Dusk', drive_t_day: 'Day', drive_rain: 'Rain', drive_rain_on: 'It is raining', drive_rain_off: 'The rain has stopped',
