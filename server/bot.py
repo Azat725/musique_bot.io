@@ -1,6 +1,8 @@
 """Telegram bot: /start with the Mini App button, in-chat search, sending tracks as audio."""
 import asyncio
+import html
 import logging
+import re
 import shutil
 import time
 
@@ -21,6 +23,8 @@ TEXTS = {
                  "А если хочется чего-то конкретного — напиши название или исполнителя, и трек придёт сюда.\n\n"
                  "Здесь точно кайф ✨",
         "open": "Открыть Musique",
+        "pl_shared": "Плейлист «{name}» · {n} 🎶\nДобавить его к себе можно в приложении.",
+        "pl_gone": "Эта ссылка на плейлист больше не работает.",
         "searching": "Ищу…",
         "nothing": "Ничего не нашлось. Попробуй иначе сформулировать запрос.",
         "results": "Результаты по запросу «{q}»:",
@@ -57,6 +61,8 @@ TEXTS = {
                  "Or if you want something specific, just send me a song or artist name and the track will arrive right here.\n\n"
                  "It just feels good here ✨",
         "open": "Open Musique",
+        "pl_shared": "Playlist “{name}” · {n} 🎶\nYou can add it to your library in the app.",
+        "pl_gone": "This playlist link no longer works.",
         "searching": "Searching…",
         "nothing": "Nothing found. Try rephrasing your query.",
         "results": "Results for “{q}”:",
@@ -121,8 +127,22 @@ async def start(message: Message):
     if arg and arg[0].startswith("login_"):  # the site asks to sign in with this Telegram account
         await _ask_login(message, arg[0][6:70])
         return
+    if arg and arg[0].startswith("pl_"):  # someone shared a playlist: the app opens on it and asks whether to add it
+        await _shared_playlist(message, arg[0][3:60])
+        return
     await message.answer(_t(message.from_user.language_code, "start"),
                          reply_markup=_open_keyboard(message.from_user.language_code))
+
+
+async def _shared_playlist(message: Message, token: str) -> None:
+    lang = message.from_user.language_code
+    shared = await db.shared(token) if re.fullmatch(r"[A-Za-z0-9_-]{8,40}", token) else None
+    if not shared:
+        await message.answer(_t(lang, "pl_gone"))
+        return
+    url = f"{config.webapp_url()}&pl={token}"
+    await message.answer(_t(lang, "pl_shared").format(name=html.escape(shared["name"][:64]), n=len(shared["tracks"])),  # the bot sends HTML
+                         reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=_t(lang, "open"), web_app=WebAppInfo(url=url))]]))
 
 
 # ---------- signing in on the site: the bot confirms that this Telegram account is the one opening it ----------

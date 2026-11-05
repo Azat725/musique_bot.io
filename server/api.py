@@ -7,7 +7,7 @@ import secrets
 import time
 from urllib.parse import quote
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Path, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -58,7 +58,7 @@ send_track = None  # set by __main__: async (chat_id, track_id, lang) -> None
 
 # (requests per second, burst): far above what a person does in the app, far below what a script would
 LIMITS = {"search": (3, 20), "suggest": (8, 40), "prefetch": (2, 20), "lyrics": (3, 20), "import": (1 / 60, 3),
-          "send": (0.2, 6)}
+          "send": (0.2, 6), "share": (0.5, 10), "shared": (1, 10)}
 _buckets: dict[tuple[int, str], tuple[float, float]] = {}
 
 
@@ -451,6 +451,55 @@ async def remove_from_playlist(pid: int, track_id: str, user=User):
     if not await db.remove_from_playlist(user["id"], pid, track_id):
         raise HTTPException(404)
     return {"ok": True}
+
+
+SHARE_RE = r"^[A-Za-z0-9_-]{8,40}$"  # what secrets.token_urlsafe(12) makes: 16 characters
+
+
+def share_link(token: str) -> str:
+    """The bot's link that opens a shared playlist ('' until the bot has started and knows its name)."""
+    return f"https://t.me/{weblogin.bot_username}?start=pl_{token}" if weblogin.bot_username else ""
+
+
+@app.post("/api/playlists/{pid}/share")
+async def share_playlist(pid: int, user=User):
+    """Open a link to this playlist (the same link each time); anyone who has it can add a copy to their own library."""
+    _limit(user, "share")
+    token = await db.share_playlist(user["id"], pid, secrets.token_urlsafe(12))
+    if token is None:
+        raise HTTPException(404)
+    if not token:
+        raise HTTPException(409, "too many links")
+    return {"token": token, "url": share_link(token)}
+
+
+@app.delete("/api/playlists/{pid}/share")
+async def unshare_playlist(pid: int, user=User):
+    """Close the link: it stops working at once."""
+    _limit(user, "share")
+    if not await db.unshare_playlist(user["id"], pid):
+        raise HTTPException(404)
+    return {"ok": True}
+
+
+@app.get("/api/shared/{token}")
+async def get_shared(token: str = Path(pattern=SHARE_RE), user=User):
+    """What a link leads to, for the question 'add this playlist?': the name, the number of tracks, a few covers."""
+    _limit(user, "shared")
+    s = await db.shared(token)
+    if not s:
+        raise HTTPException(404)
+    return {"name": s["name"], "count": len(s["tracks"]), "covers": [t["cover"] for t in s["tracks"] if t["cover"]][:4],
+            "titles": [f"{t['artist']} — {t['title']}" if t["artist"] else t["title"] for t in s["tracks"][:3]]}
+
+
+@app.post("/api/shared/{token}/import")
+async def import_shared(token: str = Path(pattern=SHARE_RE), user=User):
+    _limit(user, "shared")
+    done = await db.import_shared(user["id"], token)
+    if not done:
+        raise HTTPException(404)
+    return done
 
 
 @app.get("/api/history")

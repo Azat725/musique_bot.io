@@ -48,7 +48,11 @@ CREATE TABLE IF NOT EXISTS user_state (
 CREATE TABLE IF NOT EXISTS accounts (
     id INTEGER PRIMARY KEY, kind TEXT, first_name TEXT, username TEXT, language_code TEXT, created REAL
 );
+CREATE TABLE IF NOT EXISTS shared_playlists (
+    token TEXT PRIMARY KEY, playlist_id INTEGER UNIQUE, user_id INTEGER, created REAL
+);
 CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id);
+CREATE INDEX IF NOT EXISTS idx_shared_user ON shared_playlists(user_id);
 CREATE INDEX IF NOT EXISTS idx_history_user ON history(user_id, played);
 CREATE INDEX IF NOT EXISTS idx_likes_user ON likes(user_id, created);
 CREATE INDEX IF NOT EXISTS idx_playlist_tracks ON playlist_tracks(playlist_id, created);
@@ -305,6 +309,7 @@ def _merge_user(src: int, dst: int) -> None:
     e("INSERT OR IGNORE INTO likes SELECT ?, track_id, created FROM likes WHERE user_id = ?", (dst, src))
     e("DELETE FROM likes WHERE user_id = ?", (src,))
     e("UPDATE playlists SET user_id = ? WHERE user_id = ?", (dst, src))
+    e("UPDATE shared_playlists SET user_id = ? WHERE user_id = ?", (dst, src))
     e("INSERT INTO history SELECT ?, track_id, played FROM history WHERE user_id = ? AND true "
       "ON CONFLICT(user_id, track_id) DO UPDATE SET played = MAX(history.played, excluded.played)", (dst, src))
     e("DELETE FROM history WHERE user_id = ?", (src,))
@@ -398,6 +403,7 @@ def _delete_playlist(user_id: int, playlist_id: int) -> bool:
     if not _owns(user_id, playlist_id):
         return False
     _conn.execute("DELETE FROM playlist_tracks WHERE playlist_id = ?", (playlist_id,))
+    _conn.execute("DELETE FROM shared_playlists WHERE playlist_id = ?", (playlist_id,))  # a deleted playlist's link stops working
     _conn.execute("DELETE FROM playlists WHERE id = ?", (playlist_id,))
     return True
 
@@ -441,6 +447,64 @@ def _fill_playlist(playlist_id: int, tracks: list[dict]) -> None:
 async def fill_playlist(playlist_id: int, tracks: list[dict]) -> None:
     """Many tracks at once, in order (an import); the caller has just created the playlist."""
     await _write(_fill_playlist, playlist_id, tracks)
+
+
+# ---------- playlists shared by a link ----------
+
+MAX_SHARES = 100  # links one person may keep open at a time
+MAX_SHARED_TRACKS = 500  # what a copy takes from a shared playlist
+
+
+def _share_playlist(user_id: int, playlist_id: int, token: str) -> str | None:
+    """The link token of this playlist (made now, or the one it already has); None if it is not the caller's;
+    "" if the caller already keeps too many links open."""
+    if not _owns(user_id, playlist_id):
+        return None
+    row = _one("SELECT token FROM shared_playlists WHERE playlist_id = ?", (playlist_id,))
+    if row:
+        return row["token"]
+    if _one("SELECT COUNT(*) AS n FROM shared_playlists WHERE user_id = ?", (user_id,))["n"] >= MAX_SHARES:
+        return ""
+    _conn.execute("INSERT INTO shared_playlists (token, playlist_id, user_id, created) VALUES (?, ?, ?, ?)",
+                  (token, playlist_id, user_id, time.time()))
+    return token
+
+
+async def share_playlist(user_id: int, playlist_id: int, token: str) -> str | None:
+    return await _write(_share_playlist, user_id, playlist_id, token)
+
+
+async def unshare_playlist(user_id: int, playlist_id: int) -> bool:
+    return await _write(lambda: _conn.execute("DELETE FROM shared_playlists WHERE playlist_id = ? AND user_id = ?",
+                                              (playlist_id, user_id)).rowcount > 0)
+
+
+def _shared(token: str) -> dict | None:
+    row = _one("SELECT p.id, p.name FROM shared_playlists s JOIN playlists p ON p.id = s.playlist_id WHERE s.token = ?", (token,))
+    if not row:
+        return None
+    tracks = [_track(r) for r in _q("SELECT t.* FROM playlist_tracks pt JOIN tracks t ON t.id = pt.track_id "
+                                    "WHERE pt.playlist_id = ? ORDER BY pt.created ASC LIMIT ?", (row["id"], MAX_SHARED_TRACKS))]
+    return {"name": row["name"], "tracks": tracks}
+
+
+async def shared(token: str) -> dict | None:
+    """{name, tracks} of a playlist someone shares, or None (a wrong, withdrawn or deleted link)."""
+    return await _run(_shared, token)
+
+
+def _import_shared(user_id: int, token: str) -> dict | None:
+    s = _shared(token)
+    if not s or not s["tracks"]:
+        return None
+    pid = _conn.execute("INSERT INTO playlists (user_id, name, created) VALUES (?, ?, ?)", (user_id, s["name"], time.time())).lastrowid
+    _fill_playlist(pid, s["tracks"])
+    return {"id": pid, "name": s["name"], "added": len(s["tracks"])}
+
+
+async def import_shared(user_id: int, token: str) -> dict | None:
+    """A copy of the shared playlist in the caller's own library (later changes of the original do not follow)."""
+    return await _write(_import_shared, user_id, token)
 
 
 def _remove_from_playlist(user_id: int, playlist_id: int, track_id: str) -> bool:

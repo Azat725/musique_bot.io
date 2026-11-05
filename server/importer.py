@@ -1,4 +1,4 @@
-"""Playlist import: a link from YouTube Music, Spotify or Yandex Music, or a pasted list of tracks.
+"""Playlist import: a link from YouTube Music, Spotify, Yandex Music or a playlist shared from Musique, or a pasted list of tracks.
 YouTube playlists are taken as they are; for the others every track is looked up in YouTube Music."""
 import asyncio
 import json
@@ -22,6 +22,8 @@ _YANDEX_HOST = r"music\.yandex\.(?:ru|com|kz|by|uz)"
 _YANDEX_USER_RE = re.compile(_YANDEX_HOST + r"/users/([\w.-]{1,64})/playlists/(\d{1,12})")
 _YANDEX_UUID_RE = re.compile(_YANDEX_HOST + r"/playlists?/((?:[a-z]{2}\.)?[0-9a-f-]{36})")
 _YANDEX_ALBUM_RE = re.compile(_YANDEX_HOST + r"/album/(\d{1,12})(?!/track)")
+# a playlist shared from Musique itself: the bot link (start=pl_…) or the app link (?pl=…)
+_OWN_RE = re.compile(r"(?:t\.me/[A-Za-z0-9_]{4,64}\?start=pl_|[?&]pl=)([A-Za-z0-9_-]{8,40})")
 _NUMBER_RE = re.compile(r"^\s*(?:\d{1,4}\s*[.)\]:-]|\d{1,4}\s+(?=\D))\s*")
 _TIME_RE = re.compile(r"\s*[\[(]?\b\d{1,2}:\d{2}(?::\d{2})?\b[\])]?\s*$")
 _DASH_RE = re.compile(r"\s+[-–—]\s+")
@@ -51,6 +53,11 @@ async def run(user_id: int, source: str, lang: str = "en") -> dict:
 
 async def _collect(source: str) -> tuple[str, list[dict], list[str], int]:
     """(name, found tracks, lines not found, how many there were)."""
+    if m := _OWN_RE.search(source):
+        shared = await db.shared(m.group(1))
+        if not shared:
+            raise ImportFailed("unrecognized")
+        return shared["name"], shared["tracks"], [], len(shared["tracks"])
     if m := _YT_LIST_RE.search(source):
         name, tracks = await _youtube(m.group(1))
         return name, tracks, [], len(tracks)
